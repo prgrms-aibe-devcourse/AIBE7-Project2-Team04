@@ -38,6 +38,8 @@
 | `AUTH_001` | 401 | 인증 필요/토큰 만료 |
 | `AUTH_002` | 403 | 권한 없음 (타인 게시글 수정 등) |
 | `AUTH_003` | 401 | Refresh Token이 만료되었거나 폐기됨 |
+| `AUTH_004` | 422 | OAuth 제공자가 이메일을 제공하지 않았거나 이메일 검증이 완료되지 않음 |
+| `AUTH_005` | 409 | 동일 이메일이 다른 Provider로 이미 가입되어 있음 |
 | `COMMON_001` | 404 | 리소스 없음 |
 | `COMMON_002` | 400 | 요청 값 검증 실패 |
 | `LOCATION_001` | 403 | 위치 수집 미동의 상태에서 위치 기반 API 호출 (FR-04-06) |
@@ -88,6 +90,29 @@
 ```
 
 카카오·Google 콜백 성공 시 JWT를 URL에 직접 노출하지 않는다. 서버는 짧은 만료시간의 일회성 코드를 생성해 프론트엔드로 리다이렉트하고, 클라이언트가 `/auth/oauth2/exchange`에서 서비스 토큰으로 교환한다. 카카오는 사용자 정보 API의 `id`, Google은 ID Token/UserInfo의 `sub`를 `provider_id`로 저장한다.
+
+### OAuth 가입 예외 정책
+
+1. 이메일은 앞뒤 공백을 제거하고 소문자로 정규화한 후 조회·저장한다.
+2. Google은 `email`이 존재하고 `email_verified = true`인 경우에만 가입을 허용한다.
+3. 카카오는 `email`이 존재하고 `is_email_valid = true`, `is_email_verified = true`인 경우에만 가입을 허용한다.
+4. 이메일이 없거나 검증되지 않았으면 가입을 생성하지 않고 `AUTH_004`를 반환한다.
+5. 동일 이메일의 기존 사용자가 요청 Provider와 다르면 계정을 자동 연결하지 않고 `AUTH_005`와 기존 가입 방식을 안내한다.
+6. OAuth 닉네임이 비어 있거나 이미 사용 중이면 `사용자_{무작위 8자리}` 형식의 임시 닉네임을 생성한다. DB Unique 충돌 시 최대 5회 재생성한다.
+7. 임시 닉네임을 발급한 최초 OAuth 토큰 교환 응답에는 `profileSetupRequired: true`를 포함하고 프론트엔드는 프로필 수정 화면으로 이동시킨다.
+8. 이메일, Provider ID 및 기존 가입 방식은 URL 쿼리 파라미터나 오류 메시지에 원문으로 노출하지 않는다.
+
+OAuth 신규 가입 후 토큰 교환 응답의 추가 필드 예시:
+
+```json
+{
+  "success": true,
+  "data": {
+    "profileSetupRequired": true
+  },
+  "error": null
+}
+```
 
 **PATCH /users/me**
 
