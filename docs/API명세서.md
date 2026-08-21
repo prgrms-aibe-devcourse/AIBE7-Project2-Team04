@@ -2,7 +2,8 @@
 
 ### 인증
 
-- 이메일·비밀번호 인증과 카카오 OAuth2 로그인은 Spring Security가 직접 처리한다.
+- 이메일·비밀번호 인증과 카카오·Google OAuth2 로그인은 Spring Security가 직접 처리한다.
+- OAuth 사용자는 `(provider, provider_id)`로 식별한다. 동일 이메일이 다른 Provider로 가입되어 있으면 자동 연결하지 않고 기존 가입 방식을 안내한다.
 - 인증 성공 시 서버가 환경변수로 관리하는 공통 비밀키와 HS256(HMAC-SHA256) 알고리즘으로 생성한 JWT Access Token과 일회성 회전 방식의 Refresh Token을 발급한다.
 - 클라이언트는 API 요청에 `Authorization: Bearer {accessToken}` 헤더를 사용하고, Spring Security Resource Server는 동일한 비밀키로 JWT의 MAC과 `iss`, `aud`, `exp` 클레임을 검증한다. 허용 알고리즘은 HS256으로 제한한다.
 - Refresh Token은 원문을 저장하지 않고 해시하여 관리하며 재발급·로그아웃·회원탈퇴 시 폐기한다.
@@ -55,7 +56,9 @@
 | POST | `/auth/login` | 이메일·비밀번호 로그인 및 토큰 발급 | N |
 | GET | `/oauth2/authorization/kakao` | 카카오 OAuth2 로그인 시작 | N |
 | GET | `/login/oauth2/code/kakao` | Spring Security 카카오 콜백 처리 | N |
-| POST | `/auth/oauth2/exchange` | 카카오 로그인용 일회성 코드를 서비스 토큰으로 교환 | N |
+| GET | `/oauth2/authorization/google` | Google OAuth2 로그인 시작 | N |
+| GET | `/login/oauth2/code/google` | Spring Security Google 콜백 처리 | N |
+| POST | `/auth/oauth2/exchange` | OAuth2 로그인용 일회성 코드를 서비스 토큰으로 교환 | N |
 | POST | `/auth/token/refresh` | Access/Refresh Token 재발급 및 Refresh Token 회전 | N |
 | POST | `/auth/logout` | 현재 Refresh Token 폐기 | Y |
 | DELETE | `/users/me` | 회원탈퇴 (FR-01-03) | Y |
@@ -84,7 +87,7 @@
 }
 ```
 
-카카오 콜백 성공 시 JWT를 URL에 직접 노출하지 않는다. 서버는 짧은 만료시간의 일회성 코드를 생성해 프론트엔드로 리다이렉트하고, 클라이언트가 `/auth/oauth2/exchange`에서 서비스 토큰으로 교환한다.
+카카오·Google 콜백 성공 시 JWT를 URL에 직접 노출하지 않는다. 서버는 짧은 만료시간의 일회성 코드를 생성해 프론트엔드로 리다이렉트하고, 클라이언트가 `/auth/oauth2/exchange`에서 서비스 토큰으로 교환한다. 카카오는 사용자 정보 API의 `id`, Google은 ID Token/UserInfo의 `sub`를 `provider_id`로 저장한다.
 
 **PATCH /users/me**
 
