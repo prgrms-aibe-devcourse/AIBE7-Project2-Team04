@@ -7,6 +7,11 @@ spring:
     init:
       # Hibernate가 geography/vector 컬럼을 생성하기 전에 확장 초기화 SQL을 실행
       mode: always
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
 ---
 spring:
   config:
