@@ -18,3 +18,10 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+      # 외부 또는 운영 Redis 사용하기 시작할 때 추가 사항
+#      username: ${REDIS_USERNAME:}
+#      password: ${REDIS_PASSWORD:}
+#      database: 0
+#      timeout: 3s
+#      ssl:
+#        enabled: false
