@@ -1,13 +1,20 @@
 spring:
   application:
     name: project2
+
   profiles:
     active: dev
+
     group:
       dev:
-        - db
         - ai
+        - auth
+        - db
+
   config:
-    import:
-      - optional:file:.env[.properties]
-      - classpath:application-auth.yml
+    import: optional:file:.env[.properties]
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
