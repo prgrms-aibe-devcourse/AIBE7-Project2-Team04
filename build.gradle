@@ -26,7 +26,7 @@ dependencies {
     // JPA 기반 엔티티 매핑과 데이터베이스 Repository를 지원
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     // Redis를 활용한 캐시와 임시 상태 저장을 지원
-//    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     // 인증과 인가 등 Spring Security의 핵심 기능을 제공
     implementation 'org.springframework.boot:spring-boot-starter-security'
     // 카카오와 Google OAuth2 로그인을 Spring Security에서 직접 처리
