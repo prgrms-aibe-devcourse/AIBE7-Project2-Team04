@@ -39,3 +39,6 @@ out/
 ### dotenv ###
 .env*
 !.env*.sample
+
+### personal_docs ###
+docs/personal
