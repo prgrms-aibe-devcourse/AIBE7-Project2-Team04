@@ -64,8 +64,8 @@
 | POST | `/auth/login` | 이메일·비밀번호 로그인 및 토큰 발급 | N |
 | GET | `/oauth2/authorization/kakao` | 카카오 OAuth2 로그인 시작 | N |
 | GET | `/login/oauth2/code/kakao` | Spring Security 카카오 콜백 처리 | N |
-| GET | `/oauth2/authorization/google` | Google OAuth2 로그인 시작 | N |
-| GET | `/login/oauth2/code/google` | Spring Security Google 콜백 처리 | N |
+| GET | `/oauth2/authorization/google` | Google OAuth2 로그인 시작 (추후 구현) | N |
+| GET | `/login/oauth2/code/google` | Spring Security Google 콜백 처리 (추후 구현) | N |
 | POST | `/auth/oauth2/exchange` | OAuth2 로그인용 일회성 코드를 서비스 토큰으로 교환 | N |
 | POST | `/auth/token/refresh` | Access/Refresh Token 재발급 및 Refresh Token 회전 | N |
 | POST | `/auth/logout` | 현재 Refresh Token 폐기 | Y |
@@ -127,7 +127,17 @@ Refresh Token 원문은 응답 본문에 포함하지 않고 `Secure`, `HttpOnly
 
 CORS는 기본적으로 어떤 외부 Origin도 허용하지 않는다. 프론트엔드가 별도 Origin에서 실행될 때 서버의 `FRONTEND_ORIGIN`에 정확한 Origin 하나를 지정하고, 클라이언트 요청에는 credentials 옵션을 사용한다.
 
-카카오·Google 콜백 성공 시 JWT를 URL에 직접 노출하지 않는다. 서버는 짧은 만료시간의 일회성 코드를 생성해 프론트엔드로 리다이렉트하고, 클라이언트가 `/auth/oauth2/exchange`에서 서비스 토큰으로 교환한다. 카카오는 사용자 정보 API의 `id`, Google은 ID Token/UserInfo의 `sub`를 `provider_id`로 저장한다.
+OAuth2 로그인 시작과 콜백 경로(`/oauth2/**`, `/login/oauth2/**`)는 인가 요청의 `state`를 검증하기 위한 임시 세션을 필요할 때만 생성한다. 그 외 REST API는 서버 세션을 인증에 사용하지 않는 `STATELESS` 정책을 유지한다.
+
+현재는 카카오 로그인을 먼저 구현한다. 카카오 콜백 성공 시 JWT를 URL에 직접 노출하지 않고, 서버가 2분 후 만료되는 일회성 코드를 생성해 `OAUTH2_SUCCESS_REDIRECT_URI`로 리다이렉트한다. Redis에는 코드 원문이 아닌 SHA-256 해시와 사용자 ID·프로필 설정 필요 여부만 저장한다. 카카오 사용자 정보 API의 `id`는 `provider_id`로 저장한다. Google 로그인은 추후 같은 원칙으로 확장한다.
+
+현재 구현은 다음 세 단계를 따른다.
+
+1. `CustomOAuth2UserService`가 카카오 사용자 응답에서 ID, 이메일, 닉네임, 프로필 이미지를 읽는다.
+2. `KakaoOAuthUserService`가 `(KAKAO, provider_id)`로 사용자를 조회하고, 처음 로그인한 사용자만 가입시킨다.
+3. `OAuth2AuthenticationSuccessHandler`가 일회성 코드를 발급하고 프론트엔드 콜백으로 이동시킨다.
+
+OAuth 성공 또는 실패 후에는 `state` 검증에 사용한 임시 세션과 Security Context를 제거한다. 성공 리다이렉트에는 `code`만 포함하고, 가입 정책 실패 시에는 공개 가능한 `AUTH_004` 또는 `AUTH_005` 코드만 `error`로 전달한다. 그 밖의 Provider 오류는 `AUTH_001`로 일반화한다.
 
 ### OAuth 가입 예외 정책
 
@@ -136,7 +146,7 @@ CORS는 기본적으로 어떤 외부 Origin도 허용하지 않는다. 프론�
 3. 카카오는 `email`이 존재하고 `is_email_valid = true`, `is_email_verified = true`인 경우에만 가입을 허용한다.
 4. 이메일이 없거나 검증되지 않았으면 가입을 생성하지 않고 `AUTH_004`를 반환한다.
 5. 동일 이메일의 기존 사용자가 요청 Provider와 다르면 계정을 자동 연결하지 않고 `AUTH_005`와 기존 가입 방식을 안내한다.
-6. OAuth 닉네임이 비어 있거나 이미 사용 중이면 `사용자_{무작위 8자리}` 형식의 임시 닉네임을 생성한다. DB Unique 충돌 시 최대 5회 재생성한다.
+6. OAuth 닉네임이 비어 있거나 이미 사용 중이면 `사용자_{무작위 8자리}` 형식의 임시 닉네임을 생성하며, 중복되지 않는 값을 최대 5회 탐색한다.
 7. 임시 닉네임을 발급한 최초 OAuth 토큰 교환 응답에는 `profileSetupRequired: true`를 포함하고 프론트엔드는 프로필 수정 화면으로 이동시킨다.
 8. 이메일, Provider ID 및 기존 가입 방식은 URL 쿼리 파라미터나 오류 메시지에 원문으로 노출하지 않는다.
 

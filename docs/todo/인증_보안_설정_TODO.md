@@ -250,7 +250,7 @@ DaoAuthenticationProvider
 - [x] `/admin/**`에 `hasRole("ADMIN")`을 적용한다.
 - [ ] Resource Server JWT 검증을 활성화한다.
 - [x] JWT의 `roles` 클레임을 Spring Security Authority로 변환한다.
-- [ ] API와 OAuth2 로그인 세션 정책을 분리한다.
+- [x] API와 OAuth2 로그인 세션 정책을 분리한다.
 
 권장 Filter Chain 구성:
 
@@ -298,6 +298,8 @@ JWT 기본 설정 단계에서 CSRF를 임시 비활성화했다면 Refresh Toke
 - [ ] 로그아웃 및 전체 세션 폐기 구현
 - [ ] Google OAuth2 로그인 구현
 - [ ] 카카오 OAuth2 로그인 구현
+- [x] 카카오 사용자 정보를 `(provider, provider_id)` 기준으로 서비스 사용자에 매핑
+- [x] OAuth 성공·실패 핸들러에서 일회성 코드 리다이렉트 및 임시 세션 제거
 - [ ] OAuth 일회용 코드 교환 구현
 - [ ] 메서드 단위 권한 검사(`@PreAuthorize`) 적용
 
