@@ -43,6 +43,9 @@
 | `COMMON_001` | 404 | 리소스 없음 |
 | `COMMON_002` | 400 | 요청 값 검증 실패 |
 | `LOCATION_001` | 403 | 위치 수집 미동의 상태에서 위치 기반 API 호출 (FR-04-06) |
+| `LOCATION_002` | 422 | 선택한 지도 핀이 요청한 구의 행정구역 범위를 벗어남 (FR-04-08) |
+| `PERSONALITY_001` | 404 | 성향 프로필이 아직 생성되지 않음 |
+| `PERSONALITY_002` | 422 | 지원하지 않는 설문 버전이거나 성향 응답 값이 유효하지 않음 |
 
 ### 페이지네이션 (목록 조회 공통 파라미터)
 
@@ -66,7 +69,14 @@
 | DELETE | `/users/me` | 회원탈퇴 (FR-01-03) | Y |
 | GET | `/users/me` | 내 프로필 조회 (FR-01-04) | Y |
 | PATCH | `/users/me` | 닉네임/이미지/관심사 등 수정 (FR-01-05) | Y |
-| PATCH | `/users/me/location` | 현재 위치·수집 동의 갱신 (FR-04-06) | Y |
+| GET | `/users/me/preferred-region` | 구 단위 기본 활동지역·위치 서비스 동의 조회 (FR-04-06~07) | Y |
+| PUT | `/users/me/preferred-region` | 구 단위 기본 활동지역·위치 서비스 동의 설정 (FR-04-06~07) | Y |
+| DELETE | `/users/me/preferred-region` | 기본 활동지역과 위치 서비스 동의 철회 (FR-04-06) | Y |
+| GET | `/users/me/personality-profile` | 내 성향 프로필·완성 상태 조회 (FR-01-09~10) | Y |
+| PUT | `/users/me/personality-profile` | 성향 설문 제출 또는 전체 재분석 (FR-01-09~10) | Y |
+| DELETE | `/users/me/personality-profile` | 성향 응답·점수·임베딩 초기화 (FR-01-10) | Y |
+| GET | `/users/me/matching-preferences` | 상대방 선호 중요도 조회 (FR-01-10) | Y |
+| PUT | `/users/me/matching-preferences` | 상대방 선호 중요도 전체 갱신 (FR-01-10) | Y |
 
 **POST /auth/signup**
 
@@ -120,18 +130,79 @@ OAuth 신규 가입 후 토큰 교환 응답의 추가 필드 예시:
 { "nickname": "새닉네임", "profileImageUrl": "https://...", "interests": ["등산", "보드게임"] }
 ```
 
-**PATCH /users/me/location**
+**PUT /users/me/preferred-region**
 
 ```json
-{ "latitude": 37.501, "longitude": 127.039, "locationConsent": true }
+{
+  "regionCode": "11680",
+  "regionName": "서울특별시 강남구",
+  "locationServiceConsent": true
+}
 ```
 
 <aside>
 📎
 
-`locationConsent: false`인 회원이 이후 위치 기반 API 호출 시 `LOCATION_001` 반환.
+이 API에는 정확한 사용자 좌표를 저장하지 않는다. 서버는 유효한 구 단위 행정구역 코드인지 검증하고, 프론트엔드는 해당 코드의 대표 좌표를 지도 초기 중심으로 사용한다. 동의 철회 후 위치 기반 API를 호출하면 `LOCATION_001`을 반환한다.
 
 </aside>
+
+### 선택형 성향 온보딩
+
+성향 온보딩은 가입 성공의 필수 조건이 아니며 사용자는 건너뛸 수 있다. 성향 값은 자가 응답 기반 식사·대화 선호로만 사용하고 심리 진단이나 민감 특성 추론에 사용하지 않는다.
+
+**PUT /users/me/personality-profile**
+
+```json
+{
+  "questionnaireVersion": "MEAL_PERSONALITY_V1",
+  "answers": [
+    { "questionCode": "CONVERSATION_LEVEL", "value": 4 },
+    { "questionCode": "MEAL_PACE", "value": 2 },
+    { "questionCode": "PLANNING_STYLE", "value": 5 },
+    { "questionCode": "NOVELTY_PREFERENCE", "value": 3 }
+  ],
+  "freeText": "처음에는 조용하지만 음식 이야기는 편하게 나누고 싶어요.",
+  "aiAnalysisConsent": true
+}
+```
+
+응답 예시:
+
+```json
+{
+  "success": true,
+  "data": {
+    "completed": true,
+    "questionnaireVersion": "MEAL_PERSONALITY_V1",
+    "scores": {
+      "conversationLevel": 80,
+      "mealPace": 40,
+      "planningStyle": 100,
+      "noveltyPreference": 60
+    },
+    "embeddingStatus": "PENDING"
+  },
+  "error": null
+}
+```
+
+정형 점수는 버전된 서버 규칙으로 결정론적으로 계산한다. `aiAnalysisConsent: true`이고 자유 서술이 있을 때만 비동기 임베딩 작업을 등록한다. 임베딩 실패는 이 API의 정형 점수 저장이나 기본 매칭을 실패시키지 않는다.
+
+**PUT /users/me/matching-preferences**
+
+```json
+{
+  "preferences": [
+    { "dimension": "CONVERSATION_LEVEL", "importance": 5, "mode": "SIMILAR" },
+    { "dimension": "MEAL_PACE", "importance": 4, "mode": "SIMILAR" },
+    { "dimension": "PLANNING_STYLE", "importance": 2, "mode": "COMPLEMENTARY" },
+    { "dimension": "NOVELTY_PREFERENCE", "importance": 3, "mode": "SIMILAR" }
+  ]
+}
+```
+
+`importance`는 0~5이며 0은 해당 차원을 최종 호환도 계산에서 제외한다. `mode`는 `SIMILAR` 또는 `COMPLEMENTARY`만 허용한다.
 
 ---
 
@@ -141,7 +212,7 @@ OAuth 신규 가입 후 토큰 교환 응답의 추가 필드 예시:
 | --- | --- | --- | --- |
 | POST | `/posts` | 모집 게시글 작성 (FR-02-01~05) | Y |
 | GET | `/posts` | 게시글 목록 (필터: region, status, mealDate) | Y |
-| GET | `/posts/nearby` | 내 주변 게시글 조회 (FR-04-02) | Y |
+| GET | `/posts/nearby` | 선택 핀 주변 게시글 조회 (FR-04-02) | Y |
 | GET | `/posts/{postId}` | 게시글 상세 | Y |
 | PATCH | `/posts/{postId}` | 게시글 수정 (작성자만, FR-02-08) | Y |
 | DELETE | `/posts/{postId}` | 게시글 삭제 (작성자만, FR-02-08) | Y |
@@ -155,7 +226,9 @@ OAuth 신규 가입 후 토큰 교환 응답의 추가 필드 예시:
   "title": "강남역 국밥 같이 드실 분",
   "description": "8시에 뵈어요",
   "mealAt": "2026-08-25T19:00:00+09:00",
-  "region": "강남역",
+  "regionCode": "11680",
+  "regionName": "서울특별시 강남구",
+  "locationName": "강남역 11번 출구",
   "latitude": 37.498,
   "longitude": 127.028,
   "capacity": 3,
@@ -167,12 +240,12 @@ OAuth 신규 가입 후 토큰 교환 응답의 추가 필드 예시:
 
 **GET /posts/nearby**
 
-Query: `latitude`, `longitude`, `radiusKm` (기본 3, FR-04-04), `page`, `size`
+Query: `regionCode`, `latitude`, `longitude`, `radiusKm` (기본 3, FR-04-04), `page`, `size`
 
 <aside>
 📎
 
-내부적으로 PostGIS `ST_DWithin`으로 반경 내 `status=OPEN` 게시글 조회, 거리순 정렬 (FR-04-03, FR-04-05).
+서버는 먼저 핀 좌표가 `regionCode`의 구에 속하는지 검증한다. 이후 PostGIS `ST_DWithin`으로 반경 내 `status=OPEN` 게시글을 조회하고 선택 핀 기준 거리순으로 정렬한다 (FR-04-03, FR-04-05, FR-04-08).
 
 </aside>
 
@@ -200,10 +273,14 @@ Query: `latitude`, `longitude`, `radiusKm` (기본 3, FR-04-04), `page`, `size`
 
 ```json
 {
+  "regionCode": "11680",
+  "regionName": "서울특별시 강남구",
+  "locationName": "강남역 11번 출구",
   "latitude": 37.501,
   "longitude": 127.039,
   "desiredTimeSlot": "2026-08-21T19:00:00+09:00",
-  "desiredGroupType": "1:1"
+  "desiredGroupType": "1:1",
+  "desiredPersonalityText": "대화를 편하게 이어가되 식사 속도가 비슷한 분"
 }
 ```
 
@@ -216,33 +293,83 @@ Query: `latitude`, `longitude`, `radiusKm` (기본 3, FR-04-04), `page`, `size`
 <aside>
 📎
 
-동일 사용자가 이미 `WAITING` 상태면 `409 CONFLICT` (중복 참여 제한, FR-03-10). 서버는 Redis Geo 큐에 등록 후 조건에 맞는 상대를 탐색 (FR-03-06); 성사되면 `matches`/`match_participants`에 기록하고 STOMP로 두 사용자 모두에게 결과를 push. 일정 시간(TTL) 내 미매칭 시 상태가 `EXPIRED`로 자동 전환 (FR-03-09).
+서버는 핀 좌표가 `regionCode`의 구에 속하는지 검증하고, PostGIS Point를 경도·위도 순서로 생성한다. 이 핀은 사용자의 실제 현재 위치가 아니라 희망 매칭 장소다. 동일 사용자가 이미 `WAITING` 상태면 `409 CONFLICT` (FR-03-10). 서버는 Redis Geo 큐에 등록한 뒤 희망 매칭 장소 핀 기준 거리·시간·인원·대기 상태·차단 관계를 하드 필터링하고, 통과 후보에만 버전된 성향 호환도 공식을 적용한다. 자유 서술 임베딩은 제한된 보조 점수로만 사용하며 AI/임베딩 장애 또는 성향 미설정 시 하드 필터와 사용 가능한 정형 점수만으로 fallback한다 (FR-03-06, FR-03-11~12). 성사되면 `matches`/`match_participants`에 기록하고 STOMP로 두 사용자 모두에게 결과를 push. 일정 시간(TTL) 내 미매칭 시 상태가 `EXPIRED`로 자동 전환 (FR-03-09).
 
 </aside>
 
 **매칭 결과 push 메시지 예시** (`/user/queue/match-result`)
 
 ```json
-{ "matchId": 301, "status": "MATCHED", "chatRoomId": 12, "partner": { "userId": "8ccaa7af-909f-44e7-84cb-67cdccb56be6", "nickname": "밥친구" } }
+{
+  "matchId": 301,
+  "status": "MATCHED",
+  "chatRoomId": 12,
+  "compatibility": {
+    "score": 84,
+    "reasons": ["대화 선호가 비슷해요", "식사 속도 선호가 잘 맞아요"],
+    "formulaVersion": "PERSONALITY_MATCH_V1"
+  },
+  "partner": {
+    "userId": "8ccaa7af-909f-44e7-84cb-67cdccb56be6",
+    "nickname": "밥친구"
+  }
+}
 ```
+
+`compatibility`는 양쪽 모두 계산 가능한 성향 데이터가 있을 때만 포함한다. 원본 설문 답변, 자유 서술, 차원별 상세 점수는 상대방에게 노출하지 않는다.
+
+### 성향 호환도 V1 산식
+
+각 정형 성향 점수는 0~100 범위로 정규화하고 요청자의 `importance`를 적용한다.
+
+```text
+SIMILAR 차원 점수       = 100 - abs(요청자 점수 - 후보 점수)
+COMPLEMENTARY 차원 점수 = abs(요청자 점수 - 후보 점수)
+정형 호환도             = sum(차원 점수 × importance) / sum(importance)
+```
+
+동일한 임베딩 모델과 소스 버전으로 생성된 양쪽 벡터가 모두 있을 때만 임베딩 유사도를 0~100으로 정규화하여 사용한다. V1의 최종 점수는 `정형 호환도 80% + 임베딩 유사도 20%`이며, 임베딩을 사용할 수 없으면 정형 호환도를 100%로 재정규화한다. 중요도가 모두 0이거나 정형 프로필이 없으면 성향 점수를 계산하지 않고 하드 필터 결과를 사용한다. 산식 또는 가중치를 변경할 때는 `formulaVersion`을 올린다.
 
 ---
 
 # 4. 위치 (FR-04)
 
-위치 관련 API는 2장 (`/posts/nearby`)과 3장 (실시간 매칭 요청)에 통합되어 있으며, 별도 리소스는 아래와 같다.
+Geolocation API는 필수로 사용하지 않는다. 사용자는 먼저 구 단위 기본 활동지역을 선택하고, 프론트엔드는 해당 구의 대표 좌표를 중심으로 지도를 연다. 사용자가 지도 클릭 또는 마커 이동으로 확정한 핀 좌표를 2장 (`/posts/nearby`)과 3장(실시간 매칭 요청)에 전달한다. 정확한 핀 좌표는 `users`나 기본 활동지역에는 저장하지 않고 요청·게시글 등 필요한 도메인 레코드에만 저장한다.
 
 | Method | Endpoint | 설명 | 인증 |
 | --- | --- | --- | --- |
+| GET | `/regions` | 지원하는 구 단위 행정구역과 지도 대표 좌표 조회 | N |
 | GET | `/matches/realtime/candidates` | 반경 내 매칭 대기자 수 미리보기 (선택, FR-04-04) | Y |
+
+**GET /regions**
+
+Query: `level=GU`, `parentCode`(선택, 시·도 코드)
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "regionCode": "11680",
+      "regionName": "서울특별시 강남구",
+      "centerLatitude": 37.5172,
+      "centerLongitude": 127.0473
+    }
+  ]
+}
+```
+
+`regionCode`는 서버가 관리하는 5자리 시·군·구 코드다. 외부 역지오코딩 API가 법정동 등 더 세부적인 코드를 반환하면 서버가 이를 5자리 구 코드로 매핑한 뒤 비교한다. 대표 좌표는 지도 초기화용이며 사용자 위치로 간주하거나 거리 계산에 사용하지 않는다.
 
 **GET /matches/realtime/candidates**
 
-Query: `latitude`, `longitude`, `radiusKm`
+Query: `regionCode`, `latitude`, `longitude`, `radiusKm`
 
 ```json
 { "success": true, "data": { "waitingCount": 4 } }
 ```
+
+모든 거리와 반경은 실제 사용자의 현재 위치가 아니라 요청에 포함된 선택 핀을 기준으로 한다. 핀 좌표는 위도·경도 필드로 전달하지만 서버가 PostGIS/JTS Point를 만들 때는 반드시 경도(`x`), 위도(`y`) 순서로 구성한다.
 
 ---
 

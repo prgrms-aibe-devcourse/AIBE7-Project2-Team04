@@ -79,6 +79,8 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     // 테스트 소스 컴파일 과정에서 Lombok 코드를 생성
     testAnnotationProcessor 'org.projectlombok:lombok'
+    // Source: https://mvnrepository.com/artifact/org.bouncycastle/bcprov-jdk18on
+    implementation 'org.bouncycastle:bcprov-jdk18on:1.85.2'
 }
 
 dependencyManagement {
