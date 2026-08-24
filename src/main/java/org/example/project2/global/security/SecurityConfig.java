@@ -60,6 +60,10 @@ public class SecurityConfig {
         return new DelegatingPasswordEncoder(p.password().encodingId(), encodingMap);
     }
 
+    /*
+    DaoAuthenticationProvider: DB의 사용자 정보(CustomDetailsService)와 PasswordEncoder를 연결
+    로그인 시 입력받은 이메일/비밀번호가 일치하는지 검증하는 역할 수행
+     */
     @Bean
     public DaoAuthenticationProvider authenticationProvider(
             CustomUserDetailsService userDetailsService,
@@ -93,11 +97,12 @@ public class SecurityConfig {
 
     @Bean
     public CookieCsrfTokenRepository csrfTokenRepository() {
+        // CSRF 토큰 쿠키는 프론트엔드 자바스크립트가 읽어서 헤더에 담아야 하므로 HttpOnly = false로 설정
         CookieCsrfTokenRepository repository = CookieCsrfTokenRepository.withHttpOnlyFalse();
         repository.setCookieCustomizer(cookie -> cookie
-                .secure(true)
-                .sameSite("Strict")
-                .path("/"));
+                .secure(true) // HTTPS 암호화 통신에서만 전송
+                .sameSite("Strict") // 다른 사이트에서 시작된 요청에 쿠키가 전송되는 것을 제한
+                .path("/")); // Refresh Token 쿠키를 인증 관련 경로에만 전송
         return repository;
     }
 
@@ -109,17 +114,20 @@ public class SecurityConfig {
             CookieCsrfTokenRepository csrfTokenRepository
     ) throws Exception {
         http
-                // jwt
+                // cors 설정
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .csrf(csrf -> csrf
+                        // 서버가 CSRF 토큰을 생성할 때 어떤 구성 및 속성으로 생성할 지 csrfTokenRepository가 설계도 역할
                         .csrfTokenRepository(csrfTokenRepository)
+                        // 요청 헤더의 csrf 토큰을 읽고 검증하는 해석기로 csrfTokenRequestHandler 사용
                         .csrfTokenRequestHandler(csrfTokenRequestHandler))
+                // JWT 방식에서 필요없는 기본 속성 비활성화
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .logout(AbstractHttpConfigurer::disable)
                 .sessionManagement(
                         session -> session
-                                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                                .sessionCreationPolicy(SessionCreationPolicy.STATELESS) // JWT는 서버 세션을 생성하거나 유지하지 않음 -> 무상태성(STATELESS)
                 )
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint(authenticationEntryPoint)
@@ -140,14 +148,15 @@ public class SecurityConfig {
                                         "/login/oauth2/code/**",
                                         "/swagger-ui/**",
                                         "/v3/api-docs/**",
-                                        "/actuator/health"
+                                        "/actuator/health",
+                                        "/swagger-ui.html"
                                 ).permitAll()
                                 .requestMatchers("/admin/**").hasRole("ADMIN")
                                 .anyRequest()
                                 .authenticated()
                 )
-                .addFilterAfter(csrfCookieFilter, CsrfFilter.class)
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterAfter(csrfCookieFilter, CsrfFilter.class) // CsrfFilter로 CSRF 토큰을 생성 후 csrfCookieFilter 실행하여 쿠키로 응답에 실어줌
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class); // 헤더의 Access Token jwtFilter를 통해 확인, formLogin이 disable이므로 jwtFilter만 실행
         return http.build();
     }
 }

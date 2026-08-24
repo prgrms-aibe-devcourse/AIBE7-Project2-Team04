@@ -28,6 +28,7 @@ import java.util.UUID;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Builder
 public class UserLocationPreference {
+
     @Id
     @Column(name = "user_id")
     private UUID userId;
