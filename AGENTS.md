@@ -6,6 +6,15 @@
 - Keep the domain-first package structure. Inside each domain, separate `controller`, `service`, `repository`, `entity`, and `dto`; place only cross-cutting code in `global`.
 - Prefer constructor injection, lazy JPA relationships, string-mapped enums, DTO-based API boundaries, and service-layer transaction boundaries.
 
+## Implementation scope and learning level
+
+- This is a bootcamp second project. Prefer the smallest implementation that satisfies the currently requested feature, the source-of-truth documents, and the security invariants.
+- Optimize for code the student can read, explain, test, and maintain. Avoid unnecessary classes, interfaces, generic abstractions, design patterns, and premature production-scale architecture.
+- Do not implement future providers, optional features, distributed-system edge cases, or speculative extensibility unless the user requests them or they are required for the current feature.
+- When both a simple implementation and an advanced implementation are valid, implement the simple version first and briefly describe advanced extensions as future work.
+- Add complexity only when it prevents a concrete bug, satisfies an explicit requirement, or preserves a security invariant. Explain the reason when the added complexity is not obvious.
+- Write application error messages and validation messages in Korean by default. Keep English only for fixed protocol values, standard identifiers, library-required text, or when the user explicitly requests it.
+
 ## Sources of truth
 
 - Database and Entity mappings: `docs/데이터모델링.md`
