@@ -331,7 +331,7 @@ Query: `regionCode`, `latitude`, `longitude`, `radiusKm`
 <aside>
 📎
 
-`chat_room_participants`에 없는 사용자가 SUBSCRIBE/SEND 시도 시 서버가 연결을 거부 (FR-05-05).
+해당 채팅방의 `match_id`에 연결된 `match_participants`에 없는 사용자가 SUBSCRIBE/SEND를 시도하면 서버가 연결을 거부합니다 (FR-05-05).
 
 </aside>
 
@@ -353,21 +353,7 @@ Query: `cursor` (마지막으로 받은 messageId), `size` (기본 30)
 
 ---
 
-# 5. 커뮤니티 (FR-06)
-
-| Method | Endpoint | 설명 | 인증 |
-| --- | --- | --- | --- |
-| POST | `/community/posts` | 게시글 작성 (FR-06-01) | Y |
-| GET | `/community/posts` | 목록 조회 (FR-06-02) | Y |
-| GET | `/community/posts/{postId}` | 상세 조회 (FR-06-02) | Y |
-| PATCH | `/community/posts/{postId}` | 수정 (작성자만, FR-06-03) | Y |
-| DELETE | `/community/posts/{postId}` | 삭제 (작성자만, FR-06-04) | Y |
-| POST | `/community/posts/{postId}/comments` | 댓글 작성 (FR-06-05) | Y |
-| GET | `/community/posts/{postId}/comments` | 댓글 목록 | Y |
-
----
-
-# 6. 매칭 후기 / 방명록 (FR-07)
+# 5. 매칭 후기 / 방명록 (FR-07)
 
 | Method | Endpoint | 설명 | 인증 |
 | --- | --- | --- | --- |
@@ -391,7 +377,7 @@ Query: `cursor` (마지막으로 받은 messageId), `size` (기본 30)
 
 ---
 
-# 7. AI 식당 추천 (FR-08, 선택)
+# 6. AI 식당 추천 (FR-08, 선택)
 
 | Method | Endpoint | 설명 | 인증 |
 | --- | --- | --- | --- |
@@ -426,13 +412,12 @@ Query: `cursor` (마지막으로 받은 messageId), `size` (기본 30)
 
 ---
 
-# 8. 마이페이지 (FR-09)
+# 7. 마이페이지 (FR-09)
 
 | Method | Endpoint | 설명 | 인증 |
 | --- | --- | --- | --- |
 | GET | `/mypage/profile` | 내 프로필 (FR-09-01) | Y |
 | GET | `/mypage/matches` | 내 매칭 이력 (FR-09-03) | Y |
-| GET | `/mypage/community-posts` | 내가 작성한 커뮤니티 글 (FR-09-04) | Y |
 | GET | `/mypage/reviews` | 내가 받은 후기/방명록 (FR-09-05) | Y |
 
 <aside>
@@ -444,6 +429,6 @@ Query: `cursor` (마지막으로 받은 messageId), `size` (기본 30)
 
 ---
 
-# 9. 향후 확장 (4순위, 미확정)
+# 8. 향후 확장 (4순위, 미확정)
 
-관리자 API (`/admin/users`, `/admin/posts`, `/admin/reports` 등)와 신고/제재 플로우는 데이터 모델링 문서의 "관리자 (4순위)" 절과 함께 팀 논의 후 별도 명세로 추가 권장.
+관리자 API (`/admin/users`, `/admin/reports` 등)와 신고/제재 플로우는 팀 논의 후 별도 명세로 추가 권장.

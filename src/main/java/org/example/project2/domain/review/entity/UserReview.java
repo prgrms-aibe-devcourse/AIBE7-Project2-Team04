@@ -11,9 +11,12 @@ import org.hibernate.annotations.Check;
         @Index(name = "idx_user_reviews_match", columnList = "match_id"),
         @Index(name = "idx_user_reviews_reviewer", columnList = "reviewer_id"),
         @Index(name = "idx_user_reviews_reviewee", columnList = "reviewee_id")
-})
+}, uniqueConstraints = @UniqueConstraint(
+        name = "uk_user_review_match_reviewer_reviewee",
+        columnNames = {"match_id", "reviewer_id", "reviewee_id"}
+))
 @Entity
-@Check(constraints = "rating BETWEEN 1 AND 5")
+@Check(constraints = "rating BETWEEN 1 AND 5 AND reviewer_id <> reviewee_id")
 @Getter
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

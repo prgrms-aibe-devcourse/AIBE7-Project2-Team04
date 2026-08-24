@@ -27,10 +27,10 @@
 
 ## 구현 체크리스트
 
-- [ ] MVP 제외 Entity와 `MatchType.POST`를 제거하거나 JPA 스캔에서 제외
+- [x] MVP 제외 Entity와 `MatchType.POST`를 제거하거나 JPA 스캔에서 제외
 - [ ] Entity와 DB 마이그레이션을 기능 단위로 함께 구현
 - [ ] 핀의 지역구 소속 및 경도·위도 순서 검증
 - [ ] 중복 대기, 자기 자신 매칭, 한 요청의 중복 사용을 차단
 - [ ] 채팅 접근자를 매칭 참여자 2명으로 제한
 - [ ] AI 장애 시 위치·시간 기반 기본 매칭과 식당 검색으로 fallback
-- [ ] `gradlew.bat compileJava`, `gradlew.bat test` 실행 후 Hibernate DDL 오류 확인
+- [x] `gradlew.bat compileJava`, `gradlew.bat test` 실행 후 Hibernate DDL 오류 확인

@@ -3,33 +3,24 @@ package org.example.project2.domain.matching.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.example.project2.global.entity.BaseEntity;
-import org.example.project2.domain.recruitment.entity.MatchPost;
 import org.hibernate.annotations.Check;
 import java.time.Instant;
 
-@Table(name = "matches", indexes = {
-        @Index(name = "idx_matches_request", columnList = "match_request_id"),
-        @Index(name = "idx_matches_post", columnList = "match_post_id")
-})
+@Table(name = "matches")
 @Entity
-@Check(constraints = "(match_type = 'REALTIME' AND match_request_id IS NOT NULL AND match_post_id IS NULL) OR " +
-        "(match_type = 'POST' AND match_post_id IS NOT NULL AND match_request_id IS NULL)")
+@Check(constraints = "requester_request_id <> candidate_request_id")
 @Getter
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Builder
 public class Match extends BaseEntity {
-    @Enumerated(EnumType.STRING)
-    @Column(name = "match_type", nullable = false, length = 20)
-    private MatchType matchType;
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "requester_request_id", nullable = false, unique = true)
+    private MatchRequest requesterRequest;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "match_request_id")
-    private MatchRequest matchRequest;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "match_post_id")
-    private MatchPost matchPost;
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "candidate_request_id", nullable = false, unique = true)
+    private MatchRequest candidateRequest;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)

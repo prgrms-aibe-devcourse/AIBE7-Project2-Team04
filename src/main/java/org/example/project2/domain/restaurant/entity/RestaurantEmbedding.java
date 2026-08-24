@@ -33,6 +33,12 @@ public class RestaurantEmbedding {
     @Column(nullable = false, columnDefinition = "vector(1536)")
     private float[] embedding;
 
+    @Column(name = "model_name", nullable = false, length = 100)
+    private String modelName;
+
+    @Column(name = "source_version", nullable = false, length = 100)
+    private String sourceVersion;
+
     @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
