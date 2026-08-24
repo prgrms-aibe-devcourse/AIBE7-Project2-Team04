@@ -1,33 +1,36 @@
-# MVP 실시간 1:1 매칭 정리 TODO
+# MVP 구현 범위
 
-## MVP 범위
+## 목표
 
-- 매칭 방식은 실시간 1:1만 지원한다.
-- 한 사용자는 동시에 하나의 `WAITING` 또는 `CONFIRMING` 요청만 가질 수 있다.
-- 최종 매칭은 서로 다른 두 `match_requests`와 정확히 두 `match_participants`로 구성한다.
+사용자가 구 단위 지역을 선택하고 지도 핀으로 희망 식사 위치를 지정하면, 성향과 위치 조건으로 실시간 1:1 매칭하고 채팅방을 생성한다. 이후 식당 추천과 상대방 매너 후기를 제공한다.
 
-## 코드 정리
+## MVP Entity
 
-- [ ] 현재 `domain/recruitment` 아래의 MVP 제외 Entity·Enum을 제거하거나 JPA 스캔 대상에서 제외
-- [ ] `MatchType`과 `POST` 분기를 제거
-- [ ] `Match`가 `requesterRequest`, `candidateRequest`를 참조하도록 변경
-- [ ] `MatchParticipantRole`을 `REQUESTER`, `CANDIDATE`로 변경
-- [ ] 매칭 성사 트랜잭션에서 양쪽 요청 상태 변경, `matches`, 참여자 2명, 채팅방 생성을 원자적으로 처리
-- [ ] 두 요청의 사용자가 서로 다른지 검증
-- [ ] 각 요청이 기존 매칭에 사용되지 않았는지 잠금 또는 조건부 갱신으로 검증
+| 도메인 | Entity |
+| --- | --- |
+| 사용자·인증 | `User`, `RefreshToken`, `UserLocationPreference` |
+| 성향 분석 | `UserPersonalityProfile`, `UserPersonalityAnswer`, `UserPersonalityEmbedding`, `UserMatchingPreference` |
+| 실시간 매칭 | `MatchRequest`, `Match`, `MatchParticipant` |
+| 채팅 | `ChatRoom`, `ChatMessage` |
+| 식당 추천 | `Restaurant`, `RestaurantEmbedding` |
+| 매너 후기 | `UserReview` |
 
-## 데이터베이스
+`RestaurantReview`, 모집 게시글, 그룹 매칭, 커뮤니티 Entity는 MVP에서 제외한다. 실제 핀 좌표는 `User`가 아닌 `MatchRequest.location`에만 저장한다.
 
-- [ ] `matches.requester_request_id`, `candidate_request_id`와 서로 다른 요청 CHECK 적용
-- [ ] MVP 제외 테이블이 이미 생성된 환경은 데이터 존재 여부를 확인한 뒤 별도 마이그레이션으로 정리
-- [ ] 운영 데이터가 있는 테이블을 자동 또는 수동으로 즉시 삭제하지 않음
-- [ ] `match_participants`가 매칭당 정확히 두 명인지 서비스 테스트로 검증
+## 핵심 흐름
 
-## API와 검증
+1. 가입 후 선택형 성향 설문과 기본 지역구를 저장한다.
+2. 사용자가 지역구 안에서 핀을 지정해 `MatchRequest`를 생성한다.
+3. 위치·시간을 하드 필터링하고 성향 점수와 임베딩으로 후보를 보조 정렬한다.
+4. 두 요청이 수락되면 `Match`, 참여자 2명, `ChatRoom`을 하나의 트랜잭션에서 생성한다.
+5. 채팅 중 식당을 추천하고 매칭 완료 후 상대방에게 `UserReview`를 작성한다.
 
-- [ ] 실시간 매칭 요청 DTO에 그룹 유형이나 모집 인원 필드가 없는지 확인
-- [ ] 1명의 후보만 `CONFIRMING` 상태로 전환되는지 동시성 테스트
-- [ ] 동일 사용자 중복 대기와 자기 자신 매칭 차단 테스트
-- [ ] 성사된 두 사용자에게만 동일한 매칭 결과와 채팅방을 전송하는지 테스트
-- [ ] `gradlew.bat compileJava`와 `gradlew.bat test` 실행
-- [ ] 테스트 로그에서 `CommandAcceptanceException`과 Hibernate DDL 오류가 없는지 확인
+## 구현 체크리스트
+
+- [ ] MVP 제외 Entity와 `MatchType.POST`를 제거하거나 JPA 스캔에서 제외
+- [ ] Entity와 DB 마이그레이션을 기능 단위로 함께 구현
+- [ ] 핀의 지역구 소속 및 경도·위도 순서 검증
+- [ ] 중복 대기, 자기 자신 매칭, 한 요청의 중복 사용을 차단
+- [ ] 채팅 접근자를 매칭 참여자 2명으로 제한
+- [ ] AI 장애 시 위치·시간 기반 기본 매칭과 식당 검색으로 fallback
+- [ ] `gradlew.bat compileJava`, `gradlew.bat test` 실행 후 Hibernate DDL 오류 확인
