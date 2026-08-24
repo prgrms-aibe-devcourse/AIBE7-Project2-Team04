@@ -40,6 +40,8 @@
 | `AUTH_003` | 401 | Refresh Token이 만료되었거나 폐기됨 |
 | `AUTH_004` | 422 | OAuth 제공자가 이메일을 제공하지 않았거나 이메일 검증이 완료되지 않음 |
 | `AUTH_005` | 409 | 동일 이메일이 다른 Provider로 이미 가입되어 있음 |
+| `AUTH_006` | 409 | LOCAL 회원가입 이메일이 이미 사용 중임 |
+| `AUTH_007` | 409 | 회원가입 닉네임이 이미 사용 중임 |
 | `COMMON_001` | 404 | 리소스 없음 |
 | `COMMON_002` | 400 | 요청 값 검증 실패 |
 | `LOCATION_001` | 403 | 위치 수집 미동의 상태에서 위치 기반 API 호출 (FR-04-06) |
@@ -83,6 +85,26 @@
 ```json
 { "email": "user@test.com", "password": "********", "nickname": "혼밥탈출" }
 ```
+
+- `email`: 필수, 이메일 형식, 최대 255자
+- `password`: 필수, 8자 이상 100자 이하
+- `nickname`: 필수, 2자 이상 100자 이하
+
+응답:
+
+```json
+{
+  "success": true,
+  "data": {
+    "userId": "550e8400-e29b-41d4-a716-446655440000",
+    "email": "user@test.com",
+    "nickname": "혼밥탈출"
+  },
+  "error": null
+}
+```
+
+응답에는 비밀번호 원문과 `passwordHash`를 포함하지 않는다.
 
 **POST /auth/login 응답**
 
