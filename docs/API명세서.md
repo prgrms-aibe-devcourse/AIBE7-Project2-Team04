@@ -206,61 +206,7 @@ OAuth 신규 가입 후 토큰 교환 응답의 추가 필드 예시:
 
 ---
 
-# 2. 모집 게시글 (FR-02)
-
-| Method | Endpoint | 설명 | 인증 |
-| --- | --- | --- | --- |
-| POST | `/posts` | 모집 게시글 작성 (FR-02-01~05) | Y |
-| GET | `/posts` | 게시글 목록 (필터: region, status, mealDate) | Y |
-| GET | `/posts/nearby` | 선택 핀 주변 게시글 조회 (FR-04-02) | Y |
-| GET | `/posts/{postId}` | 게시글 상세 | Y |
-| PATCH | `/posts/{postId}` | 게시글 수정 (작성자만, FR-02-08) | Y |
-| DELETE | `/posts/{postId}` | 게시글 삭제 (작성자만, FR-02-08) | Y |
-| POST | `/posts/{postId}/join` | 게시글 참여 신청 | Y |
-| DELETE | `/posts/{postId}/join` | 참여 취소 | Y |
-
-**POST /posts**
-
-```json
-{
-  "title": "강남역 국밥 같이 드실 분",
-  "description": "8시에 뵈어요",
-  "mealAt": "2026-08-25T19:00:00+09:00",
-  "regionCode": "11680",
-  "regionName": "서울특별시 강남구",
-  "locationName": "강남역 11번 출구",
-  "latitude": 37.498,
-  "longitude": 127.028,
-  "capacity": 3,
-  "recruitType": "SMALL"
-}
-```
-
-응답: `201 Created` — 생성된 게시글 (`status: OPEN`, `currentCount: 1`) 반환.
-
-**GET /posts/nearby**
-
-Query: `regionCode`, `latitude`, `longitude`, `radiusKm` (기본 3, FR-04-04), `page`, `size`
-
-<aside>
-📎
-
-서버는 먼저 핀 좌표가 `regionCode`의 구에 속하는지 검증한다. 이후 PostGIS `ST_DWithin`으로 반경 내 `status=OPEN` 게시글을 조회하고 선택 핀 기준 거리순으로 정렬한다 (FR-04-03, FR-04-05, FR-04-08).
-
-</aside>
-
-**POST /posts/{postId}/join**
-
-<aside>
-📎
-
-`currentCount == capacity`가 되면 서버가 게시글 `status`를 `CLOSED`로 자동 전환 (FR-02-09). 이미 모집이 찬 경우 `409 CONFLICT`.
-
-</aside>
-
----
-
-# 3. 실시간 매칭 (FR-03) — REST + WebSocket
+# 2. 실시간 1:1 매칭 (FR-03) — REST + WebSocket
 
 | Method/프로토콜 | Endpoint | 설명 | 인증 |
 | --- | --- | --- | --- |
@@ -279,7 +225,6 @@ Query: `regionCode`, `latitude`, `longitude`, `radiusKm` (기본 3, FR-04-04), `
   "latitude": 37.501,
   "longitude": 127.039,
   "desiredTimeSlot": "2026-08-21T19:00:00+09:00",
-  "desiredGroupType": "1:1",
   "desiredPersonalityText": "대화를 편하게 이어가되 식사 속도가 비슷한 분"
 }
 ```
@@ -293,7 +238,7 @@ Query: `regionCode`, `latitude`, `longitude`, `radiusKm` (기본 3, FR-04-04), `
 <aside>
 📎
 
-서버는 핀 좌표가 `regionCode`의 구에 속하는지 검증하고, PostGIS Point를 경도·위도 순서로 생성한다. 이 핀은 사용자의 실제 현재 위치가 아니라 희망 매칭 장소다. 동일 사용자가 이미 `WAITING` 상태면 `409 CONFLICT` (FR-03-10). 서버는 Redis Geo 큐에 등록한 뒤 희망 매칭 장소 핀 기준 거리·시간·인원·대기 상태·차단 관계를 하드 필터링하고, 통과 후보에만 버전된 성향 호환도 공식을 적용한다. 자유 서술 임베딩은 제한된 보조 점수로만 사용하며 AI/임베딩 장애 또는 성향 미설정 시 하드 필터와 사용 가능한 정형 점수만으로 fallback한다 (FR-03-06, FR-03-11~12). 성사되면 `matches`/`match_participants`에 기록하고 STOMP로 두 사용자 모두에게 결과를 push. 일정 시간(TTL) 내 미매칭 시 상태가 `EXPIRED`로 자동 전환 (FR-03-09).
+서버는 핀 좌표가 `regionCode`의 구에 속하는지 검증하고, PostGIS Point를 경도·위도 순서로 생성한다. 이 핀은 사용자의 실제 현재 위치가 아니라 희망 매칭 장소다. 동일 사용자가 이미 `WAITING` 상태면 `409 CONFLICT` (FR-03-10). 서버는 Redis Geo 큐에 등록한 뒤 희망 매칭 장소 핀 기준 거리·시간대·대기 상태·차단 관계를 하드 필터링하고, 통과 후보에만 버전된 성향 호환도 공식을 적용한다. 자유 서술 임베딩은 제한된 보조 점수로만 사용하며 AI/임베딩 장애 또는 성향 미설정 시 하드 필터와 사용 가능한 정형 점수만으로 fallback한다 (FR-03-06, FR-03-11~12). 1명의 상대와 성사되면 양쪽 `match_requests`를 연결한 `matches`와 정확히 2개의 `match_participants`를 기록하고 STOMP로 두 사용자에게 결과를 push한다. 일정 시간(TTL) 내 미매칭 시 상태가 `EXPIRED`로 자동 전환된다 (FR-03-09).
 
 </aside>
 
@@ -332,9 +277,9 @@ COMPLEMENTARY 차원 점수 = abs(요청자 점수 - 후보 점수)
 
 ---
 
-# 4. 위치 (FR-04)
+# 3. 위치 (FR-04)
 
-Geolocation API는 필수로 사용하지 않는다. 사용자는 먼저 구 단위 기본 활동지역을 선택하고, 프론트엔드는 해당 구의 대표 좌표를 중심으로 지도를 연다. 사용자가 지도 클릭 또는 마커 이동으로 확정한 핀 좌표를 2장 (`/posts/nearby`)과 3장(실시간 매칭 요청)에 전달한다. 정확한 핀 좌표는 `users`나 기본 활동지역에는 저장하지 않고 요청·게시글 등 필요한 도메인 레코드에만 저장한다.
+Geolocation API는 필수로 사용하지 않는다. 사용자는 먼저 구 단위 기본 활동지역을 선택하고, 프론트엔드는 해당 구의 대표 좌표를 중심으로 지도를 연다. 사용자가 지도 클릭 또는 마커 이동으로 확정한 핀 좌표를 2장의 실시간 매칭 요청에 전달한다. 정확한 핀 좌표는 `users`나 기본 활동지역에는 저장하지 않고 `match_requests`에만 저장한다.
 
 | Method | Endpoint | 설명 | 인증 |
 | --- | --- | --- | --- |
@@ -373,7 +318,7 @@ Query: `regionCode`, `latitude`, `longitude`, `radiusKm`
 
 ---
 
-# 5. 채팅 (FR-05) — REST(이력 조회) + WebSocket(실시간)
+# 4. 채팅 (FR-05) — REST(이력 조회) + WebSocket(실시간)
 
 | Method/프로토콜 | Endpoint | 설명 | 인증 |
 | --- | --- | --- | --- |
@@ -408,7 +353,7 @@ Query: `cursor` (마지막으로 받은 messageId), `size` (기본 30)
 
 ---
 
-# 6. 커뮤니티 (FR-06)
+# 5. 커뮤니티 (FR-06)
 
 | Method | Endpoint | 설명 | 인증 |
 | --- | --- | --- | --- |
@@ -422,7 +367,7 @@ Query: `cursor` (마지막으로 받은 messageId), `size` (기본 30)
 
 ---
 
-# 7. 매칭 후기 / 방명록 (FR-07)
+# 6. 매칭 후기 / 방명록 (FR-07)
 
 | Method | Endpoint | 설명 | 인증 |
 | --- | --- | --- | --- |
@@ -446,7 +391,7 @@ Query: `cursor` (마지막으로 받은 messageId), `size` (기본 30)
 
 ---
 
-# 8. AI 식당 추천 (FR-08, 선택)
+# 7. AI 식당 추천 (FR-08, 선택)
 
 | Method | Endpoint | 설명 | 인증 |
 | --- | --- | --- | --- |
@@ -455,7 +400,7 @@ Query: `cursor` (마지막으로 받은 messageId), `size` (기본 30)
 요청:
 
 ```json
-{ "region": "강남역", "foodType": "한식", "partySize": 3 }
+{ "region": "강남역", "foodType": "한식", "budgetPerPerson": 15000 }
 ```
 
 응답:
@@ -466,7 +411,7 @@ Query: `cursor` (마지막으로 받은 messageId), `size` (기본 30)
   "data": {
     "isAiGenerated": true,
     "recommendations": [
-      { "name": "OO국밥", "reason": "인원수와 지역 조건에 맞는 한식 맛집" }
+      { "name": "OO국밥", "reason": "두 사용자의 지역과 예산 조건에 맞는 한식 맛집" }
     ]
   }
 }
@@ -481,12 +426,11 @@ Query: `cursor` (마지막으로 받은 messageId), `size` (기본 30)
 
 ---
 
-# 9. 마이페이지 (FR-09)
+# 8. 마이페이지 (FR-09)
 
 | Method | Endpoint | 설명 | 인증 |
 | --- | --- | --- | --- |
 | GET | `/mypage/profile` | 내 프로필 (FR-09-01) | Y |
-| GET | `/mypage/posts` | 내가 작성한 모집 게시글 (FR-09-02) | Y |
 | GET | `/mypage/matches` | 내 매칭 이력 (FR-09-03) | Y |
 | GET | `/mypage/community-posts` | 내가 작성한 커뮤니티 글 (FR-09-04) | Y |
 | GET | `/mypage/reviews` | 내가 받은 후기/방명록 (FR-09-05) | Y |
@@ -500,6 +444,6 @@ Query: `cursor` (마지막으로 받은 messageId), `size` (기본 30)
 
 ---
 
-# 10. 향후 확장 (4순위, 미확정)
+# 9. 향후 확장 (4순위, 미확정)
 
 관리자 API (`/admin/users`, `/admin/posts`, `/admin/reports` 등)와 신고/제재 플로우는 데이터 모델링 문서의 "관리자 (4순위)" 절과 함께 팀 논의 후 별도 명세로 추가 권장.

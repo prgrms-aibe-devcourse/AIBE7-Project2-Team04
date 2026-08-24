@@ -83,7 +83,6 @@ GET  /actuator/health
 ```text
 /api/**
 /users/**
-/posts/**
 /matches/**
 /chatrooms/**
 /mypage/**
