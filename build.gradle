@@ -38,9 +38,9 @@ dependencies {
     // 인증과 인가 등 Spring Security의 핵심 기능을 제공
     implementation 'org.springframework.boot:spring-boot-starter-security'
     // 카카오와 Google OAuth2 로그인을 Spring Security에서 직접 처리
-//    implementation 'org.springframework.boot:spring-boot-starter-security-oauth2-client'
+    implementation 'org.springframework.boot:spring-boot-starter-security-oauth2-client'
     // JWT 기반 API 인증과 OAuth2 리소스 서버 구성을 지원
-//    implementation 'org.springframework.boot:spring-boot-starter-security-oauth2-resource-server'
+    implementation 'org.springframework.boot:spring-boot-starter-security-oauth2-resource-server'
     // 요청 DTO의 Bean Validation 검증 기능을 제공
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     // Spring MVC 기반 REST API와 웹 애플리케이션 개발을 지원

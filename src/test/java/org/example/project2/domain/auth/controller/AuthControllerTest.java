@@ -11,12 +11,16 @@ import org.example.project2.global.security.auth.CustomUserDetailsService;
 import org.example.project2.global.security.handler.RestAccessDeniedHandler;
 import org.example.project2.global.security.handler.RestAuthenticationEntryPoint;
 import org.example.project2.global.security.jwt.JwtFilter;
+import org.example.project2.global.security.oauth.CustomOAuth2UserService;
+import org.example.project2.global.security.oauth.OAuth2AuthenticationFailureHandler;
+import org.example.project2.global.security.oauth.OAuth2AuthenticationSuccessHandler;
 import org.example.project2.global.security.jwt.JwtProvider;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -66,6 +70,18 @@ class AuthControllerTest {
 
     @MockitoBean
     private CustomUserDetailsService userDetailsService;
+
+    @MockitoBean
+    private ClientRegistrationRepository clientRegistrationRepository;
+
+    @MockitoBean
+    private CustomOAuth2UserService customOAuth2UserService;
+
+    @MockitoBean
+    private OAuth2AuthenticationSuccessHandler oauth2AuthenticationSuccessHandler;
+
+    @MockitoBean
+    private OAuth2AuthenticationFailureHandler oauth2AuthenticationFailureHandler;
 
     @Test
     void signUpSuccess() throws Exception {

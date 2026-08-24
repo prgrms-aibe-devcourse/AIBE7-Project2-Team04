@@ -7,9 +7,14 @@ import org.example.project2.global.security.auth.CustomUserDetailsService;
 import org.example.project2.global.security.handler.RestAccessDeniedHandler;
 import org.example.project2.global.security.handler.RestAuthenticationEntryPoint;
 import org.example.project2.global.security.jwt.JwtFilter;
+import org.example.project2.global.security.oauth.CustomOAuth2UserService;
+import org.example.project2.global.security.oauth.OAuth2AuthenticationFailureHandler;
+import org.example.project2.global.security.oauth.OAuth2AuthenticationSuccessHandler;
+import org.example.project2.global.security.oauth.OAuthProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -36,7 +41,7 @@ import java.util.Map;
 
 @Configuration
 @RequiredArgsConstructor
-@EnableConfigurationProperties(AuthProperties.class)
+@EnableConfigurationProperties({AuthProperties.class, OAuthProperties.class})
 public class SecurityConfig {
     private final AuthProperties p;
     private final JwtFilter jwtFilter;
@@ -106,9 +111,39 @@ public class SecurityConfig {
         return repository;
     }
 
-    // SecurityFilterChain
     @Bean
-    public SecurityFilterChain securityFilterChain(
+    @Order(1)
+    public SecurityFilterChain oauth2SecurityFilterChain(
+            HttpSecurity http,
+            CorsConfigurationSource corsConfigurationSource,
+            CustomOAuth2UserService customOAuth2UserService,
+            OAuth2AuthenticationSuccessHandler successHandler,
+            OAuth2AuthenticationFailureHandler failureHandler
+    ) throws Exception {
+        http
+                .securityMatcher("/oauth2/**", "/login/oauth2/**")
+                .cors(cors -> cors.configurationSource(corsConfigurationSource))
+                // OAuth2 로그인 엔드포인트는 GET 요청만 사용하며 state 값으로 요청 위조를 방지한다.
+                .csrf(AbstractHttpConfigurer::disable)
+                .httpBasic(AbstractHttpConfigurer::disable)
+                .formLogin(AbstractHttpConfigurer::disable)
+                .logout(AbstractHttpConfigurer::disable)
+                .sessionManagement(session -> session
+                        // 인가 요청과 콜백 사이에서 OAuth2 state를 보관할 때만 세션을 생성한다.
+                        .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+                .authorizeHttpRequests(auth -> auth
+                        .anyRequest().permitAll())
+                .oauth2Login(oauth -> oauth
+                        .userInfoEndpoint(userInfo -> userInfo
+                                .userService(customOAuth2UserService))
+                        .successHandler(successHandler)
+                        .failureHandler(failureHandler));
+        return http.build();
+    }
+
+    @Bean
+    @Order(2)
+    public SecurityFilterChain apiSecurityFilterChain(
             HttpSecurity http,
             CorsConfigurationSource corsConfigurationSource,
             CookieCsrfTokenRepository csrfTokenRepository
@@ -144,8 +179,6 @@ public class SecurityConfig {
                                 ).permitAll()
                                 .requestMatchers(HttpMethod.GET,
                                         "/auth/csrf",
-                                        "/oauth2/authorization/**",
-                                        "/login/oauth2/code/**",
                                         "/swagger-ui/**",
                                         "/v3/api-docs/**",
                                         "/swagger-ui.html",

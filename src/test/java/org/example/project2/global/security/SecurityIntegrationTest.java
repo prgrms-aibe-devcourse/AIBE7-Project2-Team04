@@ -9,6 +9,9 @@ import org.example.project2.global.security.handler.RestAccessDeniedHandler;
 import org.example.project2.global.security.handler.RestAuthenticationEntryPoint;
 import org.example.project2.global.security.jwt.JwtFilter;
 import org.example.project2.global.security.jwt.JwtProvider;
+import org.example.project2.global.security.oauth.CustomOAuth2UserService;
+import org.example.project2.global.security.oauth.OAuth2AuthenticationFailureHandler;
+import org.example.project2.global.security.oauth.OAuth2AuthenticationSuccessHandler;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -16,6 +19,10 @@ import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.oauth2.client.registration.ClientRegistration;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -25,6 +32,7 @@ import java.util.Base64;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
@@ -68,6 +76,33 @@ class SecurityIntegrationTest {
 
     @MockitoBean
     private CustomUserDetailsService userDetailsService;
+
+    @MockitoBean
+    private ClientRegistrationRepository clientRegistrationRepository;
+
+    @MockitoBean
+    private CustomOAuth2UserService customOAuth2UserService;
+
+    @MockitoBean
+    private OAuth2AuthenticationSuccessHandler oauth2AuthenticationSuccessHandler;
+
+    @MockitoBean
+    private OAuth2AuthenticationFailureHandler oauth2AuthenticationFailureHandler;
+
+    @Test
+    void oauth2AuthorizationRequestCreatesTemporarySessionForState() throws Exception {
+        when(clientRegistrationRepository.findByRegistrationId("kakao"))
+                .thenReturn(kakaoClientRegistration());
+
+        MvcResult result = mockMvc.perform(get("/oauth2/authorization/kakao"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(header().string(HttpHeaders.LOCATION,
+                        org.hamcrest.Matchers.startsWith("https://kauth.kakao.com/oauth/authorize")))
+                .andReturn();
+
+        assertThat(result.getRequest().getSession(false)).isNotNull();
+        assertThat(result.getResponse().getRedirectedUrl()).contains("state=");
+    }
 
     @Test
     void csrfCookieIsIssuedOnSafeRequest() throws Exception {
@@ -180,5 +215,21 @@ class SecurityIntegrationTest {
         mockMvc.perform(get("/admin/test")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
                 .andExpect(status().isNotFound());
+    }
+
+    private ClientRegistration kakaoClientRegistration() {
+        return ClientRegistration.withRegistrationId("kakao")
+                .clientId("test-kakao-client-id")
+                .clientSecret("test-kakao-client-secret")
+                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST)
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .redirectUri("{baseUrl}/login/oauth2/code/{registrationId}")
+                .scope("profile_nickname", "profile_image", "account_email")
+                .authorizationUri("https://kauth.kakao.com/oauth/authorize")
+                .tokenUri("https://kauth.kakao.com/oauth/token")
+                .userInfoUri("https://kapi.kakao.com/v2/user/me")
+                .userNameAttributeName("id")
+                .clientName("Kakao")
+                .build();
     }
 }
