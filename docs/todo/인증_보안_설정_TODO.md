@@ -100,10 +100,10 @@ GET  /actuator/health
 
 ### 3.1 인증 설정 프로퍼티
 
-- [ ] `app.auth` 설정을 `@ConfigurationProperties`로 연결한다.
-- [ ] `PasswordProperties`, `JwtProperties`를 정의한다.
-- [ ] 설정 프로퍼티 스캔 또는 등록을 활성화한다.
-- [ ] 애플리케이션 시작 시 설정값을 검증한다.
+- [x] `app.auth` 설정을 `@ConfigurationProperties`로 연결한다.
+- [x] 비밀번호·JWT 중첩 설정 프로퍼티를 정의한다.
+- [x] 설정 프로퍼티 등록을 활성화한다.
+- [x] 애플리케이션 시작 시 설정값을 검증한다.
 
 권장 구조:
 
@@ -124,10 +124,10 @@ global/security/
 
 ### 3.2 비밀번호 암호화 설정
 
-- [ ] `PasswordEncoder` Bean을 등록한다.
-- [ ] 기본 인코딩 알고리즘을 Argon2로 설정한다.
+- [x] `PasswordEncoder` Bean을 등록한다.
+- [x] 기본 인코딩 알고리즘을 Argon2로 설정한다.
 - [ ] 회원가입에는 `encode`, 로그인에는 `matches`를 사용한다.
-- [ ] LOCAL 계정에만 비밀번호 인증을 허용한다.
+- [x] LOCAL 계정에만 비밀번호 인증을 허용한다.
 
 ```text
 provider = LOCAL
@@ -139,10 +139,10 @@ provider = KAKAO 또는 GOOGLE
 
 ### 3.3 HMAC JWT 발급·검증 설정
 
-- [ ] `JWT_SECRET`을 Base64로 디코딩하여 `SecretKey`를 생성한다.
-- [ ] 동일한 `SecretKey`로 `JwtEncoder`와 `JwtDecoder`를 구성한다.
-- [ ] 발급 및 검증 알고리즘을 HS256으로 제한한다.
-- [ ] issuer, audience, 만료시간을 검증한다.
+- [x] `JWT_SECRET`을 Base64로 디코딩하여 `SecretKey`를 생성한다.
+- [x] 동일한 `SecretKey`로 현재 JWT 발급기와 검증기를 구성한다.
+- [x] 발급 및 검증 알고리즘을 HS256으로 제한한다.
+- [x] issuer, audience, 만료시간을 검증한다.
 
 ```text
 JWT_SECRET
@@ -188,10 +188,10 @@ JwtTokenService
 
 ### 3.5 사용자 인증 객체
 
-- [ ] `CustomUserPrincipal`을 구현한다.
-- [ ] `CustomUserDetailsService`를 구현한다.
-- [ ] 이메일을 정규화한 뒤 사용자를 조회한다.
-- [ ] 탈퇴 또는 비활성 상태 사용자의 인증을 차단한다.
+- [x] `CustomUserPrincipal`을 구현한다.
+- [x] `CustomUserDetailsService`를 구현한다.
+- [x] 이메일을 정규화한 뒤 사용자를 조회한다.
+- [x] 탈퇴 또는 비활성 상태 사용자의 인증을 차단한다.
 
 인증 객체가 제공할 정보:
 
@@ -206,10 +206,10 @@ AuthProvider
 
 ### 3.6 이메일·비밀번호 인증 관리자
 
-- [ ] `DaoAuthenticationProvider`를 구성한다.
-- [ ] `CustomUserDetailsService`를 연결한다.
-- [ ] Argon2 `PasswordEncoder`를 연결한다.
-- [ ] Controller/Service에서 사용할 `AuthenticationManager` Bean을 노출한다.
+- [x] `DaoAuthenticationProvider`를 구성한다.
+- [x] `CustomUserDetailsService`를 연결한다.
+- [x] Argon2 `PasswordEncoder`를 연결한다.
+- [x] Controller/Service에서 사용할 `AuthenticationManager` Bean을 노출한다.
 
 ```text
 AuthenticationManager
@@ -221,9 +221,9 @@ DaoAuthenticationProvider
 
 ### 3.7 인증·인가 예외 응답
 
-- [ ] 인증 실패를 처리하는 `AuthenticationEntryPoint`를 구현한다.
-- [ ] 권한 부족을 처리하는 `AccessDeniedHandler`를 구현한다.
-- [ ] 프로젝트 공통 응답 형식으로 JSON을 반환한다.
+- [x] 인증 실패를 처리하는 `AuthenticationEntryPoint`를 구현한다.
+- [x] 권한 부족을 처리하는 `AccessDeniedHandler`를 구현한다.
+- [x] 프로젝트 공통 응답 형식으로 JSON을 반환한다.
 
 ```text
 인증 실패 → 401 Unauthorized
@@ -245,11 +245,11 @@ DaoAuthenticationProvider
 
 ### 3.8 SecurityFilterChain
 
-- [ ] 공개 API에 `permitAll`을 적용한다.
-- [ ] 일반 API에 `authenticated`를 적용한다.
-- [ ] `/admin/**`에 `hasRole("ADMIN")`을 적용한다.
+- [x] 공개 API에 `permitAll`을 적용한다.
+- [x] 일반 API에 `authenticated`를 적용한다.
+- [x] `/admin/**`에 `hasRole("ADMIN")`을 적용한다.
 - [ ] Resource Server JWT 검증을 활성화한다.
-- [ ] JWT의 `roles` 클레임을 Spring Security Authority로 변환한다.
+- [x] JWT의 `roles` 클레임을 Spring Security Authority로 변환한다.
 - [ ] API와 OAuth2 로그인 세션 정책을 분리한다.
 
 권장 Filter Chain 구성:
@@ -279,11 +279,11 @@ CORS: 다른 Origin의 브라우저 요청 허용 정책
 CSRF: 브라우저의 자동 쿠키 전송을 이용한 위조 요청 방어
 ```
 
-- [ ] Access Token API는 `Authorization` 헤더를 사용한다.
-- [ ] Refresh Token은 Secure/HttpOnly 쿠키로 전달한다.
-- [ ] `/auth/token/refresh`, `/auth/logout`에 CSRF 보호를 적용한다.
-- [ ] 최종 설정에서 CSRF를 아무 조건 없이 전역 비활성화하지 않는다.
-- [ ] SPA CSRF 토큰 발급 및 `X-XSRF-TOKEN` 헤더 전달 방식을 구현한다.
+- [x] Access Token API는 `Authorization` 헤더를 사용한다.
+- [x] Refresh Token은 Secure/HttpOnly 쿠키로 전달한다.
+- [x] `/auth/token/refresh`, `/auth/logout`에 CSRF 보호를 적용한다.
+- [x] 최종 설정에서 CSRF를 아무 조건 없이 전역 비활성화하지 않는다.
+- [x] SPA CSRF 토큰 발급 및 `X-XSRF-TOKEN` 헤더 전달 방식을 구현한다.
 
 JWT 기본 설정 단계에서 CSRF를 임시 비활성화했다면 Refresh Token API 구현 전에 반드시 제거하거나 보호 범위를 재설정한다.
 
@@ -294,7 +294,7 @@ JWT 기본 설정 단계에서 CSRF를 임시 비활성화했다면 Refresh Toke
 - [ ] LOCAL 회원가입 구현
 - [ ] LOCAL 로그인 및 Access Token 발급 구현
 - [ ] Refresh Token 생성·해시 저장·쿠키 전달 구현
-- [ ] Refresh Token Rotation과 재사용 탐지 구현
+- [x] Refresh Token Rotation과 재사용 탐지 서비스 구현
 - [ ] 로그아웃 및 전체 세션 폐기 구현
 - [ ] Google OAuth2 로그인 구현
 - [ ] 카카오 OAuth2 로그인 구현
@@ -316,16 +316,16 @@ OAuth 이메일 없음 또는 미검증 → 가입 실패
 - [ ] JWT Secret 누락 시 애플리케이션 시작 실패
 - [ ] 32바이트 미만 JWT Secret 사용 시 시작 실패
 - [ ] HS256 이외 알고리즘으로 생성한 JWT 거부
-- [ ] 잘못된 issuer 또는 audience를 가진 JWT 거부
-- [ ] 만료된 JWT 요청에 401 반환
-- [ ] 토큰 없이 보호 API 접근 시 401 반환
-- [ ] USER가 관리자 API 접근 시 403 반환
+- [x] 잘못된 issuer 또는 audience를 가진 JWT 거부
+- [x] 만료된 JWT 요청에 401 반환
+- [x] 토큰 없이 보호 API 접근 시 401 반환
+- [x] USER가 관리자 API 접근 시 403 반환
 - [ ] ADMIN이 관리자 API 접근 가능
 - [ ] LOCAL 사용자 비밀번호 일치·불일치 테스트
 - [ ] KAKAO·GOOGLE 사용자 비밀번호 로그인 차단
 - [ ] Refresh Token 원문이 DB와 로그에 저장되지 않는지 확인
 - [ ] 로그아웃 후 Refresh Token 재사용 차단
-- [ ] 회전된 이전 Refresh Token 재사용 시 토큰 패밀리 전체 폐기
+- [x] 회전된 이전 Refresh Token 재사용 시 토큰 패밀리 전체 폐기
 - [ ] OAuth2 로그인 흐름에서 임시 세션과 콜백 정상 동작
 
 ---

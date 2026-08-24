@@ -54,4 +54,24 @@ public class RefreshToken {
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
+
+    public boolean isExpired(Instant now) {
+        return !expiresAt.isAfter(now);
+    }
+
+    public boolean isRevoked() {
+        return revokedAt != null;
+    }
+
+    public void rotateTo(RefreshToken replacement, Instant now) {
+        lastUsedAt = now;
+        revokedAt = now;
+        replacedByToken = replacement;
+    }
+
+    public void revoke(Instant now) {
+        if (revokedAt == null) {
+            revokedAt = now;
+        }
+    }
 }

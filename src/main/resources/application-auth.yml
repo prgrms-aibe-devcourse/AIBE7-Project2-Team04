@@ -4,9 +4,12 @@ app:
       encoding-id: argon2
     jwt:
       issuer: ${JWT_ISSUER:project2}
+      audience: ${JWT_AUDIENCE:project2-api}
       secret-key: ${JWT_SECRET}
       access-token-expiry: 15m
       refresh-token-expiry: 14d
+    cors:
+      allowed-origin: ${FRONTEND_ORIGIN:}
 
 # OAuth2 클라이언트 의존성을 활성화할 때 함께 사용
 # spring:

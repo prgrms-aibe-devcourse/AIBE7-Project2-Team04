@@ -59,6 +59,7 @@
 
 | Method | Endpoint | 설명 | 인증 |
 | --- | --- | --- | --- |
+| GET | `/auth/csrf` | CSRF 토큰 쿠키 발급 | N |
 | POST | `/auth/signup` | 이메일 회원가입 | N |
 | POST | `/auth/login` | 이메일·비밀번호 로그인 및 토큰 발급 | N |
 | GET | `/oauth2/authorization/kakao` | 카카오 OAuth2 로그인 시작 | N |
@@ -114,12 +115,17 @@
   "data": {
     "tokenType": "Bearer",
     "accessToken": "eyJ...",
-    "expiresIn": 3600,
-    "refreshToken": "random-opaque-token"
+    "expiresIn": 900
   },
   "error": null
 }
 ```
+
+Refresh Token 원문은 응답 본문에 포함하지 않고 `Secure`, `HttpOnly`, `SameSite=Strict`, `Path=/auth` 쿠키로만 전달한다.
+
+브라우저 클라이언트는 상태 변경 요청 전에 `GET /auth/csrf`를 호출하여 `XSRF-TOKEN` 쿠키를 발급받는다. 이후 `POST`, `PUT`, `PATCH`, `DELETE` 요청에는 쿠키 값과 동일한 값을 `X-XSRF-TOKEN` 헤더로 전달한다. Refresh Token 쿠키가 자동 전송되는 `/auth/token/refresh`와 `/auth/logout`에도 이 규칙을 적용한다.
+
+CORS는 기본적으로 어떤 외부 Origin도 허용하지 않는다. 프론트엔드가 별도 Origin에서 실행될 때 서버의 `FRONTEND_ORIGIN`에 정확한 Origin 하나를 지정하고, 클라이언트 요청에는 credentials 옵션을 사용한다.
 
 카카오·Google 콜백 성공 시 JWT를 URL에 직접 노출하지 않는다. 서버는 짧은 만료시간의 일회성 코드를 생성해 프론트엔드로 리다이렉트하고, 클라이언트가 `/auth/oauth2/exchange`에서 서비스 토큰으로 교환한다. 카카오는 사용자 정보 API의 `id`, Google은 ID Token/UserInfo의 `sub`를 `provider_id`로 저장한다.
 
