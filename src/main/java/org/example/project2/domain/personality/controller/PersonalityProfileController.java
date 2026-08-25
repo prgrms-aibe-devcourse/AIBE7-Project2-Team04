@@ -11,8 +11,6 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.example.project2.domain.personality.dto.FoodPreferencesResponse;
-import org.example.project2.domain.personality.dto.FoodPreferencesUpdateRequest;
 import org.example.project2.domain.personality.dto.PersonalityProfileResponse;
 import org.example.project2.domain.personality.dto.PersonalityProfileUpsertRequest;
 import org.example.project2.domain.personality.exception.PersonalityErrorResponse;
@@ -31,13 +29,13 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
 
-@Tag(name = "Personality", description = "내 식사 스타일 온보딩 및 음식 선호 API")
+@Tag(name = "Personality", description = "내 식사 스타일 온보딩 API")
 @SecurityRequirement(name = "accessTokenCookie")
 @SecurityRequirement(name = "bearerAuth")
 @RestController
-@RequestMapping("/users/me")
+@RequestMapping("/users/me/personality-profile")
 @RequiredArgsConstructor
-public class PersonalityController {
+public class PersonalityProfileController {
     private final PersonalityService personalityService;
 
     @Operation(
@@ -49,7 +47,7 @@ public class PersonalityController {
             @ApiResponse(responseCode = "401", description = "인증 필요",
                     content = @Content(schema = @Schema(implementation = SecurityErrorResponse.class)))
     })
-    @GetMapping("/personality-profile")
+    @GetMapping
     public ResponseEntity<CommonResponse<PersonalityProfileResponse>> getProfile(
             @AuthenticationPrincipal UUID userId
     ) {
@@ -73,7 +71,7 @@ public class PersonalityController {
             @ApiResponse(responseCode = "422", description = "성향 입력값 오류 (PERSONALITY_002)",
                     content = @Content(schema = @Schema(implementation = PersonalityErrorResponse.class)))
     })
-    @PutMapping("/personality-profile")
+    @PutMapping
     public ResponseEntity<CommonResponse<PersonalityProfileResponse>> upsertProfile(
             @AuthenticationPrincipal UUID userId,
             @Valid @RequestBody PersonalityProfileUpsertRequest request
@@ -96,7 +94,7 @@ public class PersonalityController {
             @ApiResponse(responseCode = "403", description = "CSRF 토큰 오류",
                     content = @Content(schema = @Schema(implementation = SecurityErrorResponse.class)))
     })
-    @DeleteMapping("/personality-profile")
+    @DeleteMapping
     public ResponseEntity<CommonResponse<Void>> resetProfile(
             @AuthenticationPrincipal UUID userId
     ) {
@@ -117,52 +115,12 @@ public class PersonalityController {
             @ApiResponse(responseCode = "403", description = "CSRF 토큰 오류",
                     content = @Content(schema = @Schema(implementation = SecurityErrorResponse.class)))
     })
-    @PostMapping("/personality-profile/skip")
+    @PostMapping("/skip")
     public ResponseEntity<CommonResponse<PersonalityProfileResponse>> skipProfile(
             @AuthenticationPrincipal UUID userId
     ) {
         return ResponseEntity.ok(CommonResponse.success(
                 personalityService.skipProfile(userId)
-        ));
-    }
-
-    @Operation(summary = "내 음식 선호 조회")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "조회 성공"),
-            @ApiResponse(responseCode = "401", description = "인증 필요",
-                    content = @Content(schema = @Schema(implementation = SecurityErrorResponse.class)))
-    })
-    @GetMapping("/food-preferences")
-    public ResponseEntity<CommonResponse<FoodPreferencesResponse>> getFoodPreferences(
-            @AuthenticationPrincipal UUID userId
-    ) {
-        return ResponseEntity.ok(CommonResponse.success(
-                personalityService.getFoodPreferences(userId)
-        ));
-    }
-
-    @Operation(
-            summary = "내 음식 선호 전체 갱신",
-            description = "요청에 포함된 최대 5개의 음식 카테고리로 기존 목록을 전체 교체합니다."
-    )
-    @Parameter(name = "X-XSRF-TOKEN", in = ParameterIn.HEADER, required = true,
-            description = "GET /auth/csrf로 발급받은 XSRF-TOKEN 쿠키 값")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "갱신 성공"),
-            @ApiResponse(responseCode = "401", description = "인증 필요",
-                    content = @Content(schema = @Schema(implementation = SecurityErrorResponse.class))),
-            @ApiResponse(responseCode = "403", description = "CSRF 토큰 오류",
-                    content = @Content(schema = @Schema(implementation = SecurityErrorResponse.class))),
-            @ApiResponse(responseCode = "422", description = "음식 카테고리 입력 오류 (PERSONALITY_002)",
-                    content = @Content(schema = @Schema(implementation = PersonalityErrorResponse.class)))
-    })
-    @PutMapping("/food-preferences")
-    public ResponseEntity<CommonResponse<FoodPreferencesResponse>> updateFoodPreferences(
-            @AuthenticationPrincipal UUID userId,
-            @Valid @RequestBody FoodPreferencesUpdateRequest request
-    ) {
-        return ResponseEntity.ok(CommonResponse.success(
-                personalityService.updateFoodPreferences(userId, request)
         ));
     }
 }

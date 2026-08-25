@@ -1,6 +1,7 @@
 package org.example.project2.domain.personality.exception;
 
-import org.example.project2.domain.personality.controller.PersonalityController;
+import org.example.project2.domain.personality.controller.FoodPreferenceController;
+import org.example.project2.domain.personality.controller.PersonalityProfileController;
 import org.example.project2.global.security.handler.SecurityErrorCode;
 import org.example.project2.global.security.handler.SecurityErrorResponse;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
@@ -13,7 +14,10 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @Order(Ordered.HIGHEST_PRECEDENCE)
-@RestControllerAdvice(assignableTypes = PersonalityController.class)
+@RestControllerAdvice(assignableTypes = {
+        PersonalityProfileController.class,
+        FoodPreferenceController.class
+})
 public class PersonalityExceptionHandler {
 
     @ExceptionHandler(InvalidPersonalityInputException.class)
