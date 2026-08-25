@@ -24,7 +24,7 @@ import org.hibernate.annotations.OnDeleteAction;
                 columnNames = {"user_id", "question_code"}),
         indexes = @Index(name = "idx_user_personality_answers_user", columnList = "user_id"))
 @Entity
-@Check(constraints = "answer_value BETWEEN 1 AND 5")
+@Check(constraints = "answer_value IN (1, 3, 5)")
 @Getter
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

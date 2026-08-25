@@ -38,7 +38,8 @@ import java.util.UUID;
 @Check(constraints = "conversation_level BETWEEN 0 AND 100 " +
         "AND meal_pace BETWEEN 0 AND 100 " +
         "AND planning_style BETWEEN 0 AND 100 " +
-        "AND novelty_preference BETWEEN 0 AND 100")
+        "AND novelty_preference BETWEEN 0 AND 100 " +
+        "AND questionnaire_version = 'MEAL_PERSONALITY_V1'")
 @Getter
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -54,8 +55,9 @@ public class UserPersonalityProfile {
     @OnDelete(action = OnDeleteAction.CASCADE)
     private User user;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "questionnaire_version", nullable = false, length = 50)
-    private String questionnaireVersion;
+    private PersonalityQuestionnaireVersion questionnaireVersion;
 
     @Column(name = "conversation_level", nullable = false)
     private short conversationLevel;

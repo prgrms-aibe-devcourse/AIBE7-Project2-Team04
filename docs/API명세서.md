@@ -234,13 +234,12 @@ OAuth 신규 가입 후 토큰 교환 응답의 추가 필드 예시:
 {
   "questionnaireVersion": "MEAL_PERSONALITY_V1",
   "answers": [
-    { "questionCode": "CONVERSATION_LEVEL", "value": 4 },
-    { "questionCode": "MEAL_PACE", "value": 2 },
+    { "questionCode": "CONVERSATION_LEVEL", "value": 5 },
+    { "questionCode": "MEAL_PACE", "value": 1 },
     { "questionCode": "PLANNING_STYLE", "value": 5 },
     { "questionCode": "NOVELTY_PREFERENCE", "value": 3 }
   ],
-  "freeText": "처음에는 조용하지만 음식 이야기는 편하게 나누고 싶어요.",
-  "aiAnalysisConsent": true
+  "styleTags": ["GOOD_LISTENER", "FOOD_TALK", "ENJOY_DESSERT"]
 }
 ```
 
@@ -253,18 +252,17 @@ OAuth 신규 가입 후 토큰 교환 응답의 추가 필드 예시:
     "completed": true,
     "questionnaireVersion": "MEAL_PERSONALITY_V1",
     "scores": {
-      "conversationLevel": 80,
-      "mealPace": 40,
+      "conversationLevel": 100,
+      "mealPace": 0,
       "planningStyle": 100,
-      "noveltyPreference": 60
-    },
-    "embeddingStatus": "PENDING"
+      "noveltyPreference": 50
+    }
   },
   "error": null
 }
 ```
 
-정형 점수는 버전된 서버 규칙으로 결정론적으로 계산한다. `aiAnalysisConsent: true`이고 자유 서술이 있을 때만 비동기 임베딩 작업을 등록한다. 임베딩 실패는 이 API의 정형 점수 저장이나 기본 매칭을 실패시키지 않는다.
+V1 응답값은 `1`, `3`, `5`만 허용하며 각각 `0`, `50`, `100`점으로 변환한다. 자유 서술과 AI 분석 동의는 2차 확장 기능으로 분리한다.
 
 **PUT /users/me/matching-preferences**
 
