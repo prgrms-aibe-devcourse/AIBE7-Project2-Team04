@@ -101,7 +101,7 @@
 - [x] `FoodCategory`를 문자열 Enum으로 저장하고 `(user_id, food_category)`에 고유 제약조건을 설정한다.
 - [x] `users.personality_onboarding_status` 컬럼과 `NOT_STARTED/SKIPPED/COMPLETED` Enum을 추가한다.
 - [x] 신규 Entity는 지연 로딩, 문자열 Enum, 사용자 외래 키 및 `ON DELETE CASCADE` 삭제 정책을 확인한다.
-- [x] `user_personality_tags`, `user_food_preferences` 테이블과 제약조건을 `docs/데이터모델링.md`에 반영한다.
+- [x] `user_personality_tags`, `user_food_preferences` 테이블과 제약조건을 `docs/specs/데이터모델링.md`에 반영한다.
 
 ## 3. 백엔드 MVP
 
@@ -153,7 +153,7 @@
 - [ ] `NOT_STARTED → SKIPPED → COMPLETED → NOT_STARTED` 상태 전이 테스트를 작성한다.
 - [ ] 타인의 원본 성향 데이터에 접근할 수 없는 보안 테스트를 작성한다.
 - [ ] 프론트엔드에서 미완료·완료·건너뛰기·401 흐름을 수동 확인한다.
-- [ ] `docs/API명세서.md`, `docs/기능명세서.md`, `docs/데이터모델링.md`를 확정된 계약과 동기화한다.
+- [ ] `docs/specs/API명세서.md`, `docs/specs/기능명세서.md`, `docs/specs/데이터모델링.md`를 확정된 계약과 동기화한다.
 - [ ] Java 변경 후 `gradlew.bat compileJava`와 `gradlew.bat test`를 실행한다.
 - [ ] 테스트 로그에 `CommandAcceptanceException` 또는 Hibernate DDL 오류가 없는지 확인한다.
 

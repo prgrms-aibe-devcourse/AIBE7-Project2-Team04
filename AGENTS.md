@@ -4,6 +4,7 @@
 
 - Use Java 17, Spring Boot 4.0.7, and Gradle. Do not change these versions unless the user explicitly requests it.
 - Keep the domain-first package structure. Inside each domain, separate `controller`, `service`, `repository`, `entity`, and `dto`; place only cross-cutting code in `global`.
+- Classify and split controllers by resource and responsibility. Do not group unrelated endpoint families into one controller merely because they share a domain or service; use responsibility boundaries rather than line count alone.
 - Prefer constructor injection, lazy JPA relationships, string-mapped enums, DTO-based API boundaries, and service-layer transaction boundaries.
 
 ## Implementation scope and learning level
@@ -17,6 +18,7 @@
 
 ## Sources of truth
 
+- Quick database overview: `docs/specs/스키마요약.md`
 - Database and Entity mappings: `docs/specs/데이터모델링.md`
 - API contracts and error codes: `docs/specs/API명세서.md`
 - Functional behavior: `docs/specs/기능명세서.md`

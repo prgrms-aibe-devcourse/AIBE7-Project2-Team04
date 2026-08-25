@@ -16,7 +16,7 @@
 - [ ] `user_matching_preferences` Entity와 Repository 구현
 - [ ] `match_requests`에 `desired_personality_text`, `preference_snapshot`, `matching_formula_version` 추가
 - [ ] `user_location_preferences`와 `match_requests`의 구 코드·핀 컬럼 변경이 함께 적용되는지 확인
-- [ ] Flyway 등 마이그레이션 도입 여부를 확정하고 `docs/데이터모델링.md`의 DDL 적용
+- [ ] Flyway 등 마이그레이션 도입 여부를 확정하고 `docs/specs/데이터모델링.md`의 DDL 적용
 - [ ] `VECTOR(1536)`과 실제 선택 임베딩 모델의 차원이 일치하는지 검증
 - [ ] 사용자·성향 임베딩 HNSW 인덱스 생성 여부 및 후보 수 기준 성능 측정
 
