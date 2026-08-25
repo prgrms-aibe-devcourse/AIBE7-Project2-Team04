@@ -17,11 +17,11 @@
 
 ## Sources of truth
 
-- Database and Entity mappings: `docs/데이터모델링.md`
-- API contracts and error codes: `docs/API명세서.md`
-- Functional behavior: `docs/기능명세서.md`
-- Product requirements: `docs/요구사항명세서.md`
-- Dependencies and architecture: `docs/서비스기획.md`
+- Database and Entity mappings: `docs/specs/데이터모델링.md`
+- API contracts and error codes: `docs/specs/API명세서.md`
+- Functional behavior: `docs/specs/기능명세서.md`
+- Product requirements: `docs/specs/요구사항명세서.md`
+- Dependencies and architecture: `docs/specs/서비스기획.md`
 - Planned work: `docs/todo/`
 - When code changes affect a source-of-truth document, update both in the same task.
 
