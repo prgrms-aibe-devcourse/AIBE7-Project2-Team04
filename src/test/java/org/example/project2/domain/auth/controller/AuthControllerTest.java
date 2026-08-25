@@ -32,6 +32,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -155,5 +156,28 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.data.profileSetupRequired").value(true))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
                         .header().string("Set-Cookie", org.hamcrest.Matchers.containsString("refreshToken=refresh-token")));
+    }
+
+    @Test
+    void oauthCodeExchangeHasOpenApiContract() throws Exception {
+        var method = AuthController.class.getDeclaredMethod(
+                "exchangeOAuthCode",
+                OAuthTokenExchangeRequest.class
+        );
+        var operation = method.getAnnotation(io.swagger.v3.oas.annotations.Operation.class);
+        var parameters = method.getAnnotation(io.swagger.v3.oas.annotations.Parameters.class);
+        var responses = method.getAnnotation(io.swagger.v3.oas.annotations.responses.ApiResponses.class);
+        var codeSchema = OAuthTokenExchangeRequest.class
+                .getRecordComponents()[0]
+                .getAccessor()
+                .getAnnotation(io.swagger.v3.oas.annotations.media.Schema.class);
+
+        assertThat(operation.summary()).isEqualTo("OAuth 일회성 코드 교환");
+        assertThat(parameters.value()).extracting(io.swagger.v3.oas.annotations.Parameter::name)
+                .containsExactly("X-XSRF-TOKEN");
+        assertThat(responses.value())
+                .extracting(io.swagger.v3.oas.annotations.responses.ApiResponse::responseCode)
+                .containsExactly("200", "400", "401");
+        assertThat(codeSchema.description()).contains("한 번만 사용할 수 있는");
     }
 }

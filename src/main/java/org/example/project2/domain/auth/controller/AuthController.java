@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Parameters;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.headers.Header;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -19,6 +20,7 @@ import org.example.project2.domain.auth.service.local.AuthService;
 import org.example.project2.domain.auth.service.oauth.OAuthTokenExchangeService;
 import org.example.project2.global.common.CommonResponse;
 import org.example.project2.domain.auth.exception.SignUpErrorResponse;
+import org.example.project2.global.security.handler.SecurityErrorResponse;
 import org.example.project2.global.security.jwt.AuthCookieUtil;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -63,7 +65,42 @@ public class AuthController {
         return ResponseEntity.ok(CommonResponse.success(response));
     }
 
-    @Operation(summary = "OAuth 일회성 코드 교환", description = "OAuth 로그인 성공 코드를 서비스 Access/Refresh Token으로 교환합니다.")
+    @Operation(
+            summary = "OAuth 일회성 코드 교환",
+            description = "OAuth 로그인 성공 코드를 서비스 Access Token과 Refresh Token으로 교환합니다. "
+                    + "Refresh Token은 응답 본문이 아닌 Secure/HttpOnly 쿠키로 전달합니다."
+    )
+    @Parameters({
+            @Parameter(
+                    name = "X-XSRF-TOKEN",
+                    in = ParameterIn.HEADER,
+                    description = "CSRF 토큰 (GET /auth/csrf 응답의 XSRF-TOKEN 쿠키 값)",
+                    required = true,
+                    schema = @Schema(type = "string")
+            )
+    })
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "토큰 교환 성공",
+                    headers = @Header(
+                            name = "Set-Cookie",
+                            description = "Secure/HttpOnly Refresh Token 쿠키",
+                            schema = @Schema(type = "string", example = "refreshToken=...; Path=/auth; Secure; HttpOnly; SameSite=Strict")
+                    ),
+                    content = @Content(schema = @Schema(implementation = OAuthTokenExchangeSuccessResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "요청 값 검증 실패 (COMMON_002)",
+                    content = @Content(schema = @Schema(implementation = SignUpErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "일회성 코드가 만료되었거나 이미 사용됨 (AUTH_001)",
+                    content = @Content(schema = @Schema(implementation = SecurityErrorResponse.class))
+            )
+    })
     @PostMapping("/oauth2/exchange")
     public ResponseEntity<CommonResponse<OAuthTokenExchangeResponse>> exchangeOAuthCode(
             @Valid @RequestBody OAuthTokenExchangeRequest request
@@ -82,6 +119,17 @@ public class AuthController {
         public boolean success;
 
         public SignUpResponse data;
+
+        @Schema(description = "에러 정보 (성공 시 null)", example = "null")
+        public Void error;
+    }
+
+    @Schema(name = "OAuthTokenExchangeSuccessResponse")
+    private static class OAuthTokenExchangeSuccessResponse {
+        @Schema(description = "성공 여부", example = "true")
+        public boolean success;
+
+        public OAuthTokenExchangeResponse data;
 
         @Schema(description = "에러 정보 (성공 시 null)", example = "null")
         public Void error;
