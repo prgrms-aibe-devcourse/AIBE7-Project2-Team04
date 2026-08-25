@@ -37,7 +37,9 @@ function renderStatus(container, title, description, busy = false) {
   container.innerHTML = `
     <main class="page-shell">
       <section class="auth-card status-card" aria-live="polite" ${busy ? 'aria-busy="true"' : ''}>
-        <div class="status-icon ${busy ? 'is-loading' : ''}" aria-hidden="true"></div>
+        <div class="status-icon ${busy ? 'is-loading' : ''}" aria-hidden="true">
+          ${busy ? '' : '<span class="material-symbols-outlined text-3xl">check_circle</span>'}
+        </div>
         <h1 class="status-title"></h1>
         <p class="description status-description"></p>
       </section>
@@ -51,7 +53,7 @@ function renderSuccess(container, profileSetupRequired, nextPath) {
   renderStatus(
     container,
     '로그인이 완료되었습니다.',
-    profileSetupRequired ? '서비스 이용 전에 프로필을 완성해 주세요.' : 'Project2를 시작할 준비가 되었습니다.',
+    profileSetupRequired ? '서비스 이용 전에 프로필을 완성해 주세요.' : '마주한끼를 시작할 준비가 되었습니다.',
   )
 
   const link = document.createElement('a')

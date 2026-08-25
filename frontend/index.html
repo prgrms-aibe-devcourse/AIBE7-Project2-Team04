@@ -1,13 +1,456 @@
 <!doctype html>
-<html lang="ko">
+<html class="light" lang="ko">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="함께할 사람을 찾는 Project2 서비스" />
-    <title>Project2 | 로그인</title>
+    <meta name="description" content="마주한끼 (Maju-Hankki) - 마주 앉아 나누는 따뜻한 한 끼. 구 단위 활동 지역, 식사 속도, 대화 성향 맞춤 1:1 밥친구 매칭 서비스" />
+    <title>마주한끼 (Maju-Hankki) | 마주 앉아 나누는 따뜻한 한 끼</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+
+    <!-- Google Fonts & Material Symbols & Pretendard -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700;800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+
+    <!-- Tailwind Theme Configuration (from Design.md) -->
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              primary: "#ae3115",
+              "primary-container": "#ff6b4a", // Coral Orange
+              "on-primary": "#ffffff",
+              "on-primary-container": "#661000",
+              "on-primary-fixed": "#3d0600",
+              secondary: "#505e7f",
+              "secondary-container": "#c9d7fd",
+              "on-secondary": "#ffffff",
+              "brand-navy": "#1e2c4a",
+              "brand-ivory": "#faf7f2",
+
+              // Surface & Materials
+              surface: "#f8f9ff",
+              "surface-bright": "#f8f9ff",
+              "surface-container-lowest": "#ffffff",
+              "surface-container-low": "#eff4ff",
+              "surface-container": "#e5eeff",
+              "surface-container-high": "#dce9ff",
+              "surface-container-highest": "#d3e4fe",
+              "surface-dim": "#cbdbf5",
+              "surface-variant": "#d3e4fe",
+              "on-surface": "#0b1c30",
+              "on-surface-variant": "#59413c",
+              "on-background": "#0b1c30",
+              background: "#f8f9ff",
+
+              // Lines & Outlines
+              outline: "#8d716a",
+              "outline-variant": "#e1bfb8",
+
+              // Semantic Accents
+              error: "#ba1a1a",
+              "error-container": "#ffdad6",
+              success: "#82a67d",
+            },
+            borderRadius: {
+              card: "24px",
+              image: "20px",
+            },
+            spacing: {
+              base: "4px",
+              xs: "8px",
+              sm: "12px",
+              md: "16px",
+              lg: "24px",
+              xl: "32px",
+              xxl: "48px",
+              "margin-mobile": "20px",
+              "margin-desktop": "40px",
+              gutter: "16px",
+              "section-py": "96px",
+            },
+            fontFamily: {
+              headline: ["Plus Jakarta Sans", "Pretendard", "sans-serif"],
+              body: ["Be Vietnam Pro", "Pretendard", "sans-serif"],
+            },
+            boxShadow: {
+              soft: "0 16px 40px rgba(30, 44, 74, 0.06)",
+              hover: "0 20px 48px rgba(30, 44, 74, 0.10)",
+              floating: "0 24px 60px rgba(30, 44, 74, 0.12)",
+              "glow-primary": "0 8px 24px rgba(255, 107, 74, 0.30)",
+            },
+          },
+        },
+      }
+    </script>
   </head>
-  <body>
-    <div id="app"></div>
+  <body class="font-body text-on-surface antialiased min-h-screen flex flex-col pt-[88px] bg-[#FAF7F2]">
+    <!-- Top Navigation Header -->
+    <header class="fixed top-0 left-0 w-full z-50 glass-nav border-b border-outline-variant/20 shadow-sm transition-all duration-200">
+      <div class="max-w-7xl mx-auto flex justify-between items-center px-margin-mobile md:px-margin-desktop py-md">
+        <!-- Logo -->
+        <a href="/" class="flex items-center gap-3 group">
+          <div class="w-10 h-10 rounded-2xl bg-primary-container text-white flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
+            <span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1;">restaurant</span>
+          </div>
+          <div class="flex flex-col">
+            <span class="font-headline text-xl md:text-2xl font-bold tracking-tight text-brand-navy">마주한끼</span>
+            <span class="text-[10px] -mt-1 font-semibold text-primary-container tracking-wider uppercase">Maju-Hankki</span>
+          </div>
+        </a>
+
+        <!-- Desktop Navigation Links -->
+        <nav class="hidden md:flex items-center gap-8 text-sm font-semibold text-secondary">
+          <a href="#features" class="hover:text-primary-container transition-colors">서비스 소개</a>
+          <a href="#match-preview" class="hover:text-primary-container transition-colors">매칭 미리보기</a>
+          <a href="#reviews" class="hover:text-primary-container transition-colors">식사 후기</a>
+          <a href="#cta" class="hover:text-primary-container transition-colors">지금 시작하기</a>
+        </nav>
+
+        <!-- Header Auth Actions -->
+        <div id="header-auth" class="flex items-center gap-3">
+          <button id="btn-header-login" class="btn-primary px-4 py-2 rounded-full text-sm font-semibold flex items-center gap-2 shadow-md">
+            <span class="material-symbols-outlined text-base">login</span>
+            <span>카카오로 시작하기</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Container -->
+    <div id="app" class="flex-grow flex flex-col">
+      <!-- Landing Page Content (Default) -->
+      <main class="flex-grow">
+        <!-- Hero Section -->
+        <section class="max-w-7xl mx-auto px-margin-mobile md:px-margin-desktop py-12 md:py-20 flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
+          <div class="flex-1 space-y-6 text-center lg:text-left">
+            <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary-container/10 border border-primary-container/20 text-primary-container text-xs font-bold">
+              <span class="w-2 h-2 rounded-full bg-primary-container animate-ping"></span>
+              <span>1:1 성향 맞춤 식사 메이트</span>
+            </div>
+            <h1 class="font-headline text-3xl sm:text-4xl lg:text-5xl font-extrabold text-brand-navy leading-tight tracking-tight">
+              오늘 저녁, <br class="hidden sm:block" />
+              혼밥 말고 <span class="text-primary-container">마주한끼</span>
+            </h1>
+            <p class="text-base sm:text-lg text-secondary max-w-xl mx-auto lg:mx-0 leading-relaxed">
+              활동 구(District), 식사 속도, 대화 선호도에 맞춰 나와 꼭 맞는 밥친구를 찾아드립니다. 마주 앉아 나누는 따뜻하고 편안한 식사를 시작해 보세요.
+            </p>
+
+            <!-- Quick District Match Box -->
+            <div class="bg-surface-container-lowest p-3 sm:p-4 rounded-card shadow-soft flex flex-col sm:flex-row items-center gap-3 max-w-xl mx-auto lg:mx-0 border border-outline-variant/30">
+              <div class="relative w-full sm:w-1/2">
+                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-xl pointer-events-none">location_on</span>
+                <select id="hero-district-select" class="w-full bg-surface border border-outline-variant/40 text-on-surface rounded-full py-3 pl-10 pr-4 focus:ring-2 focus:ring-primary-container focus:border-primary-container appearance-none text-sm font-medium cursor-pointer">
+                  <option value="">활동 지역 선택 (구 단위)...</option>
+                  <option value="강남구">강남구 (Gangnam)</option>
+                  <option value="마포구">마포구 (Mapo)</option>
+                  <option value="용산구">용산구 (Yongsan)</option>
+                  <option value="성동구">성동구 (Seongdong)</option>
+                  <option value="송파구">송파구 (Songpa)</option>
+                  <option value="영등포구">영등포구 (Yeongdeungpo)</option>
+                  <option value="서초구">서초구 (Seocho)</option>
+                </select>
+              </div>
+              <button id="btn-hero-match" class="w-full sm:w-1/2 btn-primary py-3 px-6 rounded-full text-sm font-bold shadow-md pulse-ring flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined text-lg">local_dining</span>
+                <span>마주한끼 찾기</span>
+              </button>
+            </div>
+
+            <div class="flex items-center justify-center lg:justify-start gap-6 text-xs text-secondary font-medium pt-2">
+              <div class="flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-success text-base font-bold">verified</span>
+                <span>로컬 인증 프로필</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-primary-container text-base font-bold">bolt</span>
+                <span>평균 3분 내 매칭</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-brand-navy text-base font-bold">forum</span>
+                <span>1:1 안전 안심 채팅</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Hero Graphic / Illustration Preview -->
+          <div class="flex-1 w-full relative max-w-lg lg:max-w-none">
+            <div class="relative w-full h-[360px] sm:h-[440px] rounded-[32px] overflow-hidden shadow-floating bg-surface-container-low border border-outline-variant/30 flex items-center justify-center">
+              <img
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuBMVGPSWT9-GDvQ2mHnY2GZA0hsEMMAO-ZKwvrXUv3aJi0Mk1RFLkZhHVYjY1vhe3G5scQqH6blxHdYNpsQSRJiJvbeK005xP-zlaEUyYRlyctynX6_qWQfaipkJHLg6nvscTYAOlimWGn5X_-7OdpMJndEIZGTmPSN15HIB_izqaUrgqtCbST8N4L-DPzOcUGYA0jNPGHdXnINPaVxpWN9yUtkawnqqoSYiYmlEuTxd9m3F77q64bQ5A"
+                alt="마주 앉아 따뜻한 식사를 나누는 일러스트"
+                class="w-full h-full object-cover"
+              />
+              <div class="absolute inset-0 bg-gradient-to-t from-brand-navy/60 via-transparent to-transparent"></div>
+              
+              <div class="absolute bottom-6 left-6 right-6 text-white">
+                <p class="text-xs font-semibold text-primary-fixed uppercase tracking-wider mb-1">Warm Connection</p>
+                <p class="text-lg font-bold">"혼자 먹기 아쉬웠던 맛집, 오늘 함께 마주 보고 먹어요!"</p>
+              </div>
+            </div>
+
+            <!-- Floating Badge -->
+            <div class="absolute -bottom-5 -left-4 sm:left-4 bg-surface-container-lowest p-3.5 rounded-2xl shadow-hover flex items-center gap-3 border border-outline-variant/20 animate-bounce">
+              <div class="w-10 h-10 rounded-xl bg-primary-container/10 text-primary-container flex items-center justify-center">
+                <span class="material-symbols-outlined text-2xl">restaurant</span>
+              </div>
+              <div>
+                <p class="text-xs font-bold text-brand-navy">실시간 매칭 활성화</p>
+                <p class="text-[11px] text-secondary">마포구 / 강남구 대기 인원 12명</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Bento Grid Features Section -->
+        <section id="features" class="max-w-7xl mx-auto px-margin-mobile md:px-margin-desktop py-16">
+          <div class="text-center mb-12">
+            <h2 class="font-headline text-2xl sm:text-3xl font-extrabold text-brand-navy mb-3">
+              마주한끼가 특별한 이유
+            </h2>
+            <p class="text-base text-secondary max-w-xl mx-auto">
+              위치, 성향, 식사 속도까지 분석하여 부담 없는 완벽한 식사 메이트를 연결합니다.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[280px]">
+            <!-- Bento 1: Hyper-local Matches -->
+            <div class="bg-surface-container-lowest rounded-card p-6 shadow-soft card-hover flex flex-col justify-between relative overflow-hidden border border-outline-variant/20">
+              <div class="flex items-center justify-between z-10">
+                <div class="flex items-center gap-2 px-3 py-1 rounded-full bg-primary-container/10 text-primary-container text-xs font-bold">
+                  <span class="w-2 h-2 rounded-full bg-primary-container animate-ping"></span>
+                  <span>동네 기반 매칭</span>
+                </div>
+                <span class="material-symbols-outlined text-secondary">distance</span>
+              </div>
+              <div class="z-10 mt-auto">
+                <h3 class="font-headline text-xl font-bold text-brand-navy mb-1.5">가까운 거리의 밥친구</h3>
+                <p class="text-xs sm:text-sm text-secondary leading-relaxed">
+                  내가 지정한 활동 구와 핀 포인트를 기준으로 가까운 동네 친구를 실시간 탐색합니다.
+                </p>
+              </div>
+              <div class="absolute -right-6 -bottom-6 w-32 h-32 bg-primary-container/5 rounded-full blur-xl"></div>
+            </div>
+
+            <!-- Bento 2: Vibe Sync -->
+            <div class="bg-surface-container-lowest rounded-card p-6 shadow-soft card-hover col-span-1 md:col-span-2 flex flex-col justify-between border border-outline-variant/20 bg-gradient-to-br from-white to-surface-container-low">
+              <div class="flex items-center justify-between">
+                <div>
+                  <span class="text-xs font-bold text-primary-container uppercase tracking-wider">Personality Sync</span>
+                  <h3 class="font-headline text-xl sm:text-2xl font-bold text-brand-navy mt-1">96% 성향 싱크로율</h3>
+                </div>
+                <div class="bg-brand-navy text-white px-3.5 py-1.5 rounded-full text-xs font-bold shadow-sm flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-sm text-primary-container" style="font-variation-settings: 'FILL' 1;">favorite</span>
+                  <span>취향 일치</span>
+                </div>
+              </div>
+              <div class="my-4">
+                <p class="text-xs text-secondary mb-2 font-medium">매칭 시 고려되는 세밀한 성향 태그</p>
+                <div class="flex flex-wrap gap-2">
+                  <span class="chip px-3 py-1.5 rounded-full text-xs font-semibold border border-primary-container/20">#천천히먹어요 (Slow Eater)</span>
+                  <span class="chip px-3 py-1.5 rounded-full text-xs font-semibold border border-primary-container/20">#편안한침묵 (Comfortable Silence)</span>
+                  <span class="chip px-3 py-1.5 rounded-full text-xs font-semibold border border-primary-container/20">#스몰토크좋아요</span>
+                  <span class="chip px-3 py-1.5 rounded-full text-xs font-semibold border border-primary-container/20">#라멘매니아</span>
+                  <span class="chip px-3 py-1.5 rounded-full text-xs font-semibold border border-primary-container/20">#맵찔이환영</span>
+                </div>
+              </div>
+              <p class="text-xs text-secondary">
+                자가 응답 기반 식사·대화 성향 알고리즘으로 대화의 어색함을 사전에 방지합니다.
+              </p>
+            </div>
+
+            <!-- Bento 3: AI Restaurant Curated -->
+            <div class="bg-surface-container-lowest rounded-card p-6 shadow-soft card-hover col-span-1 md:col-span-2 flex flex-col justify-between border border-outline-variant/20">
+              <div class="flex items-center justify-between">
+                <div>
+                  <span class="text-xs font-bold text-success uppercase tracking-wider">AI Recommendation</span>
+                  <h3 class="font-headline text-xl sm:text-2xl font-bold text-brand-navy mt-1">둘만을 위한 맞춤 식당 추천</h3>
+                </div>
+                <span class="material-symbols-outlined text-success text-2xl">auto_awesome</span>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 my-3">
+                <div class="p-3 rounded-xl bg-surface border border-outline-variant/30 flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-lg bg-primary-container/10 text-primary-container flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined">soup_kitchen</span>
+                  </div>
+                  <div>
+                    <p class="text-sm font-bold text-brand-navy">따뜻한 스키야키 하우스</p>
+                    <p class="text-[11px] text-secondary flex items-center gap-1">
+                      <span class="material-symbols-outlined text-[13px] text-yellow-500" style="font-variation-settings: 'FILL' 1;">star</span>
+                      <span>4.8 (조용한 대화 분위기)</span>
+                    </p>
+                  </div>
+                </div>
+                <div class="p-3 rounded-xl bg-surface border border-outline-variant/30 flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-lg bg-primary-container/10 text-primary-container flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined">dinner_dining</span>
+                  </div>
+                  <div>
+                    <p class="text-sm font-bold text-brand-navy">연남 골목 생면 파스타</p>
+                    <p class="text-[11px] text-secondary flex items-center gap-1">
+                      <span class="material-symbols-outlined text-[13px] text-yellow-500" style="font-variation-settings: 'FILL' 1;">star</span>
+                      <span>4.7 (가벼운 스몰토크 적합)</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <p class="text-xs text-secondary">
+                서로의 음식 알레르기, 비선호 메뉴, 선호 분위기를 종합 분석하여 최적의 약속 장소를 제안합니다.
+              </p>
+            </div>
+
+            <!-- Bento 4: Safety & Review Card -->
+            <div id="reviews" class="bg-brand-navy rounded-card p-6 shadow-soft card-hover flex flex-col justify-between text-white border border-white/10">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary-container">verified_user</span>
+                <span class="text-xs font-bold text-primary-container tracking-wider uppercase">Safe & Trusted</span>
+              </div>
+              <div class="bg-white/10 rounded-2xl p-4 backdrop-blur-sm border border-white/10 my-auto">
+                <div class="flex text-yellow-400 mb-2">
+                  <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
+                  <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
+                  <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
+                  <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
+                  <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
+                </div>
+                <p class="text-xs sm:text-sm text-gray-200 leading-relaxed">
+                  "같은 내향형 개발자 분과 조용하고 맛있는 점심을 먹었어요. 억지 대화 부담 없이 정말 편안했습니다."
+                </p>
+                <p class="text-[11px] text-gray-400 mt-2 font-medium">- 마포구 마주한끼 식사 후기</p>
+              </div>
+              <div class="flex items-center justify-between text-[11px] text-gray-300">
+                <span>100% 실명 인증 기반</span>
+                <span>매너 평가 시스템 운영</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Profile Match Preview Section -->
+        <section id="match-preview" class="max-w-7xl mx-auto px-margin-mobile md:px-margin-desktop py-16">
+          <div class="flex flex-col lg:flex-row items-center justify-center gap-12 lg:gap-16">
+            <!-- Mobile Preview Mockup -->
+            <div class="w-full max-w-sm bg-surface-container-lowest rounded-[32px] p-6 shadow-floating relative border border-outline-variant/30">
+              <!-- Notch Accent -->
+              <div class="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-5 bg-[#FAF7F2] rounded-b-xl"></div>
+              <div class="flex flex-col items-center mt-4 text-center">
+                <div class="w-20 h-20 rounded-full border-4 border-white shadow-md overflow-hidden mb-3 bg-surface-dim flex items-center justify-center">
+                  <span class="material-symbols-outlined text-4xl text-secondary">person</span>
+                </div>
+                <h3 class="font-headline text-lg font-bold text-brand-navy">민지 (Minji K.)</h3>
+                <div class="flex items-center gap-1 text-secondary text-xs mt-0.5 mb-4">
+                  <span class="material-symbols-outlined text-sm text-primary-container">location_on</span>
+                  <span>마포구 연남동</span>
+                </div>
+
+                <div class="w-full bg-surface rounded-2xl p-4 mb-5 border border-outline-variant/30 text-left">
+                  <p class="text-[11px] font-bold text-secondary mb-1.5 uppercase tracking-wider">식사 및 대화 스타일</p>
+                  <p class="text-xs text-on-surface leading-relaxed mb-3">
+                    "퇴근 후 바삭한 돈까스 한 끼 마주 보고 드실 분 찾아요! 식사 속도는 빠른 편이고 조용한 식사를 좋아해요."
+                  </p>
+                  <div class="flex flex-wrap gap-1.5">
+                    <span class="bg-surface-dim text-brand-navy px-2.5 py-0.5 rounded-full text-[11px] font-bold">#빠른식사</span>
+                    <span class="bg-surface-dim text-brand-navy px-2.5 py-0.5 rounded-full text-[11px] font-bold">#조용한식사</span>
+                    <span class="bg-surface-dim text-brand-navy px-2.5 py-0.5 rounded-full text-[11px] font-bold">#일식/돈까스</span>
+                  </div>
+                </div>
+
+                <button id="btn-preview-join" class="w-full btn-primary py-3.5 rounded-2xl text-sm font-bold shadow-md flex justify-center items-center gap-2">
+                  <span class="material-symbols-outlined text-base">restaurant</span>
+                  <span>마주한끼 함께하기 신청</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Preview Explanation Content -->
+            <div class="max-w-md text-center lg:text-left">
+              <span class="text-xs font-bold text-primary-container uppercase tracking-wider">Safe & Transparent</span>
+              <h2 class="font-headline text-2xl sm:text-3xl font-extrabold text-brand-navy mt-1 mb-4">
+                만나기 전에 밥친구의<br />
+                식사 스타일을 확인하세요
+              </h2>
+              <p class="text-sm sm:text-base text-secondary mb-6 leading-relaxed">
+                식사 속도부터 대화 선호도까지 사전에 확인하여 어색함이나 불필요한 부담 없이 기분 좋은 마주한끼를 만듭니다.
+              </p>
+
+              <ul class="space-y-4 text-left">
+                <li class="flex items-start gap-3">
+                  <div class="mt-0.5 bg-primary-container/10 p-1 rounded-full text-primary-container">
+                    <span class="material-symbols-outlined text-base">check</span>
+                  </div>
+                  <div>
+                    <p class="text-sm font-bold text-brand-navy">투명한 성향 정보</p>
+                    <p class="text-xs text-secondary">대화 스타일, 식사 템포, 비선호 음식 확인 가능</p>
+                  </div>
+                </li>
+                <li class="flex items-start gap-3">
+                  <div class="mt-0.5 bg-primary-container/10 p-1 rounded-full text-primary-container">
+                    <span class="material-symbols-outlined text-base">check</span>
+                  </div>
+                  <div>
+                    <p class="text-sm font-bold text-brand-navy">원클릭 매칭 요청 & 수락</p>
+                    <p class="text-xs text-secondary">복잡한 절차 없이 간편하게 실시간 식사 테이블 조율</p>
+                  </div>
+                </li>
+                <li class="flex items-start gap-3">
+                  <div class="mt-0.5 bg-primary-container/10 p-1 rounded-full text-primary-container">
+                    <span class="material-symbols-outlined text-base">check</span>
+                  </div>
+                  <div>
+                    <p class="text-sm font-bold text-brand-navy">안전한 1:1 실시간 채팅</p>
+                    <p class="text-xs text-secondary">개인 연락처 노출 없이 서비스 내부에서 만남 확정</p>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Bottom CTA Banner Section -->
+        <section id="cta" class="mt-12">
+          <div class="w-full bg-gradient-to-r from-[#FF6B4A] to-[#ff8c73] py-16 sm:py-20 px-margin-mobile md:px-margin-desktop text-center relative overflow-hidden text-white">
+            <div class="relative z-10 max-w-3xl mx-auto flex flex-col items-center">
+              <div class="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center mb-4 shadow-sm">
+                <span class="material-symbols-outlined text-3xl" style="font-variation-settings: 'FILL' 1;">local_dining</span>
+              </div>
+              <h2 class="font-headline text-2xl sm:text-4xl font-extrabold mb-3">
+                오늘 저녁, 마주 앉아 따뜻한 식탁을 함께할 준비되셨나요?
+              </h2>
+              <p class="text-sm sm:text-base text-white/90 max-w-lg mb-8 leading-relaxed">
+                혼자 먹기 아쉬웠던 맛집부터 가벼운 동네 밥친구까지, 카카오 계정으로 1초 만에 시작하세요.
+              </p>
+              <button id="btn-cta-start" class="bg-brand-navy text-white px-8 py-4 rounded-full text-base font-bold hover:bg-opacity-90 hover:scale-105 transition-all shadow-floating flex items-center gap-2">
+                <span>마주한끼 시작하기</span>
+                <span class="material-symbols-outlined text-base">arrow_forward</span>
+              </button>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="w-full bg-surface-container-low border-t border-outline-variant/20 py-8 px-margin-mobile md:px-margin-desktop mt-auto">
+      <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-secondary">
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-brand-navy text-sm">마주한끼 (Maju-Hankki)</span>
+          <span>© 2026 Maju-Hankki. Shared meals, warmer hearts.</span>
+        </div>
+        <nav class="flex flex-wrap justify-center gap-6">
+          <a href="#" class="hover:text-primary-container transition-colors">이용약관</a>
+          <a href="#" class="hover:text-primary-container transition-colors">개인정보처리방침</a>
+          <a href="#" class="hover:text-primary-container transition-colors">안전 가이드라인</a>
+          <a href="#" class="hover:text-primary-container transition-colors">고객센터</a>
+        </nav>
+      </div>
+    </footer>
+
+    <!-- Main Module Script -->
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

@@ -9,47 +9,68 @@ if (window.location.pathname === '/oauth/callback') {
   renderOAuthCallback(app)
 } else if (window.location.pathname === '/profile/setup') {
   renderProfileSetup(app)
-} else if (getAccessToken()) {
-  renderHome(app)
 } else {
-  renderLogin(app)
+  initLandingPage()
 }
 
-function renderLogin(container) {
-  container.innerHTML = `
-    <main class="page-shell">
-      <section class="auth-card" aria-labelledby="login-title">
-        <div class="brand-mark" aria-hidden="true">P2</div>
-        <p class="eyebrow">PROJECT 2</p>
-        <h1 id="login-title">함께할 사람을 만나보세요</h1>
-        <p class="description">카카오 계정으로 간편하게 시작할 수 있습니다.</p>
-        <button id="kakao-login" class="kakao-button" type="button">
-          카카오로 계속하기
+function initLandingPage() {
+  const token = getAccessToken()
+  const headerAuth = document.querySelector('#header-auth')
+  const btnHeaderLogin = document.querySelector('#btn-header-login')
+  const btnHeroMatch = document.querySelector('#btn-hero-match')
+  const btnCtaStart = document.querySelector('#btn-cta-start')
+  const btnPreviewJoin = document.querySelector('#btn-preview-join')
+  const districtSelect = document.querySelector('#hero-district-select')
+
+  if (token && headerAuth) {
+    headerAuth.innerHTML = `
+      <div class="flex items-center gap-3">
+        <span class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-success/15 text-success text-xs font-bold">
+          <span class="w-1.5 h-1.5 rounded-full bg-success"></span>
+          로그인 됨
+        </span>
+        <button id="btn-logout" class="btn-secondary px-4 py-2 rounded-full text-xs sm:text-sm font-semibold">
+          로그아웃
         </button>
-        <p class="notice">로그인하면 서비스 이용약관과 개인정보 처리방침에 동의하게 됩니다.</p>
-      </section>
-    </main>
-  `
+      </div>
+    `
+    document.querySelector('#btn-logout')?.addEventListener('click', () => {
+      clearAccessToken()
+      window.location.reload()
+    })
+  } else if (btnHeaderLogin) {
+    btnHeaderLogin.addEventListener('click', startKakaoLogin)
+  }
 
-  container.querySelector('#kakao-login').addEventListener('click', startKakaoLogin)
-}
+  const handleMatchStart = () => {
+    const selectedDistrict = districtSelect ? districtSelect.value : ''
+    if (!token) {
+      startKakaoLogin()
+      return
+    }
+    if (selectedDistrict) {
+      alert(`[${selectedDistrict}] 지역 마주한끼 매칭 대기열에 참가합니다!`)
+    } else {
+      alert('활동 지역(구)을 먼저 선택해 주세요.')
+      districtSelect?.focus()
+    }
+  }
 
-function renderHome(container) {
-  container.innerHTML = `
-    <main class="page-shell">
-      <section class="auth-card" aria-labelledby="home-title">
-        <div class="brand-mark" aria-hidden="true">P2</div>
-        <p class="eyebrow">LOGIN COMPLETE</p>
-        <h1 id="home-title">로그인되었습니다</h1>
-        <p class="description">이제 인증이 필요한 Project2 API를 호출할 수 있습니다.</p>
-        <button id="clear-session" class="secondary-link" type="button">이 브라우저의 Access Token 지우기</button>
-      </section>
-    </main>
-  `
-
-  container.querySelector('#clear-session').addEventListener('click', () => {
-    clearAccessToken()
-    window.location.replace('/')
+  btnHeroMatch?.addEventListener('click', handleMatchStart)
+  btnCtaStart?.addEventListener('click', () => {
+    if (!token) {
+      startKakaoLogin()
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      districtSelect?.focus()
+    }
+  })
+  btnPreviewJoin?.addEventListener('click', () => {
+    if (!token) {
+      startKakaoLogin()
+    } else {
+      alert('민지 님의 식사 테이블에 참가 요청을 보냈습니다!')
+    }
   })
 }
 
@@ -57,10 +78,15 @@ function renderProfileSetup(container) {
   container.innerHTML = `
     <main class="page-shell">
       <section class="auth-card" aria-labelledby="profile-title">
+        <div class="brand-mark" aria-hidden="true">
+          <span class="material-symbols-outlined text-3xl">face</span>
+        </div>
         <p class="eyebrow">PROFILE SETUP</p>
-        <h1 id="profile-title">프로필 설정이 필요합니다</h1>
-        <p class="description">임시 닉네임이 발급되었습니다. 프로필 수정 API 구현 후 이 화면에 입력 폼을 연결합니다.</p>
-        <a class="primary-link" href="/">우선 홈으로 이동</a>
+        <h1 id="profile-title">프로필 설정</h1>
+        <p class="description">
+          임시 닉네임이 발급되었습니다. 나만의 식사 성향과 취향을 설정하여 완벽한 마주한끼를 만나보세요.
+        </p>
+        <a class="primary-link" href="/">홈으로 이동하기</a>
       </section>
     </main>
   `
