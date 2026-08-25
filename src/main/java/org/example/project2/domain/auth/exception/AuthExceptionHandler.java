@@ -23,6 +23,16 @@ public class AuthExceptionHandler {
         return ResponseEntity.status(errorCode.getStatus()).body(SecurityErrorResponse.from(errorCode));
     }
 
+    @ExceptionHandler(LoginFailedException.class)
+    public ResponseEntity<SecurityErrorResponse> handleLoginFailedException(LoginFailedException exception) {
+        SecurityErrorResponse errorResponse = new SecurityErrorResponse(
+                false,
+                null,
+                new SecurityErrorResponse.ErrorDetail("AUTH_001", exception.getMessage())
+        );
+        return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).body(errorResponse);
+    }
+
     @ExceptionHandler(SignUpException.class)
     public ResponseEntity<SignUpErrorResponse> handleSignUpException(SignUpException exception) {
         SignUpErrorCode errorCode = exception.getErrorCode();

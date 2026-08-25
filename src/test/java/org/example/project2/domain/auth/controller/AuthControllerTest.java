@@ -146,6 +146,13 @@ class AuthControllerTest {
         );
         when(oauthTokenExchangeService.exchange("one-time-code"))
                 .thenReturn(new OAuthTokenExchangeService.ExchangeResult(response, "refresh-token"));
+        when(authCookieUtil.createAccessTokenCookie("access-token"))
+                .thenReturn(ResponseCookie.from("accessToken", "access-token")
+                        .httpOnly(true)
+                        .secure(true)
+                        .sameSite("Strict")
+                        .path("/")
+                        .build());
         when(authCookieUtil.createRefreshTokenCookie("refresh-token"))
                 .thenReturn(ResponseCookie.from("refreshToken", "refresh-token")
                         .httpOnly(true)
@@ -154,24 +161,34 @@ class AuthControllerTest {
                         .path("/auth")
                         .build());
 
-        mockMvc.perform(post("/auth/oauth2/exchange")
+        org.springframework.test.web.servlet.MvcResult mvcResult = mockMvc.perform(post("/auth/oauth2/exchange")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.tokenType").value("Bearer"))
-                .andExpect(jsonPath("$.data.accessToken").value("access-token"))
+                .andExpect(jsonPath("$.data.accessToken").value(org.hamcrest.Matchers.nullValue()))
                 .andExpect(jsonPath("$.data.expiresIn").value(900))
                 .andExpect(jsonPath("$.data.profileSetupRequired").value(true))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
-                        .header().string("Set-Cookie", org.hamcrest.Matchers.containsString("refreshToken=refresh-token")));
+                .andReturn();
+
+        java.util.List<String> setCookieHeaders = mvcResult.getResponse().getHeaders("Set-Cookie");
+        org.junit.jupiter.api.Assertions.assertTrue(
+                setCookieHeaders.stream().anyMatch(h -> h.contains("accessToken=access-token")),
+                "Set-Cookie 헤더에 accessToken 쿠키가 포함되어야 합니다."
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(
+                setCookieHeaders.stream().anyMatch(h -> h.contains("refreshToken=refresh-token")),
+                "Set-Cookie 헤더에 refreshToken 쿠키가 포함되어야 합니다."
+        );
     }
 
     @Test
     void oauthCodeExchangeHasOpenApiContract() throws Exception {
         var method = AuthController.class.getDeclaredMethod(
                 "exchangeOAuthCode",
-                OAuthTokenExchangeRequest.class
+                OAuthTokenExchangeRequest.class,
+                jakarta.servlet.http.HttpServletResponse.class
         );
         var operation = method.getAnnotation(io.swagger.v3.oas.annotations.Operation.class);
         var parameters = method.getAnnotation(io.swagger.v3.oas.annotations.Parameters.class);
@@ -201,6 +218,14 @@ class AuthControllerTest {
                         .path("/auth")
                         .maxAge(0)
                         .build());
+        when(authCookieUtil.deleteAccessTokenCookie())
+                .thenReturn(ResponseCookie.from("accessToken", "")
+                        .httpOnly(true)
+                        .secure(true)
+                        .sameSite("Strict")
+                        .path("/")
+                        .maxAge(0)
+                        .build());
 
         mockMvc.perform(post("/auth/logout")
                         .with(csrf())
@@ -211,7 +236,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.data").isEmpty())
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
                         .string("Set-Cookie", org.hamcrest.Matchers.allOf(
-                                org.hamcrest.Matchers.containsString("refreshToken="),
+                                org.hamcrest.Matchers.containsString("accessToken="),
                                 org.hamcrest.Matchers.containsString("Max-Age=0"))));
 
         verify(refreshTokenService).revoke("refresh-token");

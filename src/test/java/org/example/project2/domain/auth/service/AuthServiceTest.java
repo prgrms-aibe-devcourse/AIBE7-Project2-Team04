@@ -31,11 +31,20 @@ class AuthServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private org.example.project2.global.security.jwt.JwtProvider jwtProvider;
+
+    @Mock
+    private org.example.project2.domain.auth.service.token.RefreshTokenService refreshTokenService;
+
+    @Mock
+    private org.example.project2.global.security.AuthProperties authProperties;
+
     private AuthService authService;
 
     @BeforeEach
     void setUp() {
-        authService = new AuthService(userRepository, passwordEncoder);
+        authService = new AuthService(userRepository, passwordEncoder, jwtProvider, refreshTokenService, authProperties);
     }
 
     @Test

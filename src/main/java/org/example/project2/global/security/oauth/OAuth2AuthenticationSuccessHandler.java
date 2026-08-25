@@ -29,21 +29,21 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
             HttpServletResponse response,
             Authentication authentication
     ) throws IOException, ServletException {
-        if (!(authentication.getPrincipal() instanceof KakaoOAuth2User kakaoUser)) {
+        if (!(authentication.getPrincipal() instanceof CustomOAuth2User oAuth2User)) {
             failureHandler.onAuthenticationFailure(
                     request,
                     response,
                     new OAuth2AuthenticationException(
                             new OAuth2Error("unsupported_provider"),
-                            "현재 카카오 OAuth 로그인만 지원합니다."
+                            "지원하지 않는 인증 객체 형식입니다."
                     )
             );
             return;
         }
 
         String code = authorizationCodeService.issue(
-                kakaoUser.getUserId(),
-                kakaoUser.isProfileSetupRequired()
+                oAuth2User.getUserId(),
+                oAuth2User.isProfileSetupRequired()
         );
         String redirectUri = UriComponentsBuilder
                 .fromUriString(properties.successRedirectUri())

@@ -31,4 +31,24 @@ public class AuthCookieUtil {
                 .maxAge(0)
                 .build();
     }
+
+    public ResponseCookie createAccessTokenCookie(String token) {
+        return ResponseCookie.from("accessToken", token)
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("Strict")
+                .path("/")
+                .maxAge(p.jwt().accessTokenExpiry())
+                .build();
+    }
+
+    public ResponseCookie deleteAccessTokenCookie() {
+        return ResponseCookie.from("accessToken", "")
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("Strict")
+                .path("/")
+                .maxAge(0)
+                .build();
+    }
 }

@@ -54,9 +54,18 @@ public class JwtFilter extends OncePerRequestFilter {
         // header <- 외부로 openapi 형식으로 할 때
         String authHeader = request.getHeader("Authorization");
         if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7); // 'Bearer '
+            String token = authHeader.substring(7).trim(); // 'Bearer '
             if (StringUtils.hasText(token)) {
                 return token;
+            }
+        }
+        // cookie <- 내부에서 호출할 때 (HttpOnly 쿠키 방식)
+        jakarta.servlet.http.Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (jakarta.servlet.http.Cookie cookie : cookies) {
+                if ("accessToken".equals(cookie.getName())) {
+                    return cookie.getValue();
+                }
             }
         }
         return null;

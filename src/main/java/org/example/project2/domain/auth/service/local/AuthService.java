@@ -21,6 +21,34 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final org.example.project2.global.security.jwt.JwtProvider jwtProvider;
+    private final org.example.project2.domain.auth.service.token.RefreshTokenService refreshTokenService;
+    private final org.example.project2.global.security.AuthProperties authProperties;
+
+    @Transactional
+    public LoginResult login(org.example.project2.domain.auth.dto.LoginRequest request) {
+        // [보안 규칙] 이메일 대소문자를 구분하지 않고 LOCAL 계정 사용자를 검색합니다.
+        User user = userRepository.findByEmailIgnoreCaseAndProvider(request.email(), AuthProvider.LOCAL)
+                .orElseThrow(org.example.project2.domain.auth.exception.LoginFailedException::new);
+
+        // Argon2 패스워드 해시 매칭 검증
+        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+            throw new org.example.project2.domain.auth.exception.LoginFailedException();
+        }
+
+        // 유저 계정 상태 검증
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new org.example.project2.domain.auth.exception.LoginFailedException();
+        }
+
+        // 토큰 발급
+        String accessToken = jwtProvider.issueToken(user.getId(), user.getRole());
+        org.example.project2.domain.auth.service.token.RefreshTokenService.IssuedRefreshToken refreshToken = refreshTokenService.issue(user);
+
+        return new LoginResult(accessToken, refreshToken.rawToken());
+    }
+
+    public record LoginResult(String accessToken, String rawRefreshToken) {}
 
     @Transactional
     public SignUpResponse signUp(SignUpRequest request) {

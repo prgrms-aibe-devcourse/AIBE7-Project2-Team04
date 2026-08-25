@@ -1,9 +1,9 @@
 import { exchangeOAuthCode } from '../auth/auth-api.js'
 
 const ERROR_MESSAGES = {
-  AUTH_001: '카카오 로그인에 실패했습니다. 다시 시도해 주세요.',
-  AUTH_004: '카카오 계정에서 확인된 이메일을 제공해야 가입할 수 있습니다.',
-  AUTH_005: '같은 이메일로 가입된 다른 로그인 방식이 있습니다.',
+  AUTH_001: '소셜 로그인에 실패했습니다. 다시 시도해 주세요.',
+  AUTH_004: '소셜 계정에서 인증된 이메일을 제공해야 서비스에 가입할 수 있습니다.',
+  AUTH_005: '동일한 이메일로 가입된 다른 로그인 방식의 계정이 있습니다.',
 }
 
 export async function renderOAuthCallback(container) {
@@ -12,7 +12,7 @@ export async function renderOAuthCallback(container) {
   const error = params.get('error')
 
   window.history.replaceState({}, document.title, '/oauth/callback')
-  renderStatus(container, '카카오 로그인을 확인하고 있습니다.', '잠시만 기다려 주세요.', true)
+  renderStatus(container, '소셜 로그인을 확인하고 있습니다.', '잠시만 기다려 주세요.', true)
 
   if (error) {
     renderFailure(container, ERROR_MESSAGES[error] || ERROR_MESSAGES.AUTH_001)

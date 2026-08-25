@@ -1,5 +1,5 @@
 import './style.css'
-import { startKakaoLogin } from './auth/auth-api.js'
+import { startKakaoLogin, startGoogleLogin, login, logout } from './auth/auth-api.js'
 import { clearAccessToken, getAccessToken } from './auth/token-storage.js'
 import { renderOAuthCallback } from './pages/oauth-callback.js'
 
@@ -34,7 +34,8 @@ function initLandingPage() {
         </button>
       </div>
     `
-    document.querySelector('#btn-logout')?.addEventListener('click', () => {
+    document.querySelector('#btn-logout')?.addEventListener('click', async () => {
+      await logout()
       clearAccessToken()
       window.location.reload()
     })

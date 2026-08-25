@@ -8,12 +8,15 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * 구글 인증 사용자 정보를 담기 위한 Custom OAuth2User 구현체 클래스입니다.
+ */
 @Getter
-public class KakaoOAuth2User extends DefaultOAuth2User implements CustomOAuth2User {
+public class GoogleOAuth2User extends DefaultOAuth2User implements CustomOAuth2User {
     private final UUID userId;
     private final boolean profileSetupRequired;
 
-    public KakaoOAuth2User(
+    public GoogleOAuth2User(
             Collection<? extends GrantedAuthority> authorities,
             Map<String, Object> attributes,
             String nameAttributeKey,
