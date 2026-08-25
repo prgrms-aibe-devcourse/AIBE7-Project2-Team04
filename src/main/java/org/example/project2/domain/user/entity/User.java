@@ -111,4 +111,9 @@ public class User {
     public void resetPersonalityOnboarding() {
         personalityOnboardingStatus = PersonalityOnboardingStatus.NOT_STARTED;
     }
+
+    public void replaceFoodPreferences(Set<FoodCategory> foodPreferences) {
+        this.foodPreferences.clear();
+        this.foodPreferences.addAll(foodPreferences);
+    }
 }

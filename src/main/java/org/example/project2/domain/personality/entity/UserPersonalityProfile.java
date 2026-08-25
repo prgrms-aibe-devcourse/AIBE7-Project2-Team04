@@ -97,4 +97,23 @@ public class UserPersonalityProfile {
     @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    public void replace(
+            PersonalityQuestionnaireVersion questionnaireVersion,
+            short conversationLevel,
+            short mealPace,
+            short planningStyle,
+            short noveltyPreference,
+            Set<PersonalityTag> styleTags,
+            Instant completedAt
+    ) {
+        this.questionnaireVersion = questionnaireVersion;
+        this.conversationLevel = conversationLevel;
+        this.mealPace = mealPace;
+        this.planningStyle = planningStyle;
+        this.noveltyPreference = noveltyPreference;
+        this.styleTags.clear();
+        this.styleTags.addAll(styleTags);
+        this.completedAt = completedAt;
+    }
 }

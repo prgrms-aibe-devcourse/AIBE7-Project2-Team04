@@ -2,6 +2,8 @@ package org.example.project2.domain.personality.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
@@ -35,8 +37,9 @@ public class UserPersonalityAnswer extends BaseEntity {
     @OnDelete(action = OnDeleteAction.CASCADE)
     private UserPersonalityProfile profile;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "question_code", nullable = false, length = 100)
-    private String questionCode;
+    private PersonalityDimension questionCode;
 
     @Column(name = "answer_value", nullable = false)
     private short answerValue;
