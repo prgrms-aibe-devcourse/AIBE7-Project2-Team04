@@ -161,6 +161,23 @@ OAuth2 로그인 시작과 콜백 경로(`/oauth2/**`, `/login/oauth2/**`)는 �
 
 OAuth 성공 또는 실패 후에는 `state` 검증에 사용한 임시 세션과 Security Context를 제거한다. 성공 리다이렉트에는 `code`만 포함하고, 가입 정책 실패 시에는 공개 가능한 `AUTH_004` 또는 `AUTH_005` 코드만 `error`로 전달한다. 그 밖의 Provider 오류는 `AUTH_001`로 일반화한다.
 
+**POST /auth/logout**
+
+- `Authorization: Bearer {accessToken}`과 `X-XSRF-TOKEN` 헤더가 필요하다.
+- `refreshToken` 쿠키에 해당하는 DB 행의 `revoked_at`을 기록하고 쿠키를 삭제한다.
+- Refresh Token 쿠키가 없거나 이미 폐기된 경우에도 쿠키 삭제 응답을 위해 성공으로 처리한다.
+- 카카오·Google 계정 자체를 로그아웃하거나 연결을 해제하지는 않는다.
+
+응답:
+
+```json
+{
+  "success": true,
+  "data": null,
+  "error": null
+}
+```
+
 ### OAuth 가입 예외 정책
 
 1. 이메일은 앞뒤 공백을 제거하고 소문자로 정규화한 후 조회·저장한다.

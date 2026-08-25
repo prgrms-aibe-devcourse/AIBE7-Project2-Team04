@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -18,12 +19,14 @@ import org.example.project2.domain.auth.dto.OAuthTokenExchangeRequest;
 import org.example.project2.domain.auth.dto.OAuthTokenExchangeResponse;
 import org.example.project2.domain.auth.service.local.AuthService;
 import org.example.project2.domain.auth.service.oauth.OAuthTokenExchangeService;
+import org.example.project2.domain.auth.service.token.RefreshTokenService;
 import org.example.project2.global.common.CommonResponse;
 import org.example.project2.domain.auth.exception.SignUpErrorResponse;
 import org.example.project2.global.security.handler.SecurityErrorResponse;
 import org.example.project2.global.security.jwt.AuthCookieUtil;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -37,6 +40,7 @@ public class AuthController {
 
     private final AuthService authService;
     private final OAuthTokenExchangeService oauthTokenExchangeService;
+    private final RefreshTokenService refreshTokenService;
     private final AuthCookieUtil authCookieUtil;
 
     @Operation(summary = "이메일 회원가입", description = "이메일, 비밀번호, 닉네임을 받아 새로운 로컬 회원으로 등록합니다.")
@@ -110,6 +114,35 @@ public class AuthController {
                 .header(HttpHeaders.SET_COOKIE,
                         authCookieUtil.createRefreshTokenCookie(result.rawRefreshToken()).toString())
                 .body(CommonResponse.success(result.response()));
+    }
+
+    @Operation(
+            summary = "로그아웃",
+            description = "현재 Refresh Token을 폐기하고 브라우저의 Refresh Token 쿠키를 삭제합니다."
+    )
+    @SecurityRequirement(name = "bearerAuth")
+    @Parameter(
+            name = "X-XSRF-TOKEN",
+            in = ParameterIn.HEADER,
+            description = "CSRF 토큰 (GET /auth/csrf로 발급받은 쿠키 값)",
+            required = true,
+            schema = @Schema(type = "string")
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "로그아웃 성공"),
+            @ApiResponse(responseCode = "401", description = "Access Token이 없거나 유효하지 않음",
+                    content = @Content(schema = @Schema(implementation = SecurityErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "CSRF 토큰이 없거나 유효하지 않음",
+                    content = @Content(schema = @Schema(implementation = SecurityErrorResponse.class)))
+    })
+    @PostMapping("/logout")
+    public ResponseEntity<CommonResponse<Void>> logout(
+            @CookieValue(name = "refreshToken", required = false) String refreshToken
+    ) {
+        refreshTokenService.revoke(refreshToken);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, authCookieUtil.deleteRefreshTokenCookie().toString())
+                .body(CommonResponse.success(null));
     }
 
     // Swagger 문서화를 위한 가상 클래스 정의 (CommonResponse<SignUpResponse> 타입 스키마 표현용)
