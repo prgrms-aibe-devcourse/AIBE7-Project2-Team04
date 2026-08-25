@@ -10,24 +10,47 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 @EnableConfigurationProperties(AuthProperties.class)
 public class AuthCookieUtil {
+    private static final String REFRESH_TOKEN_COOKIE_NAME = "refreshToken";
+    private static final String CSRF_TOKEN_COOKIE_NAME = "XSRF-TOKEN";
+    private static final String AUTH_COOKIE_PATH = "/";
+    private static final String LEGACY_AUTH_COOKIE_PATH = "/auth";
+
     private final AuthProperties p;
 
     public ResponseCookie createRefreshTokenCookie(String token) {
-        return ResponseCookie.from("refreshToken", token)
+        return ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME, token)
                 .httpOnly(true)
                 .secure(false)
                 .sameSite("Lax")
-                .path("/")
+                .path(AUTH_COOKIE_PATH)
                 .maxAge(p.jwt().refreshTokenExpiry())
                 .build();
     }
 
     public ResponseCookie deleteRefreshTokenCookie() {
-        return ResponseCookie.from("refreshToken", "")
+        return deleteRefreshTokenCookie(AUTH_COOKIE_PATH);
+    }
+
+    public ResponseCookie deleteLegacyRefreshTokenCookie() {
+        return deleteRefreshTokenCookie(LEGACY_AUTH_COOKIE_PATH);
+    }
+
+    private ResponseCookie deleteRefreshTokenCookie(String path) {
+        return ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME, "")
                 .httpOnly(true)
                 .secure(false)
                 .sameSite("Lax")
-                .path("/")
+                .path(path)
+                .maxAge(0)
+                .build();
+    }
+
+    public ResponseCookie deleteLegacyCsrfTokenCookie() {
+        return ResponseCookie.from(CSRF_TOKEN_COOKIE_NAME, "")
+                .httpOnly(false)
+                .secure(false)
+                .sameSite("Lax")
+                .path(LEGACY_AUTH_COOKIE_PATH)
                 .maxAge(0)
                 .build();
     }
@@ -52,12 +75,4 @@ public class AuthCookieUtil {
                 .build();
     }
 
-    public ResponseCookie deleteCsrfCookie() {
-        return ResponseCookie.from("XSRF-TOKEN", "")
-                .secure(false)
-                .sameSite("Lax")
-                .path("/")
-                .maxAge(0)
-                .build();
-    }
 }

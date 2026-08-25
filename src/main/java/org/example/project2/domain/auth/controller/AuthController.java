@@ -11,6 +11,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -29,11 +31,12 @@ import org.example.project2.global.security.handler.SecurityErrorResponse;
 import org.example.project2.global.security.jwt.AuthCookieUtil;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Arrays;
 
 @Tag(name = "Authentication", description = "인증 및 회원가입 관련 API")
 @RestController
@@ -100,6 +103,8 @@ public class AuthController {
         response.addHeader(HttpHeaders.SET_COOKIE,
                 authCookieUtil.createAccessTokenCookie(result.accessToken()).toString());
         response.addHeader(HttpHeaders.SET_COOKIE,
+                authCookieUtil.deleteLegacyRefreshTokenCookie().toString());
+        response.addHeader(HttpHeaders.SET_COOKIE,
                 authCookieUtil.createRefreshTokenCookie(result.rawRefreshToken()).toString());
 
         LoginResponse responseBody = new LoginResponse(
@@ -131,7 +136,7 @@ public class AuthController {
                     headers = @Header(
                             name = "Set-Cookie",
                             description = "Secure/HttpOnly Access/Refresh Token 쿠키",
-                            schema = @Schema(type = "string", example = "refreshToken=...; Path=/auth; Secure; HttpOnly; SameSite=Strict")
+                            schema = @Schema(type = "string", example = "refreshToken=...; Path=/; Secure; HttpOnly; SameSite=Strict")
                     ),
                     content = @Content(schema = @Schema(implementation = OAuthTokenExchangeSuccessResponse.class))
             ),
@@ -155,6 +160,8 @@ public class AuthController {
 
         response.addHeader(HttpHeaders.SET_COOKIE,
                 authCookieUtil.createAccessTokenCookie(result.response().accessToken()).toString());
+        response.addHeader(HttpHeaders.SET_COOKIE,
+                authCookieUtil.deleteLegacyRefreshTokenCookie().toString());
         response.addHeader(HttpHeaders.SET_COOKIE,
                 authCookieUtil.createRefreshTokenCookie(result.rawRefreshToken()).toString());
 
@@ -189,18 +196,30 @@ public class AuthController {
     })
     @PostMapping("/logout")
     public ResponseEntity<CommonResponse<Void>> logout(
-            @CookieValue(name = "refreshToken", required = false) String refreshToken,
+            HttpServletRequest request,
             HttpServletResponse response
     ) {
-        if (refreshToken != null && !refreshToken.isBlank()) {
-            refreshTokenService.revoke(refreshToken);
-        }
+        revokeRefreshTokens(request);
 
         response.addHeader(HttpHeaders.SET_COOKIE, authCookieUtil.deleteAccessTokenCookie().toString());
         response.addHeader(HttpHeaders.SET_COOKIE, authCookieUtil.deleteRefreshTokenCookie().toString());
-        response.addHeader(HttpHeaders.SET_COOKIE, authCookieUtil.deleteCsrfCookie().toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, authCookieUtil.deleteLegacyRefreshTokenCookie().toString());
 
         return ResponseEntity.ok(CommonResponse.success(null));
+    }
+
+    private void revokeRefreshTokens(HttpServletRequest request) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) {
+            return;
+        }
+
+        Arrays.stream(cookies)
+                .filter(cookie -> "refreshToken".equals(cookie.getName()))
+                .map(Cookie::getValue)
+                .filter(token -> token != null && !token.isBlank())
+                .distinct()
+                .forEach(refreshTokenService::revoke);
     }
 
     @Schema(name = "SignUpSuccessResponse")

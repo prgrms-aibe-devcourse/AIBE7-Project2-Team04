@@ -10,6 +10,7 @@ import org.example.project2.domain.user.entity.AuthProvider;
 import org.example.project2.domain.user.entity.User;
 import org.example.project2.domain.user.entity.UserRole;
 import org.example.project2.domain.user.entity.UserStatus;
+import org.example.project2.domain.user.repository.UserRepository;
 import org.example.project2.global.security.AuthProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,12 +24,15 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Base64;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -39,6 +43,8 @@ class RefreshTokenServiceTest {
 
     @Mock
     private RefreshTokenRepository refreshTokenRepository;
+    @Mock
+    private UserRepository userRepository;
     @Mock
     private OpaqueTokenGenerator tokenGenerator;
 
@@ -51,6 +57,7 @@ class RefreshTokenServiceTest {
         tokenHasher = new RefreshTokenHasher();
         refreshTokenService = new RefreshTokenService(
                 refreshTokenRepository,
+                userRepository,
                 tokenGenerator,
                 tokenHasher,
                 authProperties(),
@@ -86,6 +93,66 @@ class RefreshTokenServiceTest {
         assertThat(stored.getTokenHash()).doesNotContain(rawToken);
         assertThat(stored.getFamilyId()).isNotNull();
         assertThat(stored.getExpiresAt()).isEqualTo(NOW.plus(Duration.ofDays(14)));
+    }
+
+    @Test
+    void issueDoesNotRevokeWhenActiveSessionsUnderLimit() {
+        String rawToken = "issued-opaque-token";
+        when(tokenGenerator.generate()).thenReturn(rawToken);
+        when(refreshTokenRepository.findActiveFamilyIdsOrderByOldest(USER_ID, NOW))
+                .thenReturn(List.of(UUID.randomUUID(), UUID.randomUUID()));
+        when(refreshTokenRepository.save(any(RefreshToken.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        refreshTokenService.issue(user);
+
+        verify(refreshTokenRepository, never()).revokeActiveFamilies(any(), any());
+    }
+
+    @Test
+    void issueRevokesOldestFamilyWhenActiveSessionsReachLimit() {
+        String rawToken = "issued-opaque-token";
+        UUID oldestFamilyId = UUID.randomUUID();
+        List<UUID> existingFamilies = List.of(
+                oldestFamilyId,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID()
+        );
+        when(tokenGenerator.generate()).thenReturn(rawToken);
+        when(refreshTokenRepository.findActiveFamilyIdsOrderByOldest(USER_ID, NOW))
+                .thenReturn(existingFamilies);
+        when(refreshTokenRepository.save(any(RefreshToken.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        refreshTokenService.issue(user);
+
+        verify(refreshTokenRepository).revokeActiveFamilies(List.of(oldestFamilyId), NOW);
+    }
+
+    @Test
+    void issueRevokesMultipleOldestFamiliesWhenExcessiveSessionsExist() {
+        String rawToken = "issued-opaque-token";
+        UUID oldest1 = UUID.randomUUID();
+        UUID oldest2 = UUID.randomUUID();
+        List<UUID> existingFamilies = List.of(
+                oldest1,
+                oldest2,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID()
+        );
+        when(tokenGenerator.generate()).thenReturn(rawToken);
+        when(refreshTokenRepository.findActiveFamilyIdsOrderByOldest(USER_ID, NOW))
+                .thenReturn(existingFamilies);
+        when(refreshTokenRepository.save(any(RefreshToken.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        refreshTokenService.issue(user);
+
+        verify(refreshTokenRepository).revokeActiveFamilies(List.of(oldest1, oldest2), NOW);
     }
 
     @Test
@@ -128,6 +195,18 @@ class RefreshTokenServiceTest {
         verify(refreshTokenRepository).revokeActiveFamily(familyId, NOW);
     }
 
+    @Test
+    void purgeTokensExpiredBeforeClearsReplacedByAndDeletesExpiredTokens() {
+        Instant cutoff = NOW.minus(Duration.ofDays(7));
+        when(refreshTokenRepository.deleteExpiredBefore(cutoff)).thenReturn(3);
+
+        int deletedCount = refreshTokenService.purgeTokensExpiredBefore(cutoff);
+
+        verify(refreshTokenRepository).clearReplacedByTokenForExpiredBefore(cutoff);
+        verify(refreshTokenRepository).deleteExpiredBefore(cutoff);
+        assertThat(deletedCount).isEqualTo(3);
+    }
+
     private RefreshToken activeToken(String rawToken, UUID familyId) {
         return RefreshToken.builder()
                 .id(UUID.randomUUID())
@@ -146,7 +225,9 @@ class RefreshTokenServiceTest {
                         "project2-api",
                         Base64.getEncoder().encodeToString(new byte[32]),
                         Duration.ofMinutes(15),
-                        Duration.ofDays(14)
+                        Duration.ofDays(14),
+                        5,
+                        Duration.ofDays(7)
                 ),
                 new AuthProperties.Cors("")
         );

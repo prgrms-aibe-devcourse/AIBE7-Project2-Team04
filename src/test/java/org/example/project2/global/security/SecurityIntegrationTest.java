@@ -9,6 +9,7 @@ import org.example.project2.global.security.handler.RestAccessDeniedHandler;
 import org.example.project2.global.security.handler.RestAuthenticationEntryPoint;
 import org.example.project2.global.security.jwt.JwtFilter;
 import org.example.project2.global.security.jwt.JwtProvider;
+import org.example.project2.global.security.jwt.AuthCookieUtil;
 import org.example.project2.global.security.oauth.CustomOAuth2UserService;
 import org.example.project2.global.security.oauth.OAuth2AuthenticationFailureHandler;
 import org.example.project2.global.security.oauth.OAuth2AuthenticationSuccessHandler;
@@ -51,6 +52,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
                 "app.auth.jwt.secret-key=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
                 "app.auth.jwt.access-token-expiry=15m",
                 "app.auth.jwt.refresh-token-expiry=14d",
+                "app.auth.jwt.max-active-sessions=5",
                 "app.auth.cors.allowed-origin=https://frontend.example"
         }
 )
@@ -58,6 +60,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         SecurityConfig.class,
         JwtFilter.class,
         JwtProvider.class,
+        AuthCookieUtil.class,
         CsrfCookieFilter.class,
         SpaCsrfTokenRequestHandler.class,
         RestAuthenticationEntryPoint.class,
@@ -106,15 +109,25 @@ class SecurityIntegrationTest {
 
     @Test
     void csrfCookieIsIssuedOnSafeRequest() throws Exception {
-        mockMvc.perform(get("/auth/csrf"))
+        MvcResult result = mockMvc.perform(get("/auth/csrf"))
                 .andExpect(status().isNoContent())
                 .andExpect(cookie().exists("XSRF-TOKEN"))
                 .andExpect(cookie().secure("XSRF-TOKEN", false))
                 .andExpect(cookie().httpOnly("XSRF-TOKEN", false))
-                .andExpect(result -> assertThat(result.getResponse()
+                .andExpect(mvcResult -> assertThat(mvcResult.getResponse()
                         .getCookie("XSRF-TOKEN")
                         .getAttribute("SameSite"))
-                        .isEqualTo("Lax"));
+                        .isEqualTo("Lax"))
+                .andReturn();
+
+        assertThat(result.getResponse().getHeaders(HttpHeaders.SET_COOKIE))
+                .anyMatch(header -> header.startsWith("XSRF-TOKEN=")
+                        && header.contains("Path=/auth")
+                        && header.contains("Max-Age=0"))
+                .anyMatch(header -> header.startsWith("XSRF-TOKEN=")
+                        && header.contains("Path=/")
+                        && !header.contains("Path=/auth")
+                        && !header.contains("Max-Age=0"));
     }
 
     @Test
@@ -186,7 +199,9 @@ class SecurityIntegrationTest {
                         "project2-api",
                         Base64.getEncoder().encodeToString(new byte[32]),
                         Duration.ofMillis(-1),
-                        Duration.ofDays(14)
+                        Duration.ofDays(14),
+                        5,
+                        Duration.ofDays(7)
                 ),
                 new AuthProperties.Cors("")
         ));

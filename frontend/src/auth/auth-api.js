@@ -1,6 +1,6 @@
 import { saveAccessToken } from './token-storage.js'
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080').replace(/\/$/, '')
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
 
 /**
  * 카카오 소셜 로그인 화면으로 브라우저를 이동시킵니다.
@@ -80,21 +80,24 @@ export async function login(email, password) {
  * 로그아웃을 수행하고 브라우저 세션을 지웁니다.
  */
 export async function logout() {
+  await issueCsrfToken()
   const csrfToken = readCookie('XSRF-TOKEN')
 
-  const headers = {}
-  if (csrfToken) {
-    headers['X-XSRF-TOKEN'] = csrfToken
+  if (!csrfToken) {
+    throw new Error('CSRF 토큰을 발급받지 못했습니다.')
   }
 
-  try {
-    await fetch(`${API_BASE_URL}/auth/logout`, {
-      method: 'POST',
-      credentials: 'include', // 세션 쿠키 삭제를 위해 필수
-      headers,
-    })
-  } catch (error) {
-    console.error('서버 로그아웃 요청 실패:', error)
+  const response = await fetch(`${API_BASE_URL}/auth/logout`, {
+    method: 'POST',
+    credentials: 'include', // 세션 쿠키 삭제를 위해 필수
+    headers: {
+      'X-XSRF-TOKEN': csrfToken,
+    },
+  })
+  const body = await readJson(response)
+
+  if (!response.ok || !body?.success) {
+    throw new Error(body?.error?.message || '로그아웃에 실패했습니다.')
   }
 }
 

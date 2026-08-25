@@ -18,7 +18,7 @@ FRONTEND_ORIGIN=http://localhost:3000
 OAUTH2_SUCCESS_REDIRECT_URI=http://localhost:3000/oauth/callback
 ```
 
-프론트엔드 API 주소를 변경할 때는 `.env.sample`을 복사해 `.env.local`을 만들고 `VITE_API_BASE_URL`을 수정합니다. 실제 비밀값은 프론트엔드 환경변수에 저장하지 않습니다.
+로컬 개발에서는 Vite가 `/auth`, `/oauth2`, `/login/oauth2` 요청을 `http://localhost:8080`으로 프록시합니다. 인증 쿠키가 동일 Origin 흐름에서 저장되도록 `VITE_API_BASE_URL`은 비워 둡니다. 배포 환경에서 API Origin을 분리할 때만 `.env.sample`을 복사한 `.env.local`의 `VITE_API_BASE_URL`을 수정하며, 실제 비밀값은 프론트엔드 환경변수에 저장하지 않습니다.
 
 ## OAuth 동작
 

@@ -174,7 +174,8 @@ public class SecurityConfig {
                                         "/auth/signup",
                                         "/auth/login",
                                         "/auth/token/refresh",
-                                        "/auth/oauth2/exchange"
+                                        "/auth/oauth2/exchange",
+                                        "/auth/logout"
                                 ).permitAll()
                                 .requestMatchers(HttpMethod.GET,
                                         "/auth/csrf",

@@ -60,7 +60,9 @@ class JwtProviderTest {
                         audience,
                         TEST_SECRET,
                         Duration.ofMinutes(15),
-                        Duration.ofDays(14)
+                        Duration.ofDays(14),
+                        5,
+                        Duration.ofDays(7)
                 ),
                 new AuthProperties.Cors("")
         );

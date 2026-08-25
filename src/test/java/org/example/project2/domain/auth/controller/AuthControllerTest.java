@@ -52,6 +52,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
                 "app.auth.jwt.secret-key=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
                 "app.auth.jwt.access-token-expiry=15m",
                 "app.auth.jwt.refresh-token-expiry=14d",
+                "app.auth.jwt.max-active-sessions=5",
                 "app.auth.cors.allowed-origin=https://frontend.example"
         }
 )
@@ -160,6 +161,14 @@ class AuthControllerTest {
                         .sameSite("Lax")
                         .path("/")
                         .build());
+        when(authCookieUtil.deleteLegacyRefreshTokenCookie())
+                .thenReturn(ResponseCookie.from("refreshToken", "")
+                        .httpOnly(true)
+                        .secure(false)
+                        .sameSite("Lax")
+                        .path("/auth")
+                        .maxAge(0)
+                        .build());
 
         org.springframework.test.web.servlet.MvcResult mvcResult = mockMvc.perform(post("/auth/oauth2/exchange")
                         .with(csrf())
@@ -180,6 +189,11 @@ class AuthControllerTest {
         org.junit.jupiter.api.Assertions.assertTrue(
                 setCookieHeaders.stream().anyMatch(h -> h.contains("refreshToken=refresh-token")),
                 "Set-Cookie 헤더에 refreshToken 쿠키가 포함되어야 합니다."
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(
+                setCookieHeaders.stream().anyMatch(h -> h.contains("refreshToken=")
+                        && h.contains("Path=/auth") && h.contains("Max-Age=0")),
+                "Set-Cookie 헤더로 레거시 /auth Refresh Token 쿠키를 삭제해야 합니다."
         );
     }
 
@@ -218,6 +232,14 @@ class AuthControllerTest {
                         .path("/")
                         .maxAge(0)
                         .build());
+        when(authCookieUtil.deleteLegacyRefreshTokenCookie())
+                .thenReturn(ResponseCookie.from("refreshToken", "")
+                        .httpOnly(true)
+                        .secure(false)
+                        .sameSite("Lax")
+                        .path("/auth")
+                        .maxAge(0)
+                        .build());
         when(authCookieUtil.deleteAccessTokenCookie())
                 .thenReturn(ResponseCookie.from("accessToken", "")
                         .httpOnly(true)
@@ -226,26 +248,38 @@ class AuthControllerTest {
                         .path("/")
                         .maxAge(0)
                         .build());
-        when(authCookieUtil.deleteCsrfCookie())
-                .thenReturn(ResponseCookie.from("XSRF-TOKEN", "")
-                        .secure(false)
-                        .sameSite("Lax")
-                        .path("/")
-                        .maxAge(0)
-                        .build());
-
-        mockMvc.perform(post("/auth/logout")
+        org.springframework.test.web.servlet.MvcResult mvcResult = mockMvc.perform(post("/auth/logout")
                         .with(csrf())
                         .header("Authorization", "Bearer " + accessToken)
-                        .cookie(new jakarta.servlet.http.Cookie("refreshToken", "refresh-token")))
+                        .cookie(
+                                new jakarta.servlet.http.Cookie("refreshToken", "refresh-token"),
+                                new jakarta.servlet.http.Cookie("refreshToken", "legacy-refresh-token")
+                        ))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data").isEmpty())
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
                         .string("Set-Cookie", org.hamcrest.Matchers.allOf(
                                 org.hamcrest.Matchers.containsString("accessToken="),
-                                org.hamcrest.Matchers.containsString("Max-Age=0"))));
+                                org.hamcrest.Matchers.containsString("Max-Age=0"))))
+                .andReturn();
 
         verify(refreshTokenService).revoke("refresh-token");
+        verify(refreshTokenService).revoke("legacy-refresh-token");
+        java.util.List<String> setCookieHeaders = mvcResult.getResponse().getHeaders("Set-Cookie");
+        org.junit.jupiter.api.Assertions.assertTrue(
+                setCookieHeaders.stream().anyMatch(h -> h.contains("refreshToken=")
+                        && h.contains("Path=/") && !h.contains("Path=/auth") && h.contains("Max-Age=0")),
+                "현재 / Refresh Token 쿠키를 삭제해야 합니다."
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(
+                setCookieHeaders.stream().anyMatch(h -> h.contains("refreshToken=")
+                        && h.contains("Path=/auth") && h.contains("Max-Age=0")),
+                "레거시 /auth Refresh Token 쿠키를 삭제해야 합니다."
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(
+                setCookieHeaders.stream().noneMatch(h -> h.startsWith("XSRF-TOKEN=")),
+                "반복되는 상태 변경 요청을 위해 로그아웃 시 CSRF 쿠키를 삭제하지 않아야 합니다."
+        );
     }
 }

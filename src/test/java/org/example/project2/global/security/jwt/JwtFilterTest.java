@@ -51,7 +51,9 @@ class JwtFilterTest {
                         "project2-api",
                         Base64.getEncoder().encodeToString(new byte[32]),
                         Duration.ofMinutes(15),
-                        Duration.ofDays(14)
+                        Duration.ofDays(14),
+                        5,
+                        Duration.ofDays(7)
                 ),
                 new AuthProperties.Cors("")
         );

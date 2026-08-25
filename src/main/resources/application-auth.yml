@@ -8,8 +8,11 @@ app:
       secret-key: ${JWT_SECRET}
       access-token-expiry: 15m
       refresh-token-expiry: 14d
+      max-active-sessions: ${AUTH_MAX_ACTIVE_SESSIONS:5}
+      cleanup-retention: ${AUTH_CLEANUP_RETENTION:7d}
+      cleanup-cron: ${AUTH_CLEANUP_CRON:0 0 4 * * *}
     cors:
-      allowed-origin: ${FRONTEND_ORIGIN:}
+      allowed-origin: ${FRONTEND_ORIGIN}
     oauth2:
       success-redirect-uri: ${OAUTH2_SUCCESS_REDIRECT_URI:http://localhost:3000/oauth/callback}
 

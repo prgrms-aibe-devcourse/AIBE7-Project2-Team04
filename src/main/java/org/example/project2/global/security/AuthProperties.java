@@ -2,9 +2,11 @@ package org.example.project2.global.security;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.DefaultValue;
 import org.springframework.validation.annotation.Validated;
 
 import java.time.Duration;
@@ -27,7 +29,13 @@ public record AuthProperties(
             @NotBlank String audience,
             @NotBlank String secretKey,
             @NotNull Duration accessTokenExpiry,
-            @NotNull Duration refreshTokenExpiry
+            @NotNull Duration refreshTokenExpiry,
+            @DefaultValue("5")
+            @Min(value = 1, message = "최대 활성 세션 수는 1 이상이어야 합니다.")
+            int maxActiveSessions,
+            @DefaultValue("7d")
+            @NotNull
+            Duration cleanupRetention
     ) {
         private static final int HS256_MINIMUM_KEY_BYTES = 32;
 
@@ -55,6 +63,12 @@ public record AuthProperties(
                     && !refreshTokenExpiry.isZero()
                     && !refreshTokenExpiry.isNegative()
                     && accessTokenExpiry.compareTo(refreshTokenExpiry) < 0;
+        }
+
+        @AssertTrue(message = "Refresh Token 정리 보관 기간은 양수여야 합니다.")
+        public boolean isCleanupRetentionValid() {
+            return cleanupRetention == null
+                    || (!cleanupRetention.isZero() && !cleanupRetention.isNegative());
         }
     }
 

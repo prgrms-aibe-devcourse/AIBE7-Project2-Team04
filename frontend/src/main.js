@@ -84,9 +84,14 @@ function initLandingPage() {
       </div>
     `
     document.querySelector('#btn-logout')?.addEventListener('click', async () => {
-      await logout()
-      clearAccessToken()
-      window.location.reload()
+      try {
+        await logout()
+        clearAccessToken()
+        window.location.reload()
+      } catch (error) {
+        console.error('로그아웃 요청 실패:', error)
+        alert(error.message || '로그아웃에 실패했습니다. 잠시 후 다시 시도해 주세요.')
+      }
     })
   } else {
     btnHeaderLogin?.addEventListener('click', () => openAuthModal(false))

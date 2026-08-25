@@ -123,11 +123,33 @@
 }
 ```
 
-Refresh Token 원문은 응답 본문에 포함하지 않고 `Secure`, `HttpOnly`, `SameSite=Strict`, `Path=/auth` 쿠키로만 전달한다.
+Refresh Token 원문은 응답 본문에 포함하지 않고 `Secure`, `HttpOnly`, `SameSite=Strict`, `Path=/` 쿠키로만 전달한다. 과거 `Path=/auth`로 발급된 동명 쿠키는 로그인과 로그아웃 응답에서 만료시켜 중복 전송을 방지한다.
 
-브라우저 클라이언트는 상태 변경 요청 전에 `GET /auth/csrf`를 호출하여 `XSRF-TOKEN` 쿠키를 발급받는다. 이후 `POST`, `PUT`, `PATCH`, `DELETE` 요청에는 쿠키 값과 동일한 값을 `X-XSRF-TOKEN` 헤더로 전달한다. Refresh Token 쿠키가 자동 전송되는 `/auth/token/refresh`와 `/auth/logout`에도 이 규칙을 적용한다.
+**POST /auth/token/refresh**
+
+- `refreshToken` 쿠키와 `X-XSRF-TOKEN` 헤더를 전송하여 Access Token을 재발급받고 Refresh Token을 회전(RTR)한다.
+- 요청 본문은 비어있으며(`null` 또는 빈 객체), 쿠키의 Refresh Token 해시를 조회하여 검증한다.
+- 토큰이 만료되었거나, 활성 세션 수 초과(최대 5개) 등으로 이미 폐기된 세션인 경우 `401 AUTH_003` 에러를 반환하며 클라이언트는 재로그인해야 한다.
+- 이미 폐기된 토큰으로 갱신을 시도하면 탈취(재사용)로 판단하여 해당 세션 family 전체가 즉시 폐기되고 `401 AUTH_003`을 반환한다.
+
+응답:
+```json
+{
+  "success": true,
+  "data": {
+    "tokenType": "Bearer",
+    "accessToken": "eyJ...",
+    "expiresIn": 900
+  },
+  "error": null
+}
+```
+
+브라우저 클라이언트는 상태 변경 요청 전에 `GET /auth/csrf`를 호출하여 `Path=/`인 `XSRF-TOKEN` 쿠키를 발급받는다. 이 응답은 과거 `Path=/auth`로 발급된 동명 CSRF 쿠키를 함께 만료시킨다. 이후 `POST`, `PUT`, `PATCH`, `DELETE` 요청에는 쿠키 값과 동일한 값을 `X-XSRF-TOKEN` 헤더로 전달한다. Refresh Token 쿠키가 자동 전송되는 `/auth/token/refresh`와 `/auth/logout`에도 이 규칙을 적용한다.
 
 CORS는 기본적으로 어떤 외부 Origin도 허용하지 않는다. 프론트엔드가 별도 Origin에서 실행될 때 서버의 `FRONTEND_ORIGIN`에 정확한 Origin 하나를 지정하고, 클라이언트 요청에는 credentials 옵션을 사용한다.
+
+로컬 개발 프론트엔드는 Vite 동일 Origin 프록시를 통해 인증 API를 호출하여 `XSRF-TOKEN`과 인증 쿠키가 동일한 브라우저 Origin에서 일관되게 저장·전송되도록 한다.
 
 OAuth2 로그인 시작과 콜백 경로(`/oauth2/**`, `/login/oauth2/**`)는 인가 요청의 `state`를 검증하기 위한 임시 세션을 필요할 때만 생성한다. 그 외 REST API는 서버 세션을 인증에 사용하지 않는 `STATELESS` 정책을 유지한다.
 
@@ -139,7 +161,7 @@ OAuth2 로그인 시작과 콜백 경로(`/oauth2/**`, `/login/oauth2/**`)는 �
 { "code": "OAuth 콜백에서 전달받은 일회성 코드" }
 ```
 
-서버는 Redis에서 코드를 조회하는 동시에 삭제하여 한 번만 사용할 수 있도록 보장한다. 만료되었거나 이미 사용한 코드는 `401 AUTH_001`로 처리한다. 교환 성공 시 응답은 다음과 같으며, Refresh Token은 일반 로그인과 동일하게 응답 본문이 아닌 `Secure`, `HttpOnly`, `SameSite=Strict`, `Path=/auth` 쿠키로만 전달한다.
+서버는 Redis에서 코드를 조회하는 동시에 삭제하여 한 번만 사용할 수 있도록 보장한다. 만료되었거나 이미 사용한 코드는 `401 AUTH_001`로 처리한다. 교환 성공 시 응답은 다음과 같으며, Refresh Token은 일반 로그인과 동일하게 응답 본문이 아닌 `Secure`, `HttpOnly`, `SameSite=Strict`, `Path=/` 쿠키로만 전달한다.
 
 ```json
 {
@@ -166,7 +188,9 @@ OAuth 성공 또는 실패 후에는 `state` 검증에 사용한 임시 세션�
 **POST /auth/logout**
 
 - `Authorization: Bearer {accessToken}`과 `X-XSRF-TOKEN` 헤더가 필요하다.
-- `refreshToken` 쿠키에 해당하는 DB 행의 `revoked_at`을 기록하고 쿠키를 삭제한다.
+- 요청에 동명 `refreshToken` 쿠키가 여러 경로로 중복 전송되면 각 토큰에 해당하는 DB 행의 `revoked_at`을 모두 기록하고 쿠키를 삭제한다.
+- 현재 `Path=/` 쿠키와 과거 버전의 `Path=/auth` 쿠키를 모두 만료시켜 동명 쿠키가 중복 전송되지 않도록 한다.
+- `XSRF-TOKEN`은 인증 자격증명이 아니므로 로그아웃 시 삭제하지 않으며, 이후 상태 변경 요청에서도 쿠키 값과 같은 `X-XSRF-TOKEN` 헤더를 계속 전송한다.
 - Refresh Token 쿠키가 없거나 이미 폐기된 경우에도 쿠키 삭제 응답을 위해 성공으로 처리한다.
 - 카카오·Google 계정 자체를 로그아웃하거나 연결을 해제하지는 않는다.
 
