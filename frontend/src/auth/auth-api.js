@@ -17,6 +17,35 @@ export function startGoogleLogin() {
 }
 
 /**
+ * 일반(로컬) 이메일 회원가입을 수행합니다.
+ */
+export async function signUp(email, password, nickname) {
+  await issueCsrfToken()
+  const csrfToken = readCookie('XSRF-TOKEN')
+
+  if (!csrfToken) {
+    throw new Error('CSRF 토큰을 발급받지 못했습니다.')
+  }
+
+  const response = await fetch(`${API_BASE_URL}/auth/signup`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-XSRF-TOKEN': csrfToken,
+    },
+    body: JSON.stringify({ email, password, nickname }),
+  })
+  const body = await readJson(response)
+
+  if (!response.ok || !body?.success) {
+    throw new Error(body?.error?.message || '회원가입에 실패했습니다.')
+  }
+
+  return body.data
+}
+
+/**
  * 일반(로컬) 이메일 로그인을 수행합니다.
  */
 export async function login(email, password) {
@@ -43,7 +72,7 @@ export async function login(email, password) {
   }
 
   // 로그인 플래그를 세션스토리지에 저장합니다.
-  saveAccessToken(body.data.accessToken)
+  saveAccessToken(body.data?.accessToken)
   return body.data
 }
 
@@ -101,7 +130,7 @@ export async function exchangeOAuthCode(code) {
     throw new Error(body?.error?.message || '로그인에 실패했습니다.')
   }
 
-  saveAccessToken(body.data.accessToken)
+  saveAccessToken(body.data?.accessToken)
   return body.data
 }
 

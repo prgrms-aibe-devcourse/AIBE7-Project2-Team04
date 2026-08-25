@@ -75,6 +75,38 @@ select {
   background: rgba(30, 44, 74, 0.05);
 }
 
+/* Social Login Buttons */
+.btn-kakao {
+  background-color: #fee500;
+  color: rgba(0, 0, 0, 0.85);
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(254, 229, 0, 0.3);
+}
+
+.btn-kakao:hover {
+  transform: scale(1.02);
+  box-shadow: 0 6px 18px rgba(254, 229, 0, 0.4);
+}
+
+.btn-google {
+  background-color: #ffffff;
+  color: #3c4043;
+  font-weight: 600;
+  border: 1px solid #dadce0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.btn-google:hover {
+  transform: scale(1.02);
+  background-color: #f8f9fa;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
 /* Card Hover Elevation */
 .card-hover {
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -125,8 +157,8 @@ select {
 
 .auth-card {
   width: min(100%, 460px);
-  padding: 48px 36px 40px;
-  border: 1px solid rgba(225, 191, 184, 0.3);
+  padding: 40px 32px;
+  border: 1px solid rgba(225, 191, 184, 0.4);
   border-radius: 28px;
   background: #ffffff;
   box-shadow: 0 24px 60px rgba(30, 44, 74, 0.1);
@@ -157,27 +189,27 @@ select {
 .auth-card h1 {
   margin: 0;
   color: #1e2c4a;
-  font-size: clamp(24px, 5vw, 30px);
+  font-size: clamp(22px, 5vw, 28px);
   line-height: 1.3;
   font-weight: 800;
   letter-spacing: -0.03em;
 }
 
 .auth-card .description {
-  margin: 16px 0 0;
+  margin: 12px 0 0;
   color: #505e7f;
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.6;
 }
 
 .primary-link,
 .secondary-link {
   width: 100%;
-  min-height: 52px;
+  min-height: 50px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin-top: 28px;
+  margin-top: 24px;
   border-radius: 9999px;
   font-weight: 700;
   font-size: 15px;
@@ -231,4 +263,43 @@ select {
   to {
     transform: rotate(360deg);
   }
+}
+
+/* Modal Styles */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background-color: rgba(11, 28, 48, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.modal-backdrop.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal-card {
+  width: min(100%, 460px);
+  max-height: 90vh;
+  overflow-y: auto;
+  background: #ffffff;
+  border: 1px solid rgba(225, 191, 184, 0.4);
+  border-radius: 28px;
+  padding: 36px 28px;
+  box-shadow: 0 24px 60px rgba(30, 44, 74, 0.2);
+  transform: translateY(12px) scale(0.98);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+}
+
+.modal-backdrop.is-open .modal-card {
+  transform: translateY(0) scale(1);
 }

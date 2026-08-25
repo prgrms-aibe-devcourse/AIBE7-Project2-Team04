@@ -91,7 +91,7 @@
   </head>
   <body class="font-body text-on-surface antialiased min-h-screen flex flex-col pt-[88px] bg-[#FAF7F2]">
     <!-- Top Navigation Header -->
-    <header class="fixed top-0 left-0 w-full z-50 glass-nav border-b border-outline-variant/20 shadow-sm transition-all duration-200">
+    <header class="fixed top-0 left-0 w-full z-40 glass-nav border-b border-outline-variant/20 shadow-sm transition-all duration-200">
       <div class="max-w-7xl mx-auto flex justify-between items-center px-margin-mobile md:px-margin-desktop py-md">
         <!-- Logo -->
         <a href="/" class="flex items-center gap-3 group">
@@ -114,9 +114,12 @@
 
         <!-- Header Auth Actions -->
         <div id="header-auth" class="flex items-center gap-3">
-          <button id="btn-header-login" class="btn-primary px-4 py-2 rounded-full text-sm font-semibold flex items-center gap-2 shadow-md">
-            <span class="material-symbols-outlined text-base">login</span>
-            <span>카카오로 시작하기</span>
+          <button id="btn-header-login" class="btn-secondary px-4 py-2 rounded-full text-xs sm:text-sm font-semibold">
+            로그인
+          </button>
+          <button id="btn-header-start" class="btn-primary px-4 py-2 rounded-full text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow-md">
+            <span>시작하기</span>
+            <span class="material-symbols-outlined text-base">arrow_forward</span>
           </button>
         </div>
       </div>
@@ -422,7 +425,7 @@
                 오늘 저녁, 마주 앉아 따뜻한 식탁을 함께할 준비되셨나요?
               </h2>
               <p class="text-sm sm:text-base text-white/90 max-w-lg mb-8 leading-relaxed">
-                혼자 먹기 아쉬웠던 맛집부터 가벼운 동네 밥친구까지, 카카오 계정으로 1초 만에 시작하세요.
+                혼자 먹기 아쉬웠던 맛집부터 가벼운 동네 밥친구까지, 간편하게 시작하세요.
               </p>
               <button id="btn-cta-start" class="bg-brand-navy text-white px-8 py-4 rounded-full text-base font-bold hover:bg-opacity-90 hover:scale-105 transition-all shadow-floating flex items-center gap-2">
                 <span>마주한끼 시작하기</span>
@@ -432,6 +435,160 @@
           </div>
         </section>
       </main>
+    </div>
+
+    <!-- Login / Sign-up Modal (Warm Table Style) -->
+    <div id="auth-modal" class="modal-backdrop" aria-hidden="true" role="dialog" aria-modal="true">
+      <div class="modal-card" onclick="event.stopPropagation()">
+        <!-- Close Button -->
+        <button id="btn-close-modal" type="button" class="absolute top-4 right-4 text-secondary hover:text-brand-navy p-2 rounded-full hover:bg-surface transition-colors" aria-label="닫기">
+          <span class="material-symbols-outlined text-xl">close</span>
+        </button>
+
+        <!-- Brand Header -->
+        <div class="text-center mb-6">
+          <div class="w-12 h-12 rounded-2xl bg-primary-container text-white flex items-center justify-center mx-auto mb-3 shadow-md">
+            <span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1;">restaurant</span>
+          </div>
+          <h2 id="modal-title" class="font-headline text-2xl font-extrabold text-brand-navy">마주한끼 시작하기</h2>
+          <p id="modal-desc" class="text-xs sm:text-sm text-secondary mt-1">혼밥 말고 따뜻한 한 끼를 함께할 친구를 만나보세요.</p>
+        </div>
+
+        <!-- Social Login Group -->
+        <div class="flex flex-col gap-2.5 w-full">
+          <!-- Kakao Button -->
+          <button id="btn-modal-kakao" type="button" class="btn-kakao w-full py-3 px-4 rounded-full text-sm flex items-center justify-center gap-2.5">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 3C6.477 3 2 6.477 2 10.765c0 2.768 1.879 5.19 4.708 6.558-.206.772-.746 2.784-.854 3.219-.134.542.198.535.417.39.172-.114 2.738-1.859 3.847-2.616.612.086 1.242.132 1.882.132 5.523 0 10-3.477 10-7.765S17.523 3 12 3z"/>
+            </svg>
+            <span>카카오로 계속하기</span>
+          </button>
+
+          <!-- Google Button -->
+          <button id="btn-modal-google" type="button" class="btn-google w-full py-3 px-4 rounded-full text-sm flex items-center justify-center gap-2.5">
+            <svg class="w-4 h-4" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/>
+              <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.36 24 12 24z"/>
+              <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.98 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
+              <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.36 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+            </svg>
+            <span>Google로 계속하기</span>
+          </button>
+        </div>
+
+        <!-- Divider -->
+        <div class="my-5 flex items-center gap-3">
+          <hr class="flex-grow border-t border-outline-variant/30" />
+          <span class="text-xs text-secondary font-medium">또는 이메일로 시작</span>
+          <hr class="flex-grow border-t border-outline-variant/30" />
+        </div>
+
+        <!-- 1. Local Login Form -->
+        <form id="form-local-login" class="space-y-3.5">
+          <div class="text-left">
+            <label for="login-email" class="block text-xs font-bold text-secondary mb-1">이메일</label>
+            <div class="relative">
+              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-lg">mail</span>
+              <input
+                type="email"
+                id="login-email"
+                required
+                placeholder="example@test.com"
+                class="w-full bg-surface border border-outline-variant/40 rounded-xl py-2.5 pl-9 pr-3 text-sm focus:ring-2 focus:ring-primary-container focus:border-primary-container outline-none"
+              />
+            </div>
+          </div>
+
+          <div class="text-left">
+            <label for="login-password" class="block text-xs font-bold text-secondary mb-1">비밀번호</label>
+            <div class="relative">
+              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-lg">lock</span>
+              <input
+                type="password"
+                id="login-password"
+                required
+                placeholder="비밀번호를 입력하세요"
+                class="w-full bg-surface border border-outline-variant/40 rounded-xl py-2.5 pl-9 pr-3 text-sm focus:ring-2 focus:ring-primary-container focus:border-primary-container outline-none"
+              />
+            </div>
+          </div>
+
+          <p id="login-error-msg" class="text-xs text-error font-medium text-left hidden"></p>
+
+          <button id="btn-submit-login" type="submit" class="w-full btn-primary py-3 rounded-full text-sm font-bold shadow-md">
+            이메일로 로그인
+          </button>
+
+          <div class="pt-2 text-center text-xs text-secondary">
+            <span>계정이 없으신가요?</span>
+            <button id="btn-toggle-signup" type="button" class="text-primary-container font-bold underline ml-1 hover:text-primary">
+              이메일 회원가입
+            </button>
+          </div>
+        </form>
+
+        <!-- 2. Local Sign-up Form (Initially Hidden) -->
+        <form id="form-local-signup" class="space-y-3.5 hidden">
+          <div class="text-left">
+            <label for="signup-email" class="block text-xs font-bold text-secondary mb-1">이메일</label>
+            <div class="relative">
+              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-lg">mail</span>
+              <input
+                type="email"
+                id="signup-email"
+                required
+                placeholder="example@test.com"
+                class="w-full bg-surface border border-outline-variant/40 rounded-xl py-2.5 pl-9 pr-3 text-sm focus:ring-2 focus:ring-primary-container focus:border-primary-container outline-none"
+              />
+            </div>
+          </div>
+
+          <div class="text-left">
+            <label for="signup-nickname" class="block text-xs font-bold text-secondary mb-1">닉네임</label>
+            <div class="relative">
+              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-lg">badge</span>
+              <input
+                type="text"
+                id="signup-nickname"
+                required
+                placeholder="사용할 닉네임 (2~20자)"
+                class="w-full bg-surface border border-outline-variant/40 rounded-xl py-2.5 pl-9 pr-3 text-sm focus:ring-2 focus:ring-primary-container focus:border-primary-container outline-none"
+              />
+            </div>
+          </div>
+
+          <div class="text-left">
+            <label for="signup-password" class="block text-xs font-bold text-secondary mb-1">비밀번호</label>
+            <div class="relative">
+              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-lg">lock</span>
+              <input
+                type="password"
+                id="signup-password"
+                required
+                placeholder="비밀번호 (8자 이상)"
+                class="w-full bg-surface border border-outline-variant/40 rounded-xl py-2.5 pl-9 pr-3 text-sm focus:ring-2 focus:ring-primary-container focus:border-primary-container outline-none"
+              />
+            </div>
+          </div>
+
+          <p id="signup-error-msg" class="text-xs text-error font-medium text-left hidden"></p>
+
+          <button id="btn-submit-signup" type="submit" class="w-full btn-primary py-3 rounded-full text-sm font-bold shadow-md">
+            회원가입 완료
+          </button>
+
+          <div class="pt-2 text-center text-xs text-secondary">
+            <span>이미 계정이 있으신가요?</span>
+            <button id="btn-toggle-login" type="button" class="text-primary-container font-bold underline ml-1 hover:text-primary">
+              로그인하기
+            </button>
+          </div>
+        </form>
+
+        <p class="text-[11px] text-gray-400 mt-4 text-center leading-relaxed">
+          로그인 시 마주한끼 서비스 이용약관 및 개인정보처리방침에 동의하게 됩니다.
+        </p>
+      </div>
     </div>
 
     <!-- Footer -->
