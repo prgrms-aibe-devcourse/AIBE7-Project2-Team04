@@ -2,13 +2,11 @@ package org.example.project2.domain.auth.service;
 
 import org.example.project2.domain.auth.dto.SignUpRequest;
 import org.example.project2.domain.auth.dto.SignUpResponse;
-import org.example.project2.domain.user.entity.AuthProvider;
+import org.example.project2.domain.auth.service.local.AuthService;
 import org.example.project2.domain.user.entity.User;
-import org.example.project2.domain.user.entity.UserRole;
-import org.example.project2.domain.user.entity.UserStatus;
 import org.example.project2.domain.user.repository.UserRepository;
-import org.example.project2.global.exception.signUp.EmailAlreadyExistsException;
-import org.example.project2.global.exception.signUp.NicknameAlreadyExistsException;
+import org.example.project2.domain.auth.exception.EmailAlreadyExistsException;
+import org.example.project2.domain.auth.exception.NicknameAlreadyExistsException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

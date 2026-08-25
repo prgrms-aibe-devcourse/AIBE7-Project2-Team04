@@ -4,7 +4,8 @@ import org.springframework.http.HttpStatus;
 
 public enum SecurityErrorCode {
     AUTHENTICATION_REQUIRED(HttpStatus.UNAUTHORIZED, "AUTH_001", "인증이 필요합니다."),
-    ACCESS_DENIED(HttpStatus.FORBIDDEN, "AUTH_002", "접근 권한이 없습니다.");
+    ACCESS_DENIED(HttpStatus.FORBIDDEN, "AUTH_002", "접근 권한이 없습니다."),
+    INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_003", "Refresh Token이 만료되었거나 폐기되었습니다.");
 
     private final HttpStatus status;
     private final String code;

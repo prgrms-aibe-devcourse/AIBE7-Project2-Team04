@@ -1,4 +1,4 @@
-package org.example.project2.global.exception.signUp;
+package org.example.project2.domain.auth.exception;
 
 public record SignUpErrorResponse(
         boolean success,

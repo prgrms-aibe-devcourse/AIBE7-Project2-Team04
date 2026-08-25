@@ -1,8 +1,10 @@
-package org.example.project2.domain.auth.service;
+package org.example.project2.domain.auth.service.token;
 
 import lombok.RequiredArgsConstructor;
 import org.example.project2.domain.auth.entity.RefreshToken;
 import org.example.project2.domain.auth.repository.RefreshTokenRepository;
+import org.example.project2.domain.auth.exception.InvalidRefreshTokenException;
+import org.example.project2.domain.auth.exception.RefreshTokenReuseDetectedException;
 import org.example.project2.domain.user.entity.User;
 import org.example.project2.domain.user.entity.UserRole;
 import org.example.project2.global.security.AuthProperties;

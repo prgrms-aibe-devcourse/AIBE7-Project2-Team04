@@ -1,4 +1,4 @@
-package org.example.project2.domain.auth.service;
+package org.example.project2.domain.auth.service.oauth;
 
 import lombok.RequiredArgsConstructor;
 import org.example.project2.domain.user.entity.AuthProvider;

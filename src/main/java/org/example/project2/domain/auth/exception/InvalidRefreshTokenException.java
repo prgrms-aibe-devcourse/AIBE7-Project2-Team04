@@ -1,4 +1,4 @@
-package org.example.project2.domain.auth.service;
+package org.example.project2.domain.auth.exception;
 
 public class InvalidRefreshTokenException extends RuntimeException {
     public InvalidRefreshTokenException() {

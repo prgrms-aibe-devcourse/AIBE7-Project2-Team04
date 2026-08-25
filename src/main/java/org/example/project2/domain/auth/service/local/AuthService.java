@@ -1,4 +1,4 @@
-package org.example.project2.domain.auth.service;
+package org.example.project2.domain.auth.service.local;
 
 import lombok.RequiredArgsConstructor;
 import org.example.project2.domain.auth.dto.SignUpRequest;
@@ -8,8 +8,8 @@ import org.example.project2.domain.user.entity.User;
 import org.example.project2.domain.user.entity.UserRole;
 import org.example.project2.domain.user.entity.UserStatus;
 import org.example.project2.domain.user.repository.UserRepository;
-import org.example.project2.global.exception.signUp.EmailAlreadyExistsException;
-import org.example.project2.global.exception.signUp.NicknameAlreadyExistsException;
+import org.example.project2.domain.auth.exception.EmailAlreadyExistsException;
+import org.example.project2.domain.auth.exception.NicknameAlreadyExistsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

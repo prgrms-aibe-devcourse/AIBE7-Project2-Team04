@@ -1,7 +1,8 @@
 package org.example.project2.domain.auth.service;
 
-import org.example.project2.domain.auth.service.KakaoOAuthUserService.KakaoLoginUser;
-import org.example.project2.domain.auth.service.KakaoOAuthUserService.KakaoUserInfo;
+import org.example.project2.domain.auth.service.oauth.KakaoOAuthUserService;
+import org.example.project2.domain.auth.service.oauth.KakaoOAuthUserService.KakaoLoginUser;
+import org.example.project2.domain.auth.service.oauth.KakaoOAuthUserService.KakaoUserInfo;
 import org.example.project2.domain.user.entity.AuthProvider;
 import org.example.project2.domain.user.entity.User;
 import org.example.project2.domain.user.repository.UserRepository;

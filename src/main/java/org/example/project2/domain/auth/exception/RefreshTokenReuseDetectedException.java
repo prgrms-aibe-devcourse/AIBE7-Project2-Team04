@@ -1,4 +1,4 @@
-package org.example.project2.domain.auth.service;
+package org.example.project2.domain.auth.exception;
 
 public class RefreshTokenReuseDetectedException extends InvalidRefreshTokenException {
     public RefreshTokenReuseDetectedException() {

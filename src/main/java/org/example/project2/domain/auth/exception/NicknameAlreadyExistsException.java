@@ -1,4 +1,4 @@
-package org.example.project2.global.exception.signUp;
+package org.example.project2.domain.auth.exception;
 
 public class NicknameAlreadyExistsException extends SignUpException {
     public NicknameAlreadyExistsException() {

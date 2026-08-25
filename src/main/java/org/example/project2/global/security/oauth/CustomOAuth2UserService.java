@@ -1,9 +1,9 @@
 package org.example.project2.global.security.oauth;
 
 import lombok.RequiredArgsConstructor;
-import org.example.project2.domain.auth.service.KakaoOAuthUserService;
-import org.example.project2.domain.auth.service.KakaoOAuthUserService.KakaoLoginUser;
-import org.example.project2.domain.auth.service.KakaoOAuthUserService.KakaoUserInfo;
+import org.example.project2.domain.auth.service.oauth.KakaoOAuthUserService;
+import org.example.project2.domain.auth.service.oauth.KakaoOAuthUserService.KakaoLoginUser;
+import org.example.project2.domain.auth.service.oauth.KakaoOAuthUserService.KakaoUserInfo;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;

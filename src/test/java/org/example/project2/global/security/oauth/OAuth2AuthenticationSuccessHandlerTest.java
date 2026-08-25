@@ -1,6 +1,6 @@
 package org.example.project2.global.security.oauth;
 
-import org.example.project2.domain.auth.service.OAuthAuthorizationCodeService;
+import org.example.project2.domain.auth.service.oauth.OAuthAuthorizationCodeService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
