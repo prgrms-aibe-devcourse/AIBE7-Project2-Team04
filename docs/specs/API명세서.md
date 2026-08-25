@@ -46,7 +46,6 @@
 | `COMMON_002` | 400 | 요청 값 검증 실패 |
 | `LOCATION_001` | 403 | 위치 수집 미동의 상태에서 위치 기반 API 호출 (FR-04-06) |
 | `LOCATION_002` | 422 | 선택한 지도 핀이 요청한 구의 행정구역 범위를 벗어남 (FR-04-08) |
-| `PERSONALITY_001` | 404 | 성향 프로필이 아직 생성되지 않음 |
 | `PERSONALITY_002` | 422 | 지원하지 않는 설문 버전이거나 성향 응답 값이 유효하지 않음 |
 
 ### 페이지네이션 (목록 조회 공통 파라미터)
@@ -76,8 +75,11 @@
 | PUT | `/users/me/preferred-region` | 구 단위 기본 활동지역·위치 서비스 동의 설정 (FR-04-06~07) | Y |
 | DELETE | `/users/me/preferred-region` | 기본 활동지역과 위치 서비스 동의 철회 (FR-04-06) | Y |
 | GET | `/users/me/personality-profile` | 내 성향 프로필·완성 상태 조회 (FR-01-09~10) | Y |
-| PUT | `/users/me/personality-profile` | 성향 설문 제출 또는 전체 재분석 (FR-01-09~10) | Y |
+| PUT | `/users/me/personality-profile` | 성향 설문 제출 또는 전체 갱신 (FR-01-09~10) | Y |
 | DELETE | `/users/me/personality-profile` | 성향 응답·점수·임베딩 초기화 (FR-01-10) | Y |
+| POST | `/users/me/personality-profile/skip` | 선택형 성향 온보딩 건너뛰기 | Y |
+| GET | `/users/me/food-preferences` | 내 음식 카테고리 선호 조회 | Y |
+| PUT | `/users/me/food-preferences` | 내 음식 카테고리 선호 전체 갱신 | Y |
 | GET | `/users/me/matching-preferences` | 상대방 선호 중요도 조회 (FR-01-10) | Y |
 | PUT | `/users/me/matching-preferences` | 상대방 선호 중요도 전체 갱신 (FR-01-10) | Y |
 
@@ -228,6 +230,24 @@ OAuth 신규 가입 후 토큰 교환 응답의 추가 필드 예시:
 
 성향 온보딩은 가입 성공의 필수 조건이 아니며 사용자는 건너뛸 수 있다. 성향 값은 자가 응답 기반 식사·대화 선호로만 사용하고 심리 진단이나 민감 특성 추론에 사용하지 않는다.
 
+**GET /users/me/personality-profile**
+
+프로필이 없는 경우에도 오류가 아니라 다음과 같이 `200`을 반환한다.
+
+```json
+{
+  "success": true,
+  "data": {
+    "onboardingStatus": "NOT_STARTED",
+    "completed": false,
+    "questionnaireVersion": null,
+    "scores": null,
+    "styleTags": []
+  },
+  "error": null
+}
+```
+
 **PUT /users/me/personality-profile**
 
 ```json
@@ -249,6 +269,7 @@ OAuth 신규 가입 후 토큰 교환 응답의 추가 필드 예시:
 {
   "success": true,
   "data": {
+    "onboardingStatus": "COMPLETED",
     "completed": true,
     "questionnaireVersion": "MEAL_PERSONALITY_V1",
     "scores": {
@@ -256,13 +277,28 @@ OAuth 신규 가입 후 토큰 교환 응답의 추가 필드 예시:
       "mealPace": 0,
       "planningStyle": 100,
       "noveltyPreference": 50
-    }
+    },
+    "styleTags": ["GOOD_LISTENER", "FOOD_TALK", "ENJOY_DESSERT"]
   },
   "error": null
 }
 ```
 
 V1 응답값은 `1`, `3`, `5`만 허용하며 각각 `0`, `50`, `100`점으로 변환한다. 자유 서술과 AI 분석 동의는 2차 확장 기능으로 분리한다.
+
+`DELETE /users/me/personality-profile`은 프로필·원본 응답·태그·임베딩을 삭제하고 온보딩 상태를 `NOT_STARTED`로 되돌린다. `POST /users/me/personality-profile/skip`은 프로필이 없는 사용자의 상태를 `SKIPPED`로 저장한다.
+
+**PUT /users/me/food-preferences**
+
+```json
+{
+  "foodCategories": ["KOREAN", "JAPANESE", "CAFE_DESSERT"]
+}
+```
+
+`GET`과 `PUT /users/me/food-preferences`는 모두 `foodCategories` 배열을 반환하며 최대 5개까지 허용한다. 변경 요청은 기존 목록에 추가하는 방식이 아니라 요청 목록으로 전체 교체한다.
+
+`PUT`, `POST`, `DELETE` 요청에는 인증 Access Token 쿠키와 `GET /auth/csrf`로 발급받은 `X-XSRF-TOKEN` 헤더가 필요하다. 지원하지 않는 버전·차원·응답값·태그·음식 코드는 `422 PERSONALITY_002`를 반환한다.
 
 **PUT /users/me/matching-preferences**
 

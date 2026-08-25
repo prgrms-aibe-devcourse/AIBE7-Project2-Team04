@@ -106,19 +106,19 @@
 ## 3. 백엔드 MVP
 
 - [x] 기본 스타일 버전·차원·선택값·태그·음식 카테고리 Enum을 구현한다.
-- [ ] 성향 프로필, 원본 응답, 태그, 음식 선호 Repository를 구현한다.
-- [ ] 제출 DTO에 버전, 네 차원 누락·중복, 허용값 `1/3/5`, 태그·음식 개수 및 지원 코드 검증을 추가한다.
-- [ ] `(응답값 - 1) / 4 × 100` 점수 계산 컴포넌트를 순수 Java로 구현한다.
-- [ ] 프로필·답변·태그의 최초 제출과 전체 재제출을 하나의 트랜잭션으로 처리한다.
-- [ ] `GET /users/me/personality-profile` 조회 API를 구현한다.
-- [ ] `PUT /users/me/personality-profile` 기본 스타일·태그 제출 API를 구현한다.
-- [ ] `DELETE /users/me/personality-profile` 프로필·답변·태그 초기화 API를 구현한다.
-- [ ] `POST /users/me/personality-profile/skip` 건너뛰기 상태 저장 API를 구현한다.
-- [ ] `GET /users/me/food-preferences` 음식 선호 조회 API를 구현한다.
-- [ ] `PUT /users/me/food-preferences` 음식 선호 전체 갱신 API를 구현한다.
-- [ ] JWT의 사용자 UUID로 본인 데이터만 조회·수정하도록 제한한다.
-- [ ] 잘못된 버전·응답·태그·음식 코드에는 `PERSONALITY_002` 또는 확정한 오류 코드를 반환한다.
-- [ ] Swagger에 요청·응답·오류·인증 쿠키·CSRF 요구사항을 문서화한다.
+- [x] 성향 프로필과 원본 응답 Repository를 구현하고, 태그·음식 선호는 각 Aggregate의 `@ElementCollection`으로 저장한다.
+- [x] 제출 DTO에 버전, 네 차원 누락·중복, 허용값 `1/3/5`, 태그·음식 개수 및 지원 코드 검증을 추가한다.
+- [x] `(응답값 - 1) / 4 × 100` 점수 계산 컴포넌트를 순수 Java로 구현한다.
+- [x] 프로필·답변·태그의 최초 제출과 전체 재제출을 하나의 트랜잭션으로 처리한다.
+- [x] `GET /users/me/personality-profile` 조회 API를 구현한다.
+- [x] `PUT /users/me/personality-profile` 기본 스타일·태그 제출 API를 구현한다.
+- [x] `DELETE /users/me/personality-profile` 프로필·답변·태그 초기화 API를 구현한다.
+- [x] `POST /users/me/personality-profile/skip` 건너뛰기 상태 저장 API를 구현한다.
+- [x] `GET /users/me/food-preferences` 음식 선호 조회 API를 구현한다.
+- [x] `PUT /users/me/food-preferences` 음식 선호 전체 갱신 API를 구현한다.
+- [x] JWT의 사용자 UUID로 본인 데이터만 조회·수정하도록 제한한다.
+- [x] 잘못된 버전·응답·태그·음식 코드에는 `PERSONALITY_002`를 반환한다.
+- [x] Swagger에 요청·응답·오류·인증 쿠키·CSRF 요구사항을 문서화한다.
 
 ## 4. 프론트엔드 MVP
 
