@@ -3,7 +3,10 @@ package org.example.project2.domain.auth.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.project2.domain.auth.dto.SignUpRequest;
 import org.example.project2.domain.auth.dto.SignUpResponse;
-import org.example.project2.domain.auth.service.AuthService;
+import org.example.project2.domain.auth.dto.OAuthTokenExchangeRequest;
+import org.example.project2.domain.auth.dto.OAuthTokenExchangeResponse;
+import org.example.project2.domain.auth.service.local.AuthService;
+import org.example.project2.domain.auth.service.oauth.OAuthTokenExchangeService;
 import org.example.project2.global.security.SecurityConfig;
 import org.example.project2.global.security.csrf.CsrfCookieFilter;
 import org.example.project2.global.security.csrf.SpaCsrfTokenRequestHandler;
@@ -15,6 +18,7 @@ import org.example.project2.global.security.oauth.CustomOAuth2UserService;
 import org.example.project2.global.security.oauth.OAuth2AuthenticationFailureHandler;
 import org.example.project2.global.security.oauth.OAuth2AuthenticationSuccessHandler;
 import org.example.project2.global.security.jwt.JwtProvider;
+import org.example.project2.global.security.jwt.AuthCookieUtil;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -22,6 +26,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseCookie;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -64,6 +69,12 @@ class AuthControllerTest {
 
     @MockitoBean
     private AuthService authService;
+
+    @MockitoBean
+    private OAuthTokenExchangeService oauthTokenExchangeService;
+
+    @MockitoBean
+    private AuthCookieUtil authCookieUtil;
 
     @MockitoBean
     private JpaMetamodelMappingContext jpaMappingContext;
@@ -115,5 +126,34 @@ class AuthControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.error.code").value("COMMON_002"));
+    }
+
+    @Test
+    void oauthCodeExchangeReturnsAccessTokenAndRefreshTokenCookie() throws Exception {
+        OAuthTokenExchangeRequest request = new OAuthTokenExchangeRequest("one-time-code");
+        OAuthTokenExchangeResponse response = new OAuthTokenExchangeResponse(
+                "Bearer", "access-token", 900, true
+        );
+        when(oauthTokenExchangeService.exchange("one-time-code"))
+                .thenReturn(new OAuthTokenExchangeService.ExchangeResult(response, "refresh-token"));
+        when(authCookieUtil.createRefreshTokenCookie("refresh-token"))
+                .thenReturn(ResponseCookie.from("refreshToken", "refresh-token")
+                        .httpOnly(true)
+                        .secure(true)
+                        .sameSite("Strict")
+                        .path("/auth")
+                        .build());
+
+        mockMvc.perform(post("/auth/oauth2/exchange")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.tokenType").value("Bearer"))
+                .andExpect(jsonPath("$.data.accessToken").value("access-token"))
+                .andExpect(jsonPath("$.data.expiresIn").value(900))
+                .andExpect(jsonPath("$.data.profileSetupRequired").value(true))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .header().string("Set-Cookie", org.hamcrest.Matchers.containsString("refreshToken=refresh-token")));
     }
 }

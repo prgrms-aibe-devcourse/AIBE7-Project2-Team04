@@ -13,9 +13,14 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.project2.domain.auth.dto.SignUpRequest;
 import org.example.project2.domain.auth.dto.SignUpResponse;
-import org.example.project2.domain.auth.service.AuthService;
+import org.example.project2.domain.auth.dto.OAuthTokenExchangeRequest;
+import org.example.project2.domain.auth.dto.OAuthTokenExchangeResponse;
+import org.example.project2.domain.auth.service.local.AuthService;
+import org.example.project2.domain.auth.service.oauth.OAuthTokenExchangeService;
 import org.example.project2.global.common.CommonResponse;
-import org.example.project2.global.exception.signUp.SignUpErrorResponse;
+import org.example.project2.domain.auth.exception.SignUpErrorResponse;
+import org.example.project2.global.security.jwt.AuthCookieUtil;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -29,6 +34,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final OAuthTokenExchangeService oauthTokenExchangeService;
+    private final AuthCookieUtil authCookieUtil;
 
     @Operation(summary = "이메일 회원가입", description = "이메일, 비밀번호, 닉네임을 받아 새로운 로컬 회원으로 등록합니다.")
     @Parameters({
@@ -54,6 +61,18 @@ public class AuthController {
     ) {
         SignUpResponse response = authService.signUp(request);
         return ResponseEntity.ok(CommonResponse.success(response));
+    }
+
+    @Operation(summary = "OAuth 일회성 코드 교환", description = "OAuth 로그인 성공 코드를 서비스 Access/Refresh Token으로 교환합니다.")
+    @PostMapping("/oauth2/exchange")
+    public ResponseEntity<CommonResponse<OAuthTokenExchangeResponse>> exchangeOAuthCode(
+            @Valid @RequestBody OAuthTokenExchangeRequest request
+    ) {
+        OAuthTokenExchangeService.ExchangeResult result = oauthTokenExchangeService.exchange(request.code());
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE,
+                        authCookieUtil.createRefreshTokenCookie(result.rawRefreshToken()).toString())
+                .body(CommonResponse.success(result.response()));
     }
 
     // Swagger 문서화를 위한 가상 클래스 정의 (CommonResponse<SignUpResponse> 타입 스키마 표현용)
