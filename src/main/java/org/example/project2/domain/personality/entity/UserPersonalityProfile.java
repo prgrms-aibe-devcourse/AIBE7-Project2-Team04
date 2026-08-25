@@ -1,14 +1,20 @@
 package org.example.project2.domain.personality.entity;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.MapsId;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,6 +26,8 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Table(name = "user_personality_profiles")
@@ -57,6 +65,21 @@ public class UserPersonalityProfile {
 
     @Column(name = "novelty_preference", nullable = false)
     private short noveltyPreference;
+
+    @Builder.Default
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(
+            name = "user_personality_tags",
+            joinColumns = @JoinColumn(name = "user_id", nullable = false),
+            uniqueConstraints = @UniqueConstraint(
+                    name = "uk_user_personality_tag",
+                    columnNames = {"user_id", "tag_code"}
+            ),
+            indexes = @Index(name = "idx_user_personality_tags_tag", columnList = "tag_code")
+    )
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tag_code", nullable = false, length = 50)
+    private Set<PersonalityTag> styleTags = new HashSet<>();
 
     @Builder.Default
     @Column(name = "ai_analysis_consent", nullable = false)
