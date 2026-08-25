@@ -300,7 +300,7 @@ JWT 기본 설정 단계에서 CSRF를 임시 비활성화했다면 Refresh Toke
 - [ ] 카카오 OAuth2 로그인 구현
 - [x] 카카오 사용자 정보를 `(provider, provider_id)` 기준으로 서비스 사용자에 매핑
 - [x] OAuth 성공·실패 핸들러에서 일회성 코드 리다이렉트 및 임시 세션 제거
-- [ ] OAuth 일회용 코드 교환 구현
+- [x] OAuth 일회용 코드 교환 구현
 - [ ] 메서드 단위 권한 검사(`@PreAuthorize`) 적용
 
 OAuth 가입 예외 정책은 기존 명세를 따른다.

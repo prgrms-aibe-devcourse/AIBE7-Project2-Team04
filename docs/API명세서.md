@@ -131,11 +131,33 @@ OAuth2 로그인 시작과 콜백 경로(`/oauth2/**`, `/login/oauth2/**`)는 �
 
 현재는 카카오 로그인을 먼저 구현한다. 카카오 콜백 성공 시 JWT를 URL에 직접 노출하지 않고, 서버가 2분 후 만료되는 일회성 코드를 생성해 `OAUTH2_SUCCESS_REDIRECT_URI`로 리다이렉트한다. Redis에는 코드 원문이 아닌 SHA-256 해시와 사용자 ID·프로필 설정 필요 여부만 저장한다. 카카오 사용자 정보 API의 `id`는 `provider_id`로 저장한다. Google 로그인은 추후 같은 원칙으로 확장한다.
 
+**POST /auth/oauth2/exchange**
+
+```json
+{ "code": "OAuth 콜백에서 전달받은 일회성 코드" }
+```
+
+서버는 Redis에서 코드를 조회하는 동시에 삭제하여 한 번만 사용할 수 있도록 보장한다. 만료되었거나 이미 사용한 코드는 `401 AUTH_001`로 처리한다. 교환 성공 시 응답은 다음과 같으며, Refresh Token은 일반 로그인과 동일하게 응답 본문이 아닌 `Secure`, `HttpOnly`, `SameSite=Strict`, `Path=/auth` 쿠키로만 전달한다.
+
+```json
+{
+  "success": true,
+  "data": {
+    "tokenType": "Bearer",
+    "accessToken": "eyJ...",
+    "expiresIn": 900,
+    "profileSetupRequired": false
+  },
+  "error": null
+}
+```
+
 현재 구현은 다음 세 단계를 따른다.
 
 1. `CustomOAuth2UserService`가 카카오 사용자 응답에서 ID, 이메일, 닉네임, 프로필 이미지를 읽는다.
 2. `KakaoOAuthUserService`가 `(KAKAO, provider_id)`로 사용자를 조회하고, 처음 로그인한 사용자만 가입시킨다.
 3. `OAuth2AuthenticationSuccessHandler`가 일회성 코드를 발급하고 프론트엔드 콜백으로 이동시킨다.
+4. 프론트엔드는 `/auth/oauth2/exchange`에서 코드를 한 번만 사용해 Access Token과 Refresh Token으로 교환한다.
 
 OAuth 성공 또는 실패 후에는 `state` 검증에 사용한 임시 세션과 Security Context를 제거한다. 성공 리다이렉트에는 `code`만 포함하고, 가입 정책 실패 시에는 공개 가능한 `AUTH_004` 또는 `AUTH_005` 코드만 `error`로 전달한다. 그 밖의 Provider 오류는 `AUTH_001`로 일반화한다.
 
