@@ -1,0 +1,188 @@
+:root {
+  font-family: Pretendard, "Noto Sans KR", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #28251f;
+  background: #f7f3e9;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+}
+
+button,
+a {
+  font: inherit;
+}
+
+.page-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 12% 10%, rgba(255, 224, 113, 0.28), transparent 32%),
+    radial-gradient(circle at 88% 88%, rgba(93, 126, 92, 0.16), transparent 34%),
+    #f7f3e9;
+}
+
+.auth-card {
+  width: min(100%, 440px);
+  padding: 48px 40px 40px;
+  border: 1px solid rgba(67, 58, 43, 0.12);
+  border-radius: 28px;
+  background: rgba(255, 253, 248, 0.94);
+  box-shadow: 0 24px 60px rgba(72, 60, 39, 0.12);
+  text-align: center;
+}
+
+.brand-mark {
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 22px;
+  border-radius: 20px;
+  color: #fffdf8;
+  background: #476149;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.eyebrow {
+  margin: 0 0 10px;
+  color: #76806e;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+}
+
+h1 {
+  margin: 0;
+  color: #29261f;
+  font-size: clamp(28px, 7vw, 38px);
+  line-height: 1.22;
+  letter-spacing: -0.045em;
+}
+
+.description {
+  margin: 18px 0 0;
+  color: #746f64;
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+.kakao-button,
+.primary-link,
+.secondary-link {
+  width: 100%;
+  min-height: 54px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 34px;
+  border: 0;
+  border-radius: 15px;
+  font-weight: 750;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.kakao-button {
+  color: rgba(0, 0, 0, 0.85);
+  background: #fee500;
+  box-shadow: 0 10px 24px rgba(175, 150, 0, 0.2);
+}
+
+.primary-link {
+  color: #fff;
+  background: #476149;
+}
+
+.secondary-link {
+  color: #3e543f;
+  border: 1px solid rgba(71, 97, 73, 0.24);
+  background: #edf2e9;
+}
+
+.kakao-button:hover,
+.primary-link:hover,
+.secondary-link:hover {
+  transform: translateY(-2px);
+}
+
+.kakao-button:focus-visible,
+.primary-link:focus-visible,
+.secondary-link:focus-visible {
+  outline: 3px solid rgba(71, 97, 73, 0.36);
+  outline-offset: 3px;
+}
+
+.notice {
+  margin: 18px 14px 0;
+  color: #999286;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.status-card {
+  padding-top: 54px;
+}
+
+.status-icon {
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 24px;
+  border-radius: 50%;
+  background: #dfe9dc;
+  box-shadow: inset 0 0 0 14px #476149;
+}
+
+.status-icon.is-loading {
+  border: 5px solid #e5e1d7;
+  border-top-color: #476149;
+  background: transparent;
+  box-shadow: none;
+  animation: spin 800ms linear infinite;
+}
+
+.status-title {
+  font-size: 28px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 520px) {
+  .page-shell {
+    padding: 16px;
+  }
+
+  .auth-card {
+    padding: 38px 24px 30px;
+    border-radius: 22px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition: none !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
