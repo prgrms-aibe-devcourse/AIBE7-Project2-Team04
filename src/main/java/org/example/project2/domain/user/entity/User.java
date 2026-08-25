@@ -4,12 +4,16 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.Check;
 import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.annotations.UuidGenerator;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Table(name = "users", indexes = {
@@ -57,6 +61,22 @@ public class User {
     private String description;
 
     @Builder.Default
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(
+            name = "user_food_preferences",
+            joinColumns = @JoinColumn(name = "user_id", nullable = false),
+            uniqueConstraints = @UniqueConstraint(
+                    name = "uk_user_food_preference",
+                    columnNames = {"user_id", "food_category"}
+            ),
+            indexes = @Index(name = "idx_user_food_preferences_category", columnList = "food_category")
+    )
+    @Enumerated(EnumType.STRING)
+    @Column(name = "food_category", nullable = false, length = 50)
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    private Set<FoodCategory> foodPreferences = new HashSet<>();
+
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private UserRole role = UserRole.USER;
@@ -66,6 +86,12 @@ public class User {
     @Column(nullable = false, length = 20)
     private UserStatus status = UserStatus.ACTIVE;
 
+    @Builder.Default
+    @ColumnDefault("'NOT_STARTED'")
+    @Enumerated(EnumType.STRING)
+    @Column(name = "personality_onboarding_status", nullable = false, length = 20)
+    private PersonalityOnboardingStatus personalityOnboardingStatus = PersonalityOnboardingStatus.NOT_STARTED;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -73,4 +99,16 @@ public class User {
     @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    public void skipPersonalityOnboarding() {
+        personalityOnboardingStatus = PersonalityOnboardingStatus.SKIPPED;
+    }
+
+    public void completePersonalityOnboarding() {
+        personalityOnboardingStatus = PersonalityOnboardingStatus.COMPLETED;
+    }
+
+    public void resetPersonalityOnboarding() {
+        personalityOnboardingStatus = PersonalityOnboardingStatus.NOT_STARTED;
+    }
 }

@@ -15,6 +15,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.example.project2.global.entity.BaseEntity;
 import org.hibernate.annotations.Check;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 @Table(name = "user_personality_answers",
         uniqueConstraints = @UniqueConstraint(
@@ -30,6 +32,7 @@ import org.hibernate.annotations.Check;
 public class UserPersonalityAnswer extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private UserPersonalityProfile profile;
 
     @Column(name = "question_code", nullable = false, length = 100)

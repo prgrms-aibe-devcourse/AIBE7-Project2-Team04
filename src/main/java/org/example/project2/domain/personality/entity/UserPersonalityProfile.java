@@ -22,6 +22,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.example.project2.domain.user.entity.User;
 import org.hibernate.annotations.Check;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
@@ -49,6 +51,7 @@ public class UserPersonalityProfile {
     @MapsId
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private User user;
 
     @Column(name = "questionnaire_version", nullable = false, length = 50)
@@ -79,6 +82,7 @@ public class UserPersonalityProfile {
     )
     @Enumerated(EnumType.STRING)
     @Column(name = "tag_code", nullable = false, length = 50)
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private Set<PersonalityTag> styleTags = new HashSet<>();
 
     @Builder.Default

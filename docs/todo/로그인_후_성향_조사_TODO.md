@@ -97,11 +97,11 @@
 - [x] `UserPersonalityEmbedding`, `UserMatchingPreference` Entity가 존재하는지 확인한다.
 - [x] `user_personality_tags` 테이블을 `UserPersonalityProfile`의 `@ElementCollection`으로 추가한다.
 - [x] `PersonalityTag`를 문자열 Enum으로 저장하고 `(user_id, tag_code)`에 고유 제약조건을 설정한다.
-- [ ] `user_food_preferences` 테이블과 Entity를 성향 데이터와 분리하여 추가한다.
-- [ ] 음식 카테고리는 문자열 Enum으로 저장하고 `(user_id, food_category)`를 복합 고유 키로 설정한다.
-- [ ] `users.personality_onboarding_status` 컬럼과 `NOT_STARTED/SKIPPED/COMPLETED` Enum을 추가한다.
-- [ ] 신규 Entity는 지연 로딩, 문자열 Enum, 사용자 외래 키 및 삭제 정책을 확인한다.
-- [x] `user_personality_tags` 테이블과 제약조건을 `docs/데이터모델링.md`에 반영한다.
+- [x] `user_food_preferences` 테이블을 `User`의 `@ElementCollection`으로 성향 데이터와 분리하여 추가한다.
+- [x] `FoodCategory`를 문자열 Enum으로 저장하고 `(user_id, food_category)`에 고유 제약조건을 설정한다.
+- [x] `users.personality_onboarding_status` 컬럼과 `NOT_STARTED/SKIPPED/COMPLETED` Enum을 추가한다.
+- [x] 신규 Entity는 지연 로딩, 문자열 Enum, 사용자 외래 키 및 `ON DELETE CASCADE` 삭제 정책을 확인한다.
+- [x] `user_personality_tags`, `user_food_preferences` 테이블과 제약조건을 `docs/데이터모델링.md`에 반영한다.
 
 ## 3. 백엔드 MVP
 
