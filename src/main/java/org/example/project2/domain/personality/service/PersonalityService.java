@@ -18,6 +18,9 @@ import org.example.project2.domain.personality.exception.InvalidPersonalityInput
 import org.example.project2.domain.personality.repository.UserPersonalityAnswerRepository;
 import org.example.project2.domain.personality.repository.UserPersonalityEmbeddingRepository;
 import org.example.project2.domain.personality.repository.UserPersonalityProfileRepository;
+import org.example.project2.domain.personality.service.ai.PersonalityAiClient;
+import org.example.project2.domain.personality.service.calculation.PersonalityScoreCalculator;
+import org.example.project2.domain.personality.service.embedding.PersonalityEmbeddingRequestedEvent;
 import org.example.project2.domain.user.entity.FoodCategory;
 import org.example.project2.domain.user.entity.User;
 import org.example.project2.domain.user.repository.UserRepository;

@@ -1,6 +1,7 @@
 package org.example.project2.domain.personality.service;
 
 import org.example.project2.domain.personality.entity.PersonalityAnswerValue;
+import org.example.project2.domain.personality.service.calculation.PersonalityScoreCalculator;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

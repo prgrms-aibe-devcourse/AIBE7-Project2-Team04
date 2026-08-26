@@ -6,6 +6,11 @@ import org.example.project2.domain.personality.entity.UserPersonalityEmbedding;
 import org.example.project2.domain.personality.entity.UserPersonalityProfile;
 import org.example.project2.domain.personality.repository.UserPersonalityEmbeddingRepository;
 import org.example.project2.domain.personality.repository.UserPersonalityProfileRepository;
+import org.example.project2.domain.personality.service.ai.PersonalityAiClient;
+import org.example.project2.domain.personality.service.embedding.PersonalityEmbeddingDocument;
+import org.example.project2.domain.personality.service.embedding.PersonalityEmbeddingDocumentBuilder;
+import org.example.project2.domain.personality.service.embedding.PersonalityEmbeddingEventHandler;
+import org.example.project2.domain.personality.service.embedding.PersonalityEmbeddingRequestedEvent;
 import org.example.project2.domain.user.entity.User;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,7 +32,8 @@ import static org.mockito.Mockito.when;
 class PersonalityEmbeddingEventHandlerTest {
     @Mock UserPersonalityProfileRepository profileRepository;
     @Mock UserPersonalityEmbeddingRepository embeddingRepository;
-    @Mock PersonalityAiClient aiClient;
+    @Mock
+    PersonalityAiClient aiClient;
 
     @Test
     void savesVersioned1536DimensionEmbedding() {

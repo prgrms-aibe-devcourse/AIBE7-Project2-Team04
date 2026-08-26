@@ -1,4 +1,4 @@
-package org.example.project2.domain.personality.service;
+package org.example.project2.domain.personality.service.embedding;
 
 import java.util.UUID;
 

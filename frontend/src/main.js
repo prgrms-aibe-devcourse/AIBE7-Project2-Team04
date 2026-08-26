@@ -433,7 +433,7 @@ function renderProfileSetup(container) {
     <main class="page-shell">
       <section class="auth-card" aria-labelledby="profile-title">
         <div class="brand-mark" aria-hidden="true">
-          <span class="material-symbols-outlined text-3xl">face</span>
+          <img src="/assets/branding/app-icon-kakao-ivory-128.png" alt="마주한끼 로고" />
         </div>
         <p class="eyebrow">PROFILE SETUP</p>
         <h1 id="profile-title">프로필 설정</h1>

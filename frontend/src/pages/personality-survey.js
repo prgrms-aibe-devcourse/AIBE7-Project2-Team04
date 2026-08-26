@@ -641,7 +641,7 @@ function renderCompletionView(container) {
     <main class="page-shell">
       <section class="auth-card status-card animate-fade-in" aria-live="polite">
         <div class="brand-mark" aria-hidden="true">
-          <span class="material-symbols-outlined text-3xl">celebration</span>
+          <img src="/assets/branding/app-icon-kakao-ivory-128.png" alt="마주한끼 로고" />
         </div>
         <p class="eyebrow">ONBOARDING COMPLETED</p>
         <h1 class="status-title text-2xl font-bold text-brand-navy">식사 스타일 설정 완료!</h1>

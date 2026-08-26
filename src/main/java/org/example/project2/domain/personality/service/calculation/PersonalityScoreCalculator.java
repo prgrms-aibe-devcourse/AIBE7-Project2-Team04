@@ -1,4 +1,4 @@
-package org.example.project2.domain.personality.service;
+package org.example.project2.domain.personality.service.calculation;
 
 import org.example.project2.domain.personality.entity.PersonalityAnswerValue;
 import org.example.project2.domain.personality.exception.InvalidPersonalityInputException;

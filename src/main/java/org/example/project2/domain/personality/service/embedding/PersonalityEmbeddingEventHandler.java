@@ -1,10 +1,11 @@
-package org.example.project2.domain.personality.service;
+package org.example.project2.domain.personality.service.embedding;
 
 import lombok.RequiredArgsConstructor;
 import org.example.project2.domain.personality.entity.UserPersonalityEmbedding;
 import org.example.project2.domain.personality.entity.UserPersonalityProfile;
 import org.example.project2.domain.personality.repository.UserPersonalityEmbeddingRepository;
 import org.example.project2.domain.personality.repository.UserPersonalityProfileRepository;
+import org.example.project2.domain.personality.service.ai.PersonalityAiClient;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
