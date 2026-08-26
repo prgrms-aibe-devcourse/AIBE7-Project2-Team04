@@ -79,6 +79,10 @@ const loadRegions = async () => {
 
 // SPA 라우팅 네비게이션 함수
 export function navigateTo(path) {
+  if (path === '/') {
+    window.location.assign('/')
+    return
+  }
   window.history.pushState({}, '', path)
   routeApp()
 }

@@ -11,6 +11,8 @@ let lastValidDetail = ''
 let lastValidRegionCode = ''
 
 export async function renderMatchMapPage(container) {
+  let preferredRegion = null
+
   // 위치 기반 서비스 이용 동의 여부 체크
   const checkLocationConsent = async () => {
     const token = getAccessToken()
@@ -26,6 +28,7 @@ export async function renderMatchMapPage(container) {
         const body = await resp.json()
         if (body && body.success && body.data && body.data.locationServiceConsent) {
           consented = true
+          preferredRegion = body.data
         }
       }
     } catch (e) {
@@ -104,14 +107,40 @@ export async function renderMatchMapPage(container) {
   await checkLocationConsent()
 
   const params = new URLSearchParams(window.location.search)
-  const lat = parseFloat(params.get('lat')) || 37.5662
-  const lng = parseFloat(params.get('lng')) || 126.9016
-  const name = params.get('name') || '마포구'
-  let sido = params.get('sido') || '서울특별시'
+  
+  let defaultLat = 37.5662
+  let defaultLng = 126.9016
+  let defaultName = '마포구'
+  let defaultSido = '서울특별시'
+  let defaultSigungu = '마포구'
+
+  if (preferredRegion && preferredRegion.regionName) {
+    const parts = preferredRegion.regionName.split(' ')
+    const s = parts[0]
+    const sig = parts[1]
+    const d = parts[2] || ''
+
+    let node = regionTree[s]?.[sig]
+    if (node) {
+      const target = d ? node[d] : node
+      if (target) {
+        defaultLat = target.lat
+        defaultLng = target.lng
+        defaultName = d || sig
+        defaultSido = s
+        defaultSigungu = sig
+      }
+    }
+  }
+
+  const lat = parseFloat(params.get('lat')) || defaultLat
+  const lng = parseFloat(params.get('lng')) || defaultLng
+  const name = params.get('name') || defaultName
+  let sido = params.get('sido') || defaultSido
   if (sido === '광주광역시' || sido === '전라남도') {
     sido = '전남광주통합특별시'
   }
-  const sigungu = params.get('sigungu') || name
+  const sigungu = params.get('sigungu') || defaultSigungu
 
   // If name is sub-district, then sigungu is parent city (e.g. 성남시), detail is name (e.g. 분당구)
   const detail = name !== sigungu ? name : ''
