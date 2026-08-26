@@ -19,4 +19,18 @@ class SwaggerConfigTest {
                 .getSummary())
                 .isEqualTo("카카오 로그인 시작");
     }
+
+    @Test
+    void documentsGoogleOAuthLoginStartEndpoint() {
+        OpenAPI openApi = new OpenAPI();
+
+        new SwaggerConfig().googleOAuthLoginCustomizer().customise(openApi);
+
+        assertThat(openApi.getPaths()).containsKey("/oauth2/authorization/google");
+        assertThat(openApi.getPaths()
+                .get("/oauth2/authorization/google")
+                .getGet()
+                .getSummary())
+                .isEqualTo("구글 로그인 시작");
+    }
 }

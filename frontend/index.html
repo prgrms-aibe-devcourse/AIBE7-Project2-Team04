@@ -15,6 +15,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700;800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet" />
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
 
+    <!-- Kakao Maps API -->
+    <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=%VITE_KAKAO_MAP_API_KEY%&libraries=services,clusterer"></script>
+
     <!-- Tailwind Theme Configuration (from Design.md) -->
     <script id="tailwind-config">
       tailwind.config = {
@@ -146,20 +149,36 @@
 
             <!-- Quick District Match Box -->
             <div class="bg-surface-container-lowest p-3 sm:p-4 rounded-card shadow-soft flex flex-col sm:flex-row items-center gap-3 max-w-xl mx-auto lg:mx-0 border border-outline-variant/30">
-              <div class="relative w-full sm:w-1/2">
-                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-xl pointer-events-none">location_on</span>
-                <select id="hero-district-select" class="w-full bg-surface border border-outline-variant/40 text-on-surface rounded-full py-3 pl-10 pr-4 focus:ring-2 focus:ring-primary-container focus:border-primary-container appearance-none text-sm font-medium cursor-pointer">
-                  <option value="">활동 지역 선택 (구 단위)...</option>
-                  <option value="강남구">강남구 (Gangnam)</option>
-                  <option value="마포구">마포구 (Mapo)</option>
-                  <option value="용산구">용산구 (Yongsan)</option>
-                  <option value="성동구">성동구 (Seongdong)</option>
-                  <option value="송파구">송파구 (Songpa)</option>
-                  <option value="영등포구">영등포구 (Yeongdeungpo)</option>
-                  <option value="서초구">서초구 (Seocho)</option>
-                </select>
+              
+              <!-- 시·도 커스텀 드롭다운 -->
+              <div class="relative w-full sm:w-1/3 dropdown-container" id="sido-dropdown-container">
+                <button id="btn-sido-dropdown" type="button" class="w-full bg-surface border border-outline-variant/40 text-on-surface rounded-full py-3 pl-10 pr-4 focus:ring-2 focus:ring-primary-container focus:border-primary-container text-sm font-medium text-left flex items-center justify-between cursor-pointer">
+                  <span id="text-sido-selected" class="truncate text-secondary">시·도 선택</span>
+                  <span class="material-symbols-outlined text-secondary text-lg">arrow_drop_down</span>
+                </button>
+                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-xl pointer-events-none">map</span>
+                
+                <!-- 옵션 목록 (완벽하게 스타일링된 커스텀 드롭다운) -->
+                <ul id="list-sido-options" class="absolute left-0 top-full mt-2 w-full bg-white border border-outline-variant/20 rounded-2xl shadow-lg max-h-60 overflow-y-auto z-50 hidden transition-all duration-150 py-1">
+                  <!-- JS로 동적 렌더링 -->
+                </ul>
               </div>
-              <button id="btn-hero-match" class="w-full sm:w-1/2 btn-primary py-3 px-6 rounded-full text-sm font-bold shadow-md pulse-ring flex items-center justify-center gap-2">
+
+              <!-- 시·군·구 커스텀 드롭다운 -->
+              <div class="relative w-full sm:w-1/3 dropdown-container" id="sigungu-dropdown-container">
+                <button id="btn-sigungu-dropdown" type="button" class="w-full bg-surface border border-outline-variant/40 text-on-surface rounded-full py-3 pl-10 pr-4 focus:ring-2 focus:ring-primary-container focus:border-primary-container text-sm font-medium text-left flex items-center justify-between cursor-not-allowed opacity-50" disabled>
+                  <span id="text-sigungu-selected" class="truncate text-secondary">시·군·구 선택</span>
+                  <span class="material-symbols-outlined text-secondary text-lg">arrow_drop_down</span>
+                </button>
+                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-xl pointer-events-none">location_on</span>
+                
+                <!-- 옵션 목록 -->
+                <ul id="list-sigungu-options" class="absolute left-0 top-full mt-2 w-full bg-white border border-outline-variant/20 rounded-2xl shadow-lg max-h-60 overflow-y-auto z-50 hidden transition-all duration-150 py-1">
+                  <!-- JS로 동적 렌더링 -->
+                </ul>
+              </div>
+
+              <button id="btn-hero-match" class="w-full sm:w-1/3 btn-primary py-3 px-6 rounded-full text-sm font-bold shadow-md pulse-ring flex items-center justify-center gap-2">
                 <span class="material-symbols-outlined text-lg">local_dining</span>
                 <span>마주한끼 찾기</span>
               </button>

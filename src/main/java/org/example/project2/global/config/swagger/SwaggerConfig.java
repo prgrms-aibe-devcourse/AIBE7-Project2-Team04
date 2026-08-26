@@ -51,4 +51,26 @@ public class SwaggerConfig {
                         )))
         );
     }
+
+    @Bean
+    public OpenApiCustomizer googleOAuthLoginCustomizer() {
+        return openApi -> openApi.path(
+                "/oauth2/authorization/google",
+                new PathItem().get(new Operation()
+                        .addTagsItem("Authentication")
+                        .summary("구글 로그인 시작")
+                        .description("브라우저를 구글 인증 화면으로 이동시킵니다. Swagger에서 실행하면 구글 로그인 화면으로 리다이렉트됩니다.")
+                        .responses(new ApiResponses().addApiResponse(
+                                "302",
+                                new ApiResponse()
+                                        .description("구글 인증 화면으로 이동")
+                                        .addHeaderObject(
+                                                "Location",
+                                                new Header()
+                                                        .description("구글 인증 화면 URL")
+                                                        .schema(new StringSchema())
+                                        )
+                        )))
+        );
+    }
 }
