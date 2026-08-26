@@ -12,9 +12,11 @@ public record PersonalityProfileResponse(
         @Schema(example = "true") boolean completed,
         @Schema(nullable = true, example = "MEAL_PERSONALITY_V1") PersonalityQuestionnaireVersion questionnaireVersion,
         @Schema(nullable = true) PersonalityScoresResponse scores,
-        Set<PersonalityTag> styleTags
+        Set<PersonalityTag> styleTags,
+        @Schema(nullable = true, maxLength = 300) String selfDescription,
+        boolean aiAnalysisConsent
 ) {
     public static PersonalityProfileResponse incomplete(PersonalityOnboardingStatus onboardingStatus) {
-        return new PersonalityProfileResponse(onboardingStatus, false, null, null, Set.of());
+        return new PersonalityProfileResponse(onboardingStatus, false, null, null, Set.of(), null, false);
     }
 }

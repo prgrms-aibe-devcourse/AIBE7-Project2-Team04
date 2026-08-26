@@ -128,6 +128,12 @@ class SecurityIntegrationTest {
                         && header.contains("Path=/")
                         && !header.contains("Path=/auth")
                         && !header.contains("Max-Age=0"));
+        assertThat(result.getResponse().getHeaders(HttpHeaders.SET_COOKIE).stream()
+                .filter(header -> header.startsWith("XSRF-TOKEN="))
+                .filter(header -> header.contains("Path=/"))
+                .filter(header -> !header.contains("Path=/auth"))
+                .filter(header -> !header.contains("Max-Age=0")))
+                .hasSize(1);
     }
 
     @Test

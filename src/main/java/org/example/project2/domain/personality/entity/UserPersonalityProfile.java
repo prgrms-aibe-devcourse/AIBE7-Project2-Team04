@@ -39,7 +39,9 @@ import java.util.UUID;
         "AND meal_pace BETWEEN 0 AND 100 " +
         "AND planning_style BETWEEN 0 AND 100 " +
         "AND novelty_preference BETWEEN 0 AND 100 " +
-        "AND questionnaire_version = 'MEAL_PERSONALITY_V1'")
+        "AND questionnaire_version = 'MEAL_PERSONALITY_V1' " +
+        "AND (self_description IS NULL OR char_length(self_description) <= 300) " +
+        "AND (ai_analysis_consent OR self_description IS NULL)")
 @Getter
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -87,6 +89,9 @@ public class UserPersonalityProfile {
     @OnDelete(action = OnDeleteAction.CASCADE)
     private Set<PersonalityTag> styleTags = new HashSet<>();
 
+    @Column(name = "self_description", length = 300)
+    private String selfDescription;
+
     @Builder.Default
     @Column(name = "ai_analysis_consent", nullable = false)
     private boolean aiAnalysisConsent = false;
@@ -105,6 +110,8 @@ public class UserPersonalityProfile {
             short planningStyle,
             short noveltyPreference,
             Set<PersonalityTag> styleTags,
+            String selfDescription,
+            boolean aiAnalysisConsent,
             Instant completedAt
     ) {
         this.questionnaireVersion = questionnaireVersion;
@@ -114,6 +121,8 @@ public class UserPersonalityProfile {
         this.noveltyPreference = noveltyPreference;
         this.styleTags.clear();
         this.styleTags.addAll(styleTags);
+        this.aiAnalysisConsent = aiAnalysisConsent;
+        this.selfDescription = aiAnalysisConsent ? selfDescription : null;
         this.completedAt = completedAt;
     }
 }

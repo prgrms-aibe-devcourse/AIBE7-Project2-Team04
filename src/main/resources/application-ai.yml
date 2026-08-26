@@ -1,11 +1,18 @@
 spring:
   ai:
+    model:
+      chat: ${AI_CHAT_PROVIDER:none}
+      embedding:
+        text: ${AI_EMBEDDING_PROVIDER:none}
     google:
       genai:
+        api-key: ${GOOGLE_API_KEY:}
         chat:
-          model:
-        api-key: ${GOOGLE_API_KEY}
+          model: ${GOOGLE_AI_CHAT_MODEL:gemini-3.5-flash}
+          temperature: 0.1
         embedding:
+          api-key: ${GOOGLE_API_KEY:}
           text:
-            model:
-          project-id:
+            model: ${GOOGLE_AI_EMBEDDING_MODEL:gemini-embedding-001}
+            dimensions: 1536
+            task-type: SEMANTIC_SIMILARITY

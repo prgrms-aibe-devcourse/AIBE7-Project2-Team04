@@ -51,12 +51,14 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     // PostGIS 등 공간 데이터 타입과 공간 쿼리를 Hibernate에서 지원
     implementation 'org.hibernate.orm:hibernate-spatial'
+    // PostgreSQL pgvector 컬럼에 float[] 벡터를 올바르게 바인딩
+    implementation 'org.hibernate.orm:hibernate-vector'
     // OpenAPI 문서와 Swagger UI를 자동으로 생성
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3'
     // Google GenAI 채팅 모델을 Spring AI 인터페이스로 사용할 수 있게
-//    implementation 'org.springframework.ai:spring-ai-starter-model-google-genai'
+    implementation 'org.springframework.ai:spring-ai-starter-model-google-genai'
     // Google GenAI 텍스트 임베딩 모델을 사용할 수 있게
-//    implementation 'org.springframework.ai:spring-ai-starter-model-google-genai-embedding'
+    implementation 'org.springframework.ai:spring-ai-starter-model-google-genai-embedding'
     // PostgreSQL pgvector를 Spring AI VectorStore로 사용할 수 있게
 //    implementation 'org.springframework.ai:spring-ai-starter-vector-store-pgvector'
     // 컴파일 시 Lombok 어노테이션을 사용할 수 있게

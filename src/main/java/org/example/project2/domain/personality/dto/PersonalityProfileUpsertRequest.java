@@ -28,11 +28,19 @@ public record PersonalityProfileUpsertRequest(
         @NotNull(message = "성향 태그 목록은 필수입니다.")
         @Size(max = 5, message = "성향 태그는 최대 5개까지 선택할 수 있습니다.")
         @Schema(description = "세부 식사 스타일 태그, 최대 5개")
-        Set<@NotNull(message = "성향 태그에는 null을 포함할 수 없습니다.") PersonalityTag> styleTags
+        Set<@NotNull(message = "성향 태그에는 null을 포함할 수 없습니다.") PersonalityTag> styleTags,
+
+        @Size(max = 300, message = "자기소개는 최대 300자까지 입력할 수 있습니다.")
+        @Schema(description = "AI 분석에 사용할 선택 입력. 동의하지 않으면 저장하지 않습니다.", maxLength = 300)
+        String selfDescription,
+
+        @Schema(description = "자기소개 AI 분석 동의 여부", example = "false")
+        boolean aiAnalysisConsent
 ) {
     public PersonalityProfileUpsertRequest {
         answers = answers == null ? null : List.copyOf(answers);
         styleTags = styleTags == null ? null : Set.copyOf(styleTags);
+        selfDescription = normalizeDescription(selfDescription, aiAnalysisConsent);
     }
 
     public Map<PersonalityDimension, PersonalityAnswerValue> validatedAnswers() {
@@ -60,5 +68,12 @@ public record PersonalityProfileUpsertRequest(
             throw new InvalidPersonalityInputException("네 가지 성향 차원에 모두 응답해야 합니다.");
         }
         return Map.copyOf(answerMap);
+    }
+
+    private static String normalizeDescription(String description, boolean consent) {
+        if (!consent || description == null || description.isBlank()) {
+            return null;
+        }
+        return description.strip();
     }
 }

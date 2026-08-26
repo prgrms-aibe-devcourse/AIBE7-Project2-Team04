@@ -6,6 +6,8 @@ import org.example.project2.domain.personality.dto.FoodPreferencesUpdateRequest;
 import org.example.project2.domain.personality.dto.PersonalityProfileResponse;
 import org.example.project2.domain.personality.dto.PersonalityProfileUpsertRequest;
 import org.example.project2.domain.personality.dto.PersonalityScoresResponse;
+import org.example.project2.domain.personality.dto.PersonalityTagSuggestionRequest;
+import org.example.project2.domain.personality.dto.PersonalityTagSuggestionResponse;
 import org.example.project2.domain.personality.entity.PersonalityAnswerValue;
 import org.example.project2.domain.personality.entity.PersonalityDimension;
 import org.example.project2.domain.personality.entity.PersonalityTag;
@@ -14,11 +16,13 @@ import org.example.project2.domain.personality.entity.UserPersonalityProfile;
 import org.example.project2.domain.personality.exception.AuthenticatedUserNotFoundException;
 import org.example.project2.domain.personality.exception.InvalidPersonalityInputException;
 import org.example.project2.domain.personality.repository.UserPersonalityAnswerRepository;
+import org.example.project2.domain.personality.repository.UserPersonalityEmbeddingRepository;
 import org.example.project2.domain.personality.repository.UserPersonalityProfileRepository;
 import org.example.project2.domain.user.entity.FoodCategory;
 import org.example.project2.domain.user.entity.User;
 import org.example.project2.domain.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
@@ -36,7 +40,10 @@ public class PersonalityService {
     private final UserRepository userRepository;
     private final UserPersonalityProfileRepository profileRepository;
     private final UserPersonalityAnswerRepository answerRepository;
+    private final UserPersonalityEmbeddingRepository embeddingRepository;
     private final PersonalityScoreCalculator scoreCalculator;
+    private final PersonalityAiClient aiClient;
+    private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
 
     public PersonalityProfileResponse getProfile(UUID userId) {
@@ -70,6 +77,8 @@ public class PersonalityService {
                 scores.planningStyle(),
                 scores.noveltyPreference(),
                 request.styleTags(),
+                request.selfDescription(),
+                request.aiAnalysisConsent(),
                 completedAt
         );
         UserPersonalityProfile savedProfile = profileRepository.save(profile);
@@ -84,14 +93,30 @@ public class PersonalityService {
                 .toList();
         answerRepository.saveAll(answerEntities);
 
+        if (request.aiAnalysisConsent() && request.selfDescription() != null) {
+            eventPublisher.publishEvent(new PersonalityEmbeddingRequestedEvent(userId));
+        } else {
+            embeddingRepository.deleteById(userId);
+        }
+
         user.completePersonalityOnboarding();
         return toProfileResponse(user, savedProfile);
+    }
+
+    public PersonalityTagSuggestionResponse suggestTags(PersonalityTagSuggestionRequest request) {
+        return aiClient.suggestTags(request.selfDescription())
+                .map(tags -> new PersonalityTagSuggestionResponse(true, tags))
+                .orElseGet(() -> new PersonalityTagSuggestionResponse(false, Set.of()));
     }
 
     @Transactional
     public void resetProfile(UUID userId) {
         User user = findUser(userId);
-        profileRepository.findById(userId).ifPresent(profileRepository::delete);
+        profileRepository.findById(userId).ifPresent(profile -> {
+            answerRepository.deleteAllByUserId(userId);
+            embeddingRepository.deleteById(userId);
+            profileRepository.delete(profile);
+        });
         user.resetPersonalityOnboarding();
     }
 
@@ -157,7 +182,9 @@ public class PersonalityService {
                 true,
                 profile.getQuestionnaireVersion(),
                 scores,
-                copyTags(profile.getStyleTags())
+                copyTags(profile.getStyleTags()),
+                profile.getSelfDescription(),
+                profile.isAiAnalysisConsent()
         );
     }
 

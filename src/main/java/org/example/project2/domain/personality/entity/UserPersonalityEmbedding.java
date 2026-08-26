@@ -13,7 +13,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
@@ -52,7 +51,14 @@ public class UserPersonalityEmbedding {
     @Column(name = "source_version", nullable = false, length = 100)
     private String sourceVersion;
 
-    @CreationTimestamp
-    @Column(name = "generated_at", nullable = false, updatable = false)
+    @Column(name = "generated_at", nullable = false)
     private Instant generatedAt;
+
+    public void replace(String sourceText, float[] embedding, String modelName, String sourceVersion) {
+        this.sourceText = sourceText;
+        this.embedding = embedding.clone();
+        this.modelName = modelName;
+        this.sourceVersion = sourceVersion;
+        this.generatedAt = Instant.now();
+    }
 }

@@ -10,7 +10,7 @@ import java.util.UUID;
 
 public interface UserPersonalityAnswerRepository extends JpaRepository<UserPersonalityAnswer, Long> {
 
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Modifying(flushAutomatically = true)
     @Query("delete from UserPersonalityAnswer answer where answer.profile.userId = :userId")
     void deleteAllByUserId(@Param("userId") UUID userId);
 }
