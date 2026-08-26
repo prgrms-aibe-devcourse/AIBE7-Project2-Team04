@@ -76,6 +76,7 @@
 | DELETE | `/users/me/preferred-region` | 기본 활동지역과 위치 서비스 동의 철회 (FR-04-06) | Y |
 | GET | `/users/me/personality-profile` | 내 성향 프로필·완성 상태 조회 (FR-01-09~10) | Y |
 | PUT | `/users/me/personality-profile` | 성향 설문 제출 또는 전체 갱신 (FR-01-09~10) | Y |
+| POST | `/users/me/personality-profile/tag-suggestions` | 동의한 자기소개 기반 성향 태그 제안 | Y |
 | DELETE | `/users/me/personality-profile` | 성향 응답·점수·임베딩 초기화 (FR-01-10) | Y |
 | POST | `/users/me/personality-profile/skip` | 선택형 성향 온보딩 건너뛰기 | Y |
 | GET | `/users/me/food-preferences` | 내 음식 카테고리 선호 조회 | Y |
@@ -266,7 +267,9 @@ OAuth 신규 가입 후 토큰 교환 응답의 추가 필드 예시:
     "completed": false,
     "questionnaireVersion": null,
     "scores": null,
-    "styleTags": []
+    "styleTags": [],
+    "selfDescription": null,
+    "aiAnalysisConsent": false
   },
   "error": null
 }
@@ -283,7 +286,9 @@ OAuth 신규 가입 후 토큰 교환 응답의 추가 필드 예시:
     { "questionCode": "PLANNING_STYLE", "value": 5 },
     { "questionCode": "NOVELTY_PREFERENCE", "value": 3 }
   ],
-  "styleTags": ["GOOD_LISTENER", "FOOD_TALK", "ENJOY_DESSERT"]
+  "styleTags": ["GOOD_LISTENER", "FOOD_TALK", "ENJOY_DESSERT"],
+  "selfDescription": "대화를 잘 들어주고 식사 후 디저트까지 즐기는 편이에요.",
+  "aiAnalysisConsent": true
 }
 ```
 
@@ -302,13 +307,28 @@ OAuth 신규 가입 후 토큰 교환 응답의 추가 필드 예시:
       "planningStyle": 100,
       "noveltyPreference": 50
     },
-    "styleTags": ["GOOD_LISTENER", "FOOD_TALK", "ENJOY_DESSERT"]
+    "styleTags": ["GOOD_LISTENER", "FOOD_TALK", "ENJOY_DESSERT"],
+    "selfDescription": "대화를 잘 들어주고 식사 후 디저트까지 즐기는 편이에요.",
+    "aiAnalysisConsent": true
   },
   "error": null
 }
 ```
 
-V1 응답값은 `1`, `3`, `5`만 허용하며 각각 `0`, `50`, `100`점으로 변환한다. 자유 서술과 AI 분석 동의는 2차 확장 기능으로 분리한다.
+V1 응답값은 `1`, `3`, `5`만 허용하며 각각 `0`, `50`, `100`점으로 변환한다. 서버는 점수 재현을 위해 네 가지 원본 응답과 계산 점수를 함께 저장한다. 재제출은 기존 원본 응답과 태그에 추가하지 않고 요청 데이터로 전체 교체한다. 자기소개는 선택이며 최대 300자이고, `aiAnalysisConsent=false`이면 요청에 값이 있어도 저장하지 않고 기존 원문과 임베딩을 삭제한다.
+
+성향 프로필 응답은 본인에게 온보딩 상태, 계산 점수, 확정 태그, 저장된 자기소개와 현재 동의 상태를 제공한다. 원본 카드 응답, 임베딩 및 차원별 내부 랭킹 자료는 이 API나 상대방용 응답에 포함하지 않는다. 자기소개, AI 요청·응답, 임베딩 문서는 애플리케이션 로그에 기록하지 않는다. 점수는 식사 선호의 방향만 나타내고 높고 낮음을 좋은·나쁜 성향으로 해석하지 않는다.
+
+**POST /users/me/personality-profile/tag-suggestions**
+
+```json
+{
+  "selfDescription": "조용한 식사를 좋아하지만 음식 이야기는 즐겨요.",
+  "aiAnalysisConsent": true
+}
+```
+
+응답의 `suggestedTags`는 기존 `PersonalityTag` 코드 중 최대 5개이며 자동 저장되지 않는다. 사용자가 태그 화면에서 추가·제거한 뒤 `PUT`으로 제출한 `styleTags`만 확정값이다. AI 모델이 비활성화되었거나 호출에 실패하면 정상 응답 `available=false`, `suggestedTags=[]`를 반환한다.
 
 `DELETE /users/me/personality-profile`은 프로필·원본 응답·태그·임베딩을 삭제하고 온보딩 상태를 `NOT_STARTED`로 되돌린다. `POST /users/me/personality-profile/skip`은 프로필이 없는 사용자의 상태를 `SKIPPED`로 저장한다.
 
