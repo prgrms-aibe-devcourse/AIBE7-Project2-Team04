@@ -2,15 +2,20 @@ package org.example.project2.domain.matching.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.example.project2.domain.personality.entity.PersonalityTag;
 import org.example.project2.global.entity.BaseEntity;
 import org.example.project2.domain.user.entity.User;
 import org.hibernate.annotations.Check;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.type.SqlTypes;
 import org.locationtech.jts.geom.Point;
 
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 @Table(name = "match_requests", indexes = {
         @Index(name = "idx_match_requests_user", columnList = "user_id"),
@@ -50,6 +55,22 @@ public class MatchRequest extends BaseEntity {
 
     @Column(name = "desired_personality_text", columnDefinition = "text")
     private String desiredPersonalityText;
+
+    @Builder.Default
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(
+            name = "match_request_desired_personality_tags",
+            joinColumns = @JoinColumn(name = "match_request_id", nullable = false),
+            uniqueConstraints = @UniqueConstraint(
+                    name = "uk_match_request_desired_personality_tag",
+                    columnNames = {"match_request_id", "tag_code"}
+            ),
+            indexes = @Index(name = "idx_match_request_desired_personality_tags_tag", columnList = "tag_code")
+    )
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tag_code", nullable = false, length = 50)
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    private Set<PersonalityTag> desiredPersonalityTags = new HashSet<>();
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "preference_snapshot", columnDefinition = "jsonb")
