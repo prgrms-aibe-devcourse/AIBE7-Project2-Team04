@@ -14,6 +14,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700;800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet" />
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+    <link rel="stylesheet" href="/src/style.css" />
 
     <!-- Kakao Maps API -->
     <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=%VITE_KAKAO_MAP_API_KEY%&libraries=services,clusterer"></script>
@@ -135,10 +136,6 @@
         <!-- Hero Section -->
         <section class="max-w-7xl mx-auto px-margin-mobile md:px-margin-desktop py-12 md:py-20 flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
           <div class="flex-1 space-y-6 text-center lg:text-left">
-            <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary-container/10 border border-primary-container/20 text-primary-container text-xs font-bold">
-              <span class="w-2 h-2 rounded-full bg-primary-container animate-ping"></span>
-              <span>1:1 성향 맞춤 식사 메이트</span>
-            </div>
             <h1 class="font-headline text-3xl sm:text-4xl lg:text-5xl font-extrabold text-brand-navy leading-tight tracking-tight">
               오늘 저녁, <br class="hidden sm:block" />
               혼밥 말고 <span class="text-primary-container">마주한끼</span>
@@ -457,7 +454,7 @@
     </div>
 
     <!-- Login / Sign-up Modal (Warm Table Style) -->
-    <div id="auth-modal" class="modal-backdrop" aria-hidden="true" role="dialog" aria-modal="true">
+    <div id="auth-modal" class="modal-backdrop hidden" aria-hidden="true" role="dialog" aria-modal="true">
       <div class="modal-card" onclick="event.stopPropagation()">
         <!-- Close Button -->
         <button id="btn-close-modal" type="button" class="absolute top-4 right-4 text-secondary hover:text-brand-navy p-2 rounded-full hover:bg-surface transition-colors" aria-label="닫기">
