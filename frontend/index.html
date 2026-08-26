@@ -145,40 +145,15 @@
               활동 구(District), 식사 속도, 대화 선호도에 맞춰 나와 꼭 맞는 밥친구를 찾아드립니다. 마주 앉아 나누는 따뜻하고 편안한 식사를 시작해 보세요.
             </p>
 
-            <!-- Quick District Match Box -->
+            <!-- Quick Match Box -->
             <div class="bg-surface-container-lowest p-3 sm:p-4 rounded-card shadow-soft flex flex-col sm:flex-row items-center gap-3 max-w-xl mx-auto lg:mx-0 border border-outline-variant/30">
-              
-              <!-- 시·도 커스텀 드롭다운 -->
-              <div class="relative w-full sm:w-1/3 dropdown-container" id="sido-dropdown-container">
-                <button id="btn-sido-dropdown" type="button" class="w-full bg-surface border border-outline-variant/40 text-on-surface rounded-full py-3 pl-10 pr-4 focus:ring-2 focus:ring-primary-container focus:border-primary-container text-sm font-medium text-left flex items-center justify-between cursor-pointer">
-                  <span id="text-sido-selected" class="truncate text-secondary">시·도 선택</span>
-                  <span class="material-symbols-outlined text-secondary text-lg">arrow_drop_down</span>
-                </button>
-                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-xl pointer-events-none">map</span>
-                
-                <!-- 옵션 목록 (완벽하게 스타일링된 커스텀 드롭다운) -->
-                <ul id="list-sido-options" class="absolute left-0 top-full mt-2 w-full bg-white border border-outline-variant/20 rounded-2xl shadow-lg max-h-60 overflow-y-auto z-50 hidden transition-all duration-150 py-1">
-                  <!-- JS로 동적 렌더링 -->
-                </ul>
-              </div>
-
-              <!-- 시·군·구 커스텀 드롭다운 -->
-              <div class="relative w-full sm:w-1/3 dropdown-container" id="sigungu-dropdown-container">
-                <button id="btn-sigungu-dropdown" type="button" class="w-full bg-surface border border-outline-variant/40 text-on-surface rounded-full py-3 pl-10 pr-4 focus:ring-2 focus:ring-primary-container focus:border-primary-container text-sm font-medium text-left flex items-center justify-between cursor-not-allowed opacity-50" disabled>
-                  <span id="text-sigungu-selected" class="truncate text-secondary">시·군·구 선택</span>
-                  <span class="material-symbols-outlined text-secondary text-lg">arrow_drop_down</span>
-                </button>
-                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-xl pointer-events-none">location_on</span>
-                
-                <!-- 옵션 목록 -->
-                <ul id="list-sigungu-options" class="absolute left-0 top-full mt-2 w-full bg-white border border-outline-variant/20 rounded-2xl shadow-lg max-h-60 overflow-y-auto z-50 hidden transition-all duration-150 py-1">
-                  <!-- JS로 동적 렌더링 -->
-                </ul>
-              </div>
-
-              <button id="btn-hero-match" class="w-full sm:w-1/3 btn-primary py-3 px-6 rounded-full text-sm font-bold shadow-md pulse-ring flex items-center justify-center gap-2">
+              <button id="btn-hero-match" class="w-full sm:flex-1 btn-primary py-3 px-6 rounded-full text-sm font-bold shadow-md pulse-ring flex items-center justify-center gap-2">
                 <span class="material-symbols-outlined text-lg">local_dining</span>
                 <span>마주한끼 찾기</span>
+              </button>
+              <button id="btn-register-preferred" class="hidden w-full sm:w-auto btn-secondary py-3 px-5 rounded-full text-sm font-semibold flex items-center justify-center gap-1.5 shrink-0">
+                <span class="material-symbols-outlined text-lg">favorite</span>
+                <span>선호위치 등록</span>
               </button>
             </div>
 

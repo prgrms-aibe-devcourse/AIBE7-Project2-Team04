@@ -2,131 +2,132 @@ import './style.css'
 import { startKakaoLogin, startGoogleLogin, login, logout, signUp } from './auth/auth-api.js'
 import { clearAccessToken, getAccessToken } from './auth/token-storage.js'
 import { renderOAuthCallback } from './pages/oauth-callback.js'
+import { renderPreferredRegionPage } from './pages/preferred-region.js'
+import { renderMatchMapPage } from './pages/match-map.js'
 import { renderPersonalitySurvey } from './pages/personality-survey.js'
-import { getPersonalityProfile } from './personality/personality-api.js'
 
 const app = document.querySelector('#app')
-const initialLandingHTML = app ? app.innerHTML : ''
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080').replace(/\/$/, '')
-let regionData = {}
+export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080').replace(/\/$/, '')
 
-// Client-side SPA Router
-export function navigateTo(path) {
-  if (window.location.pathname !== path) {
-    window.history.pushState({}, '', path)
-  }
-  renderCurrentRoute()
+// 행정구역 트리 (pages/ 모듈과 공유)
+export let regionTree = {}
+
+// Toast 헬퍼 (pages/ 모듈과 공유)
+export function showToast(message) {
+  const existing = document.querySelector('#toast-message')
+  if (existing) existing.remove()
+
+  const toast = document.createElement('div')
+  toast.id = 'toast-message'
+  toast.className = 'fixed bottom-6 left-1/2 -translate-x-1/2 bg-brand-navy text-white px-6 py-3.5 rounded-full text-xs sm:text-sm font-bold shadow-floating z-50 animate-bounce flex items-center gap-2 border border-white/10'
+  toast.innerHTML = `
+    <span class="material-symbols-outlined text-primary-container text-base sm:text-lg">warning</span>
+    <span>${message}</span>
+  `
+  document.body.appendChild(toast)
+
+  setTimeout(() => {
+    toast.classList.add('opacity-0', 'transition-opacity', 'duration-500')
+    setTimeout(() => toast.remove(), 500)
+  }, 2500)
 }
 
-window.addEventListener('popstate', () => {
-  renderCurrentRoute()
-})
+// 행정구역 데이터 로드 (Backend API → regionTree 구성)
+const loadRegions = async () => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/regions?level=GU`)
+    const body = await response.json()
+    if (body.success && body.data) {
+      regionTree = {}
+      body.data.forEach(r => {
+        const parts = r.regionName.split(' ')
+        const sido = parts[0]
+        const sigungu = parts[1]
+        const detail = parts[2] || ''
 
-// Intercept internal anchor link clicks for smooth SPA transitions
-document.addEventListener('click', (e) => {
-  const link = e.target.closest('a')
-  if (!link || link.target === '_blank' || link.hasAttribute('download')) return
+        if (!regionTree[sido]) {
+          regionTree[sido] = {}
+        }
 
-  const href = link.getAttribute('href')
-  if (!href) return
-
-  // External links
-  if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('mailto:')) return
-
-  // Anchor links on same page
-  if (href.startsWith('#')) {
-    if (window.location.pathname !== '/') {
-      e.preventDefault()
-      navigateTo(`/${href}`)
+        if (detail) {
+          if (!regionTree[sido][sigungu]) {
+            regionTree[sido][sigungu] = {}
+          }
+          regionTree[sido][sigungu][detail] = {
+            code: r.regionCode,
+            name: detail,
+            fullName: r.regionName,
+            lat: r.centerLatitude,
+            lng: r.centerLongitude
+          }
+        } else {
+          regionTree[sido][sigungu] = {
+            code: r.regionCode,
+            name: sigungu,
+            fullName: r.regionName,
+            lat: r.centerLatitude,
+            lng: r.centerLongitude
+          }
+        }
+      })
     }
-    return
+  } catch (err) {
+    console.error('행정구역 데이터를 가져오는데 실패했습니다.', err)
   }
+}
 
-  // Anchor links with leading slash
-  if (href.startsWith('/#')) {
-    if (window.location.pathname !== '/') {
-      e.preventDefault()
-      navigateTo(href)
-    }
-    return
-  }
+// SPA 라우팅 네비게이션 함수
+export function navigateTo(path) {
+  window.history.pushState({}, '', path)
+  routeApp()
+}
 
-  // Internal path navigation
-  if (href.startsWith('/')) {
-    e.preventDefault()
-    navigateTo(href)
-  }
-})
-
-function renderCurrentRoute() {
-  initCommonHeader()
+// 라우터 분기 로직
+const routeApp = async () => {
   const path = window.location.pathname
+  const params = new URLSearchParams(window.location.search)
 
   if (path === '/oauth/callback') {
     renderOAuthCallback(app)
-  } else if (path === '/personality/survey') {
-    renderPersonalitySurvey(app)
   } else if (path === '/profile/setup') {
     renderProfileSetup(app)
   } else if (path === '/map') {
-    renderMapPage(app)
+    if (params.get('mode') === 'preferred') {
+      await renderPreferredRegionPage(app)
+    } else {
+      await renderMatchMapPage(app)
+    }
+  } else if (path === '/personality/survey') {
+    renderPersonalitySurvey(app)
   } else {
-    if (app) app.innerHTML = initialLandingHTML
+    // 기본 메인 랜딩 페이지
     initLandingPage()
   }
+  
+  // 헤더 상태 동기화
+  initCommonHeader()
 }
 
-// Initial render
-renderCurrentRoute()
+// 뒤로가기/앞으로가기 처리
+window.addEventListener('popstate', routeApp)
 
-function openAuthModal(isSignup = false) {
-  const authModal = document.querySelector('#auth-modal')
-  const formLogin = document.querySelector('#form-local-login')
-  const formSignup = document.querySelector('#form-local-signup')
-  const modalTitle = document.querySelector('#modal-title')
-  const modalDesc = document.querySelector('#modal-desc')
-  const loginErrorMsg = document.querySelector('#login-error-msg')
-  const signupErrorMsg = document.querySelector('#signup-error-msg')
-
-  if (isSignup) {
-    formLogin?.classList.add('hidden')
-    formSignup?.classList.remove('hidden')
-    if (modalTitle) modalTitle.textContent = '이메일 회원가입'
-    if (modalDesc) modalDesc.textContent = '간단한 가입으로 나만의 1:1 밥친구를 찾아보세요.'
-    if (signupErrorMsg) signupErrorMsg.style.display = 'none'
-  } else {
-    formLogin?.classList.remove('hidden')
-    formSignup?.classList.add('hidden')
-    if (modalTitle) modalTitle.textContent = '마주한끼 시작하기'
-    if (modalDesc) modalDesc.textContent = '혼밥 말고 따뜻한 한 끼를 함께할 친구를 만나보세요.'
-    if (loginErrorMsg) loginErrorMsg.style.display = 'none'
-  }
-  authModal?.classList.remove('hidden')
-  requestAnimationFrame(() => {
-    authModal?.classList.add('is-open')
-    authModal?.setAttribute('aria-hidden', 'false')
-  })
+// 앱 초기 진입점
+const initApp = async () => {
+  await loadRegions()
+  await routeApp()
 }
 
-function closeAuthModal() {
-  const authModal = document.querySelector('#auth-modal')
-  const loginErrorMsg = document.querySelector('#login-error-msg')
-  const signupErrorMsg = document.querySelector('#signup-error-msg')
+initApp()
 
-  authModal?.classList.remove('is-open')
-  authModal?.setAttribute('aria-hidden', 'true')
-  if (loginErrorMsg) loginErrorMsg.style.display = 'none'
-  if (signupErrorMsg) signupErrorMsg.style.display = 'none'
-  setTimeout(() => {
-    if (!authModal?.classList.contains('is-open')) {
-      authModal?.classList.add('hidden')
-    }
-  }, 250)
-}
+function initLandingPage() {
+  const token = getAccessToken()
+  const btnHeroMatch = document.querySelector('#btn-hero-match')
+  const btnRegisterPreferred = document.querySelector('#btn-register-preferred')
+  const btnCtaStart = document.querySelector('#btn-cta-start')
+  const btnPreviewJoin = document.querySelector('#btn-preview-join')
 
-// Global Modal Events Setup (Runs once)
-function setupModalEvents() {
+  // Auth Modal Elements
   const authModal = document.querySelector('#auth-modal')
   const btnCloseModal = document.querySelector('#btn-close-modal')
   const btnModalKakao = document.querySelector('#btn-modal-kakao')
@@ -135,9 +136,54 @@ function setupModalEvents() {
   const formSignup = document.querySelector('#form-local-signup')
   const btnToggleSignup = document.querySelector('#btn-toggle-signup')
   const btnToggleLogin = document.querySelector('#btn-toggle-login')
+  const modalTitle = document.querySelector('#modal-title')
+  const modalDesc = document.querySelector('#modal-desc')
   const loginErrorMsg = document.querySelector('#login-error-msg')
   const signupErrorMsg = document.querySelector('#signup-error-msg')
 
+  const openAuthModal = (isSignup = false) => {
+    if (isSignup) {
+      showSignupForm()
+    } else {
+      showLoginForm()
+    }
+    if (authModal) {
+      authModal.style.display = 'grid'
+      authModal.offsetHeight // Force reflow
+      authModal.classList.add('is-open')
+      authModal.setAttribute('aria-hidden', 'false')
+    }
+  }
+
+  const closeAuthModal = () => {
+    if (authModal) {
+      authModal.classList.remove('is-open')
+      authModal.setAttribute('aria-hidden', 'true')
+      setTimeout(() => {
+        authModal.style.display = 'none'
+      }, 250)
+    }
+    if (loginErrorMsg) loginErrorMsg.style.display = 'none'
+    if (signupErrorMsg) signupErrorMsg.style.display = 'none'
+  }
+
+  const showLoginForm = () => {
+    formLogin?.classList.remove('hidden')
+    formSignup?.classList.add('hidden')
+    if (modalTitle) modalTitle.textContent = '마주한끼 시작하기'
+    if (modalDesc) modalDesc.textContent = '혼밥 말고 따뜻한 한 끼를 함께할 친구를 만나보세요.'
+    if (loginErrorMsg) loginErrorMsg.style.display = 'none'
+  }
+
+  const showSignupForm = () => {
+    formLogin?.classList.add('hidden')
+    formSignup?.classList.remove('hidden')
+    if (modalTitle) modalTitle.textContent = '이메일 회원가입'
+    if (modalDesc) modalDesc.textContent = '간단한 가입으로 나만의 1:1 밥친구를 찾아보세요.'
+    if (signupErrorMsg) signupErrorMsg.style.display = 'none'
+  }
+
+  // 모달 닫기
   btnCloseModal?.addEventListener('click', closeAuthModal)
   authModal?.addEventListener('click', (e) => {
     if (e.target === authModal) {
@@ -145,12 +191,15 @@ function setupModalEvents() {
     }
   })
 
-  btnToggleSignup?.addEventListener('click', () => openAuthModal(true))
-  btnToggleLogin?.addEventListener('click', () => openAuthModal(false))
+  // 로그인 ↔ 회원가입 전환
+  btnToggleSignup?.addEventListener('click', showSignupForm)
+  btnToggleLogin?.addEventListener('click', showLoginForm)
 
+  // 소셜 로그인
   btnModalKakao?.addEventListener('click', startKakaoLogin)
   btnModalGoogle?.addEventListener('click', startGoogleLogin)
 
+  // 이메일 로그인 제출
   formLogin?.addEventListener('submit', async (e) => {
     e.preventDefault()
     const email = document.querySelector('#login-email')?.value.trim()
@@ -160,18 +209,7 @@ function setupModalEvents() {
     try {
       await login(email, password)
       closeAuthModal()
-
-      try {
-        const profile = await getPersonalityProfile()
-        if (profile?.onboardingStatus === 'NOT_STARTED') {
-          navigateTo('/personality/survey')
-          return
-        }
-      } catch (profileErr) {
-        console.warn('성향 상태 조회 실패:', profileErr)
-      }
-
-      renderCurrentRoute()
+      window.location.reload()
     } catch (err) {
       if (loginErrorMsg) {
         loginErrorMsg.textContent = err.message || '로그인에 실패했습니다.'
@@ -180,6 +218,7 @@ function setupModalEvents() {
     }
   })
 
+  // 이메일 회원가입 제출
   formSignup?.addEventListener('submit', async (e) => {
     e.preventDefault()
     const email = document.querySelector('#signup-email')?.value.trim()
@@ -191,7 +230,7 @@ function setupModalEvents() {
       await signUp(email, password, nickname)
       await login(email, password)
       closeAuthModal()
-      navigateTo('/personality/survey')
+      window.location.reload()
     } catch (err) {
       if (signupErrorMsg) {
         signupErrorMsg.textContent = err.message || '회원가입에 실패했습니다.'
@@ -199,174 +238,30 @@ function setupModalEvents() {
       }
     }
   })
-}
 
-setupModalEvents()
-
-function initLandingPage() {
-  const token = getAccessToken()
-  const btnHeaderLogin = document.querySelector('#btn-header-login')
-  const btnHeaderStart = document.querySelector('#btn-header-start')
-  const btnHeroMatch = document.querySelector('#btn-hero-match')
-  const btnCtaStart = document.querySelector('#btn-cta-start')
-  const btnPreviewJoin = document.querySelector('#btn-preview-join')
-  const btnSido = document.querySelector('#btn-sido-dropdown')
-  const textSido = document.querySelector('#text-sido-selected')
-  const listSido = document.querySelector('#list-sido-options')
-
-  const btnSigungu = document.querySelector('#btn-sigungu-dropdown')
-  const textSigungu = document.querySelector('#text-sigungu-selected')
-  const listSigungu = document.querySelector('#list-sigungu-options')
-
-  let selectedSido = ''
-  let selectedSigungu = ''
-
-  if (!token) {
-    btnHeaderLogin?.addEventListener('click', () => openAuthModal(false))
-    btnHeaderStart?.addEventListener('click', () => openAuthModal(false))
-  }
-
-  // Toggle Sido dropdown visibility
-  btnSido?.addEventListener('click', (e) => {
-    e.stopPropagation()
-    listSido?.classList.toggle('hidden')
-    listSigungu?.classList.add('hidden')
-  })
-
-  // Toggle Sigungu dropdown visibility
-  btnSigungu?.addEventListener('click', (e) => {
-    e.stopPropagation()
-    if (selectedSido) {
-      listSigungu?.classList.toggle('hidden')
-      listSido?.classList.add('hidden')
-    }
-  })
-
-  // Close dropdowns when clicking outside
-  document.addEventListener('click', () => {
-    listSido?.classList.add('hidden')
-    listSigungu?.classList.add('hidden')
-  })
-
-  // Populate Sido dropdown options
-  const populateSidoOptions = () => {
-    if (!listSido) return
-    listSido.innerHTML = ''
-    Object.keys(regionData).forEach((sido) => {
-      const li = document.createElement('li')
-      li.className = 'px-4 py-2.5 text-sm hover:bg-primary-container/10 hover:text-primary-container cursor-pointer transition-colors text-on-surface'
-      li.textContent = sido
-      li.addEventListener('click', () => selectSido(sido))
-      listSido.appendChild(li)
-    })
-  }
-
-  // Handle Sido selection
-  const selectSido = (sido) => {
-    selectedSido = sido
-    if (textSido) {
-      textSido.textContent = sido
-      textSido.classList.remove('text-secondary')
-      textSido.classList.add('text-on-surface', 'font-semibold')
-    }
-
-    // Reset Sigungu
-    selectedSigungu = ''
-    if (textSigungu) {
-      textSigungu.textContent = '시·군·구 선택'
-      textSigungu.classList.remove('text-on-surface', 'font-semibold')
-      textSigungu.classList.add('text-secondary')
-    }
-
-    // Enable Sigungu dropdown button
-    if (btnSigungu) {
-      btnSigungu.disabled = false
-      btnSigungu.classList.remove('cursor-not-allowed', 'opacity-50')
-      btnSigungu.classList.add('cursor-pointer')
-    }
-
-    // Populate Sigungu list
-    if (listSigungu && regionData[sido]) {
-      listSigungu.innerHTML = ''
-      regionData[sido].forEach((region) => {
-        const li = document.createElement('li')
-        li.className = 'px-4 py-2.5 text-sm hover:bg-primary-container/10 hover:text-primary-container cursor-pointer transition-colors text-on-surface'
-        li.textContent = region.name
-        li.addEventListener('click', () => selectSigungu(region.name))
-        listSigungu.appendChild(li)
-      })
-    }
-
-    listSido?.classList.add('hidden')
-  }
-
-  // Handle Sigungu selection
-  const selectSigungu = (sigungu) => {
-    selectedSigungu = sigungu
-    if (textSigungu) {
-      textSigungu.textContent = sigungu
-      textSigungu.classList.remove('text-secondary')
-      textSigungu.classList.add('text-on-surface', 'font-semibold')
-    }
-    listSigungu?.classList.add('hidden')
-  }
-
-  // Populate Sido dropdown by loading regions dynamically from Backend API
-  const loadRegions = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/regions?level=GU`)
-      const body = await response.json()
-      if (body.success && body.data) {
-        regionData = {}
-        body.data.forEach((r) => {
-          const parts = r.regionName.split(' ')
-          const sido = parts[0]
-          const sigungu = parts[1] || r.regionName
-
-          if (!regionData[sido]) {
-            regionData[sido] = []
-          }
-          regionData[sido].push({
-            name: sigungu,
-            lat: r.centerLatitude,
-            lng: r.centerLongitude,
-          })
-        })
-
-        populateSidoOptions()
-      }
-    } catch (err) {
-      console.error('행정구역 데이터를 가져오는데 실패했습니다.', err)
-    }
-  }
-
-  loadRegions()
-
-  // Hero Quick Match Button
+  // 히어로 매칭 시작 버튼
   const handleMatchStart = () => {
     if (!token) {
       openAuthModal(false)
       return
     }
-    if (selectedSido && selectedSigungu) {
-      const targetList = regionData[selectedSido] || []
-      const region = targetList.find((r) => r.name === selectedSigungu)
-      if (region) {
-        navigateTo(`/map?lat=${region.lat}&lng=${region.lng}&name=${encodeURIComponent(region.name)}`)
-      }
-    } else {
-      alert('활동 지역(시·도 및 시·군·구)을 모두 선택해 주세요.')
-      btnSido?.focus()
-    }
+    navigateTo('/map')
   }
 
   btnHeroMatch?.addEventListener('click', handleMatchStart)
+
+  if (sessionStorage.getItem('project2.isLoggedIn') === 'true') {
+    btnRegisterPreferred?.classList.remove('hidden')
+  }
+  btnRegisterPreferred?.addEventListener('click', () => {
+    navigateTo('/map?mode=preferred')
+  })
+
   btnCtaStart?.addEventListener('click', () => {
     if (!token) {
       openAuthModal(false)
     } else {
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-      btnSido?.focus()
+      navigateTo('/map')
     }
   })
   btnPreviewJoin?.addEventListener('click', () => {
@@ -378,6 +273,7 @@ function initLandingPage() {
   })
 }
 
+// 메인 헤더 및 온보딩 연동 처리
 function initCommonHeader() {
   const token = getAccessToken()
   const headerAuth = document.querySelector('#header-auth')
@@ -394,11 +290,54 @@ function initCommonHeader() {
           <span class="w-1.5 h-1.5 rounded-full bg-success"></span>
           로그인 됨
         </span>
+        <button id="btn-revoke-location" class="btn-secondary px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-semibold text-error hover:bg-error/10 hover:text-error border-error/30 flex items-center gap-1">
+          <span class="material-symbols-outlined text-sm">no_accounts</span>
+          <span>위치동의 철회</span>
+        </button>
         <button id="btn-logout" class="btn-secondary px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-semibold">
           로그아웃
         </button>
       </div>
     `
+    
+    // 위치 동의 철회 버튼 바인딩
+    document.querySelector('#btn-revoke-location')?.addEventListener('click', async (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      if (confirm('위치 정보 이용 동의를 철회하시겠습니까?\n철회 시 등록된 선호위치와 대기 중인 모든 매칭 요청이 파기됩니다.')) {
+        try {
+          const csrfResp = await fetch(`${API_BASE_URL}/auth/csrf`, { credentials: 'include' })
+          if (!csrfResp.ok) throw new Error('CSRF 토큰 발급에 실패했습니다.')
+
+          const readCookie = (name) => {
+            const prefix = `${encodeURIComponent(name)}=`
+            const cookie = document.cookie
+              .split('; ')
+              .find((item) => item.startsWith(prefix))
+            return cookie ? decodeURIComponent(cookie.slice(prefix.length)) : null
+          }
+          const csrfToken = readCookie('XSRF-TOKEN')
+
+          const resp = await fetch(`${API_BASE_URL}/users/me/preferred-region`, {
+            method: 'DELETE',
+            credentials: 'include',
+            headers: {
+              'X-XSRF-TOKEN': csrfToken
+            }
+          })
+
+          if (resp.ok) {
+            alert('위치 정보 이용 동의가 철회되고 데이터가 영구 파기되었습니다.')
+            navigateTo('/')
+          } else {
+            alert('동의 철회 처리에 실패했습니다.')
+          }
+        } catch (err) {
+          alert('오류가 발생했습니다: ' + err.message)
+        }
+      }
+    })
+
     document.querySelector('#btn-logout')?.addEventListener('click', async (e) => {
       e.preventDefault()
       e.stopPropagation()
@@ -423,6 +362,33 @@ function initCommonHeader() {
         </button>
       </div>
     `
+    const openAuthModal = (isSignup = false) => {
+      const authModal = document.querySelector('#auth-modal')
+      const loginForm = document.querySelector('#form-local-login')
+      const signupForm = document.querySelector('#form-local-signup')
+      const modalTitle = document.querySelector('#modal-title')
+      const modalDesc = document.querySelector('#modal-desc')
+      
+      if (isSignup) {
+        loginForm?.classList.add('hidden')
+        signupForm?.classList.remove('hidden')
+        if (modalTitle) modalTitle.textContent = '이메일 회원가입'
+        if (modalDesc) modalDesc.textContent = '간단한 가입으로 나만의 1:1 밥친구를 찾아보세요.'
+      } else {
+        loginForm?.classList.remove('hidden')
+        signupForm?.classList.add('hidden')
+        if (modalTitle) modalTitle.textContent = '마주한끼 시작하기'
+        if (modalDesc) modalDesc.textContent = '혼밥 말고 따뜻한 한 끼를 함께할 친구를 만나보세요.'
+      }
+      
+      if (authModal) {
+        authModal.style.display = 'grid'
+        authModal.offsetHeight
+        authModal.classList.add('is-open')
+        authModal.setAttribute('aria-hidden', 'false')
+      }
+    }
+
     document.querySelector('#btn-header-login')?.addEventListener('click', () => openAuthModal(false))
     document.querySelector('#btn-header-start')?.addEventListener('click', () => openAuthModal(false))
   }
@@ -444,88 +410,4 @@ function renderProfileSetup(container) {
       </section>
     </main>
   `
-}
-
-function renderMapPage(container) {
-  const params = new URLSearchParams(window.location.search)
-  const lat = parseFloat(params.get('lat')) || 37.5662
-  const lng = parseFloat(params.get('lng')) || 126.9016
-  const name = params.get('name') || '마포구'
-
-  container.innerHTML = `
-    <main class="max-w-[1440px] mx-auto px-margin-mobile md:px-margin-desktop py-8 flex flex-col gap-6 w-full">
-      <!-- 타이틀 바 -->
-      <div class="flex items-center justify-between border-b border-outline-variant/30 pb-4">
-        <div>
-          <h1 class="font-headline text-2xl font-bold text-brand-navy">마주한끼 찾기</h1>
-          <p class="text-sm text-secondary">선택한 지역: <strong class="text-primary-container">${name}</strong></p>
-        </div>
-        <a href="/" class="btn-secondary px-4 py-2 rounded-full text-sm font-semibold flex items-center gap-1">
-          <span class="material-symbols-outlined text-lg">home</span>
-          <span>홈으로</span>
-        </a>
-      </div>
-
-      <!-- 지도 및 컨트롤 영역 (가로 너비 max-w-[1440px] 제한, 세로 높이 450px 컴팩트화) -->
-      <div class="w-full flex flex-col gap-4">
-        <div class="w-full bg-white border border-outline-variant/30 rounded-card shadow-soft overflow-hidden" id="map" style="height: 450px; min-height: 450px;">
-          <!-- 카카오맵이 여기에 렌더링됩니다. -->
-        </div>
-
-        <!-- 하단 액션 바 -->
-        <div class="flex justify-end">
-          <button id="btn-confirm-location" class="btn-primary py-2.5 px-6 rounded-full text-sm font-bold flex items-center gap-2 shadow-md">
-            <span class="material-symbols-outlined text-sm">check_circle</span>
-            <span>이 위치로 핀 확정 테스트</span>
-          </button>
-        </div>
-      </div>
-    </main>
-  `
-
-  initKakaoMap(lat, lng, name)
-}
-
-function initKakaoMap(lat, lng, name) {
-  const checkKakao = setInterval(() => {
-    if (window.kakao && window.kakao.maps) {
-      clearInterval(checkKakao)
-
-      window.kakao.maps.load(() => {
-        const container = document.getElementById('map')
-        if (!container) return
-
-        const options = {
-          center: new window.kakao.maps.LatLng(lat, lng),
-          level: 4,
-        }
-
-        const map = new window.kakao.maps.Map(container, options)
-
-        const markerPosition = new window.kakao.maps.LatLng(lat, lng)
-        const marker = new window.kakao.maps.Marker({
-          position: markerPosition,
-          draggable: true,
-        })
-
-        marker.setMap(map)
-
-        window.kakao.maps.event.addListener(marker, 'dragend', () => {
-          const position = marker.getPosition()
-          console.log(`변경된 위치 좌표: Lat=${position.getLat()}, Lng=${position.getLng()}`)
-        })
-
-        window.kakao.maps.event.addListener(map, 'click', (mouseEvent) => {
-          const latlng = mouseEvent.latLng
-          marker.setPosition(latlng)
-          console.log(`클릭한 위치 좌표: Lat=${latlng.getLat()}, Lng=${latlng.getLng()}`)
-        })
-
-        document.querySelector('#btn-confirm-location')?.addEventListener('click', () => {
-          const finalPos = marker.getPosition()
-          alert(`[${name}] 핀 위치 확정!\n위도: ${finalPos.getLat()}\n경도: ${finalPos.getLng()}`)
-        })
-      })
-    }
-  }, 100)
 }

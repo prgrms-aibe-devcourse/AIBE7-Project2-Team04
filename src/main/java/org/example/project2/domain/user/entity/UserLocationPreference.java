@@ -52,4 +52,10 @@ public class UserLocationPreference {
     @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    public void update(String regionCode, String regionName, boolean locationServiceConsent) {
+        this.regionCode = regionCode;
+        this.regionName = regionName;
+        this.locationServiceConsent = locationServiceConsent;
+    }
 }
