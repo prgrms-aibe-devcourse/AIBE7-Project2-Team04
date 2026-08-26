@@ -2,25 +2,209 @@ import './style.css'
 import { startKakaoLogin, startGoogleLogin, login, logout, signUp } from './auth/auth-api.js'
 import { clearAccessToken, getAccessToken } from './auth/token-storage.js'
 import { renderOAuthCallback } from './pages/oauth-callback.js'
+import { renderPersonalitySurvey } from './pages/personality-survey.js'
+import { getPersonalityProfile } from './personality/personality-api.js'
 
 const app = document.querySelector('#app')
+const initialLandingHTML = app ? app.innerHTML : ''
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080').replace(/\/$/, '')
 let regionData = {}
 
-if (window.location.pathname === '/oauth/callback') {
-  renderOAuthCallback(app)
-} else if (window.location.pathname === '/profile/setup') {
-  renderProfileSetup(app)
-} else if (window.location.pathname === '/map') {
-  renderMapPage(app)
-} else {
-  initLandingPage()
+// Client-side SPA Router
+export function navigateTo(path) {
+  if (window.location.pathname !== path) {
+    window.history.pushState({}, '', path)
+  }
+  renderCurrentRoute()
 }
+
+window.addEventListener('popstate', () => {
+  renderCurrentRoute()
+})
+
+// Intercept internal anchor link clicks for smooth SPA transitions
+document.addEventListener('click', (e) => {
+  const link = e.target.closest('a')
+  if (!link || link.target === '_blank' || link.hasAttribute('download')) return
+
+  const href = link.getAttribute('href')
+  if (!href) return
+
+  // External links
+  if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('mailto:')) return
+
+  // Anchor links on same page
+  if (href.startsWith('#')) {
+    if (window.location.pathname !== '/') {
+      e.preventDefault()
+      navigateTo(`/${href}`)
+    }
+    return
+  }
+
+  // Anchor links with leading slash
+  if (href.startsWith('/#')) {
+    if (window.location.pathname !== '/') {
+      e.preventDefault()
+      navigateTo(href)
+    }
+    return
+  }
+
+  // Internal path navigation
+  if (href.startsWith('/')) {
+    e.preventDefault()
+    navigateTo(href)
+  }
+})
+
+function renderCurrentRoute() {
+  initCommonHeader()
+  const path = window.location.pathname
+
+  if (path === '/oauth/callback') {
+    renderOAuthCallback(app)
+  } else if (path === '/personality/survey') {
+    renderPersonalitySurvey(app)
+  } else if (path === '/profile/setup') {
+    renderProfileSetup(app)
+  } else if (path === '/map') {
+    renderMapPage(app)
+  } else {
+    if (app) app.innerHTML = initialLandingHTML
+    initLandingPage()
+  }
+}
+
+// Initial render
+renderCurrentRoute()
+
+function openAuthModal(isSignup = false) {
+  const authModal = document.querySelector('#auth-modal')
+  const formLogin = document.querySelector('#form-local-login')
+  const formSignup = document.querySelector('#form-local-signup')
+  const modalTitle = document.querySelector('#modal-title')
+  const modalDesc = document.querySelector('#modal-desc')
+  const loginErrorMsg = document.querySelector('#login-error-msg')
+  const signupErrorMsg = document.querySelector('#signup-error-msg')
+
+  if (isSignup) {
+    formLogin?.classList.add('hidden')
+    formSignup?.classList.remove('hidden')
+    if (modalTitle) modalTitle.textContent = '이메일 회원가입'
+    if (modalDesc) modalDesc.textContent = '간단한 가입으로 나만의 1:1 밥친구를 찾아보세요.'
+    if (signupErrorMsg) signupErrorMsg.style.display = 'none'
+  } else {
+    formLogin?.classList.remove('hidden')
+    formSignup?.classList.add('hidden')
+    if (modalTitle) modalTitle.textContent = '마주한끼 시작하기'
+    if (modalDesc) modalDesc.textContent = '혼밥 말고 따뜻한 한 끼를 함께할 친구를 만나보세요.'
+    if (loginErrorMsg) loginErrorMsg.style.display = 'none'
+  }
+  authModal?.classList.remove('hidden')
+  requestAnimationFrame(() => {
+    authModal?.classList.add('is-open')
+    authModal?.setAttribute('aria-hidden', 'false')
+  })
+}
+
+function closeAuthModal() {
+  const authModal = document.querySelector('#auth-modal')
+  const loginErrorMsg = document.querySelector('#login-error-msg')
+  const signupErrorMsg = document.querySelector('#signup-error-msg')
+
+  authModal?.classList.remove('is-open')
+  authModal?.setAttribute('aria-hidden', 'true')
+  if (loginErrorMsg) loginErrorMsg.style.display = 'none'
+  if (signupErrorMsg) signupErrorMsg.style.display = 'none'
+  setTimeout(() => {
+    if (!authModal?.classList.contains('is-open')) {
+      authModal?.classList.add('hidden')
+    }
+  }, 250)
+}
+
+// Global Modal Events Setup (Runs once)
+function setupModalEvents() {
+  const authModal = document.querySelector('#auth-modal')
+  const btnCloseModal = document.querySelector('#btn-close-modal')
+  const btnModalKakao = document.querySelector('#btn-modal-kakao')
+  const btnModalGoogle = document.querySelector('#btn-modal-google')
+  const formLogin = document.querySelector('#form-local-login')
+  const formSignup = document.querySelector('#form-local-signup')
+  const btnToggleSignup = document.querySelector('#btn-toggle-signup')
+  const btnToggleLogin = document.querySelector('#btn-toggle-login')
+  const loginErrorMsg = document.querySelector('#login-error-msg')
+  const signupErrorMsg = document.querySelector('#signup-error-msg')
+
+  btnCloseModal?.addEventListener('click', closeAuthModal)
+  authModal?.addEventListener('click', (e) => {
+    if (e.target === authModal) {
+      closeAuthModal()
+    }
+  })
+
+  btnToggleSignup?.addEventListener('click', () => openAuthModal(true))
+  btnToggleLogin?.addEventListener('click', () => openAuthModal(false))
+
+  btnModalKakao?.addEventListener('click', startKakaoLogin)
+  btnModalGoogle?.addEventListener('click', startGoogleLogin)
+
+  formLogin?.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const email = document.querySelector('#login-email')?.value.trim()
+    const password = document.querySelector('#login-password')?.value
+    if (loginErrorMsg) loginErrorMsg.style.display = 'none'
+
+    try {
+      await login(email, password)
+      closeAuthModal()
+
+      try {
+        const profile = await getPersonalityProfile()
+        if (profile?.onboardingStatus === 'NOT_STARTED') {
+          navigateTo('/personality/survey')
+          return
+        }
+      } catch (profileErr) {
+        console.warn('성향 상태 조회 실패:', profileErr)
+      }
+
+      renderCurrentRoute()
+    } catch (err) {
+      if (loginErrorMsg) {
+        loginErrorMsg.textContent = err.message || '로그인에 실패했습니다.'
+        loginErrorMsg.style.display = 'block'
+      }
+    }
+  })
+
+  formSignup?.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const email = document.querySelector('#signup-email')?.value.trim()
+    const nickname = document.querySelector('#signup-nickname')?.value.trim()
+    const password = document.querySelector('#signup-password')?.value
+    if (signupErrorMsg) signupErrorMsg.style.display = 'none'
+
+    try {
+      await signUp(email, password, nickname)
+      await login(email, password)
+      closeAuthModal()
+      navigateTo('/personality/survey')
+    } catch (err) {
+      if (signupErrorMsg) {
+        signupErrorMsg.textContent = err.message || '회원가입에 실패했습니다.'
+        signupErrorMsg.style.display = 'block'
+      }
+    }
+  })
+}
+
+setupModalEvents()
 
 function initLandingPage() {
   const token = getAccessToken()
-  const headerAuth = document.querySelector('#header-auth')
   const btnHeaderLogin = document.querySelector('#btn-header-login')
   const btnHeaderStart = document.querySelector('#btn-header-start')
   const btnHeroMatch = document.querySelector('#btn-hero-match')
@@ -37,137 +221,10 @@ function initLandingPage() {
   let selectedSido = ''
   let selectedSigungu = ''
 
-  // Auth Modal Elements
-  const authModal = document.querySelector('#auth-modal')
-  const btnCloseModal = document.querySelector('#btn-close-modal')
-  const btnModalKakao = document.querySelector('#btn-modal-kakao')
-  const btnModalGoogle = document.querySelector('#btn-modal-google')
-  const formLogin = document.querySelector('#form-local-login')
-  const formSignup = document.querySelector('#form-local-signup')
-  const btnToggleSignup = document.querySelector('#btn-toggle-signup')
-  const btnToggleLogin = document.querySelector('#btn-toggle-login')
-  const modalTitle = document.querySelector('#modal-title')
-  const modalDesc = document.querySelector('#modal-desc')
-  const loginErrorMsg = document.querySelector('#login-error-msg')
-  const signupErrorMsg = document.querySelector('#signup-error-msg')
-
-  const openAuthModal = (isSignup = false) => {
-    if (isSignup) {
-      showSignupForm()
-    } else {
-      showLoginForm()
-    }
-    authModal?.classList.add('is-open')
-    authModal?.setAttribute('aria-hidden', 'false')
-  }
-
-  const closeAuthModal = () => {
-    authModal?.classList.remove('is-open')
-    authModal?.setAttribute('aria-hidden', 'true')
-    if (loginErrorMsg) loginErrorMsg.style.display = 'none'
-    if (signupErrorMsg) signupErrorMsg.style.display = 'none'
-  }
-
-  const showLoginForm = () => {
-    formLogin?.classList.remove('hidden')
-    formSignup?.classList.add('hidden')
-    if (modalTitle) modalTitle.textContent = '마주한끼 시작하기'
-    if (modalDesc) modalDesc.textContent = '혼밥 말고 따뜻한 한 끼를 함께할 친구를 만나보세요.'
-    if (loginErrorMsg) loginErrorMsg.style.display = 'none'
-  }
-
-  const showSignupForm = () => {
-    formLogin?.classList.add('hidden')
-    formSignup?.classList.remove('hidden')
-    if (modalTitle) modalTitle.textContent = '이메일 회원가입'
-    if (modalDesc) modalDesc.textContent = '간단한 가입으로 나만의 1:1 밥친구를 찾아보세요.'
-    if (signupErrorMsg) signupErrorMsg.style.display = 'none'
-  }
-
-  // Header Logged-In vs Logged-Out UI
-  if (token && headerAuth) {
-    headerAuth.innerHTML = `
-      <div class="flex items-center gap-3">
-        <span class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-success/15 text-success text-xs font-bold">
-          <span class="w-1.5 h-1.5 rounded-full bg-success"></span>
-          로그인 됨
-        </span>
-        <button id="btn-logout" class="btn-secondary px-4 py-2 rounded-full text-xs sm:text-sm font-semibold">
-          로그아웃
-        </button>
-      </div>
-    `
-    document.querySelector('#btn-logout')?.addEventListener('click', async () => {
-      try {
-        await logout()
-        clearAccessToken()
-        window.location.reload()
-      } catch (error) {
-        console.error('로그아웃 요청 실패:', error)
-        alert(error.message || '로그아웃에 실패했습니다. 잠시 후 다시 시도해 주세요.')
-      }
-    })
-  } else {
+  if (!token) {
     btnHeaderLogin?.addEventListener('click', () => openAuthModal(false))
     btnHeaderStart?.addEventListener('click', () => openAuthModal(false))
   }
-
-  // Modal Close Events
-  btnCloseModal?.addEventListener('click', closeAuthModal)
-  authModal?.addEventListener('click', (e) => {
-    if (e.target === authModal) {
-      closeAuthModal()
-    }
-  })
-
-  // Switch between Login & Signup
-  btnToggleSignup?.addEventListener('click', showSignupForm)
-  btnToggleLogin?.addEventListener('click', showLoginForm)
-
-  // Social Login Triggers
-  btnModalKakao?.addEventListener('click', startKakaoLogin)
-  btnModalGoogle?.addEventListener('click', startGoogleLogin)
-
-  // Local Login Submit
-  formLogin?.addEventListener('submit', async (e) => {
-    e.preventDefault()
-    const email = document.querySelector('#login-email')?.value.trim()
-    const password = document.querySelector('#login-password')?.value
-    if (loginErrorMsg) loginErrorMsg.style.display = 'none'
-
-    try {
-      await login(email, password)
-      closeAuthModal()
-      window.location.reload()
-    } catch (err) {
-      if (loginErrorMsg) {
-        loginErrorMsg.textContent = err.message || '로그인에 실패했습니다.'
-        loginErrorMsg.style.display = 'block'
-      }
-    }
-  })
-
-  // Local Signup Submit
-  formSignup?.addEventListener('submit', async (e) => {
-    e.preventDefault()
-    const email = document.querySelector('#signup-email')?.value.trim()
-    const nickname = document.querySelector('#signup-nickname')?.value.trim()
-    const password = document.querySelector('#signup-password')?.value
-    if (signupErrorMsg) signupErrorMsg.style.display = 'none'
-
-    try {
-      await signUp(email, password, nickname)
-      // 회원가입 성공 후 자동 로그인 시도
-      await login(email, password)
-      closeAuthModal()
-      window.location.reload()
-    } catch (err) {
-      if (signupErrorMsg) {
-        signupErrorMsg.textContent = err.message || '회원가입에 실패했습니다.'
-        signupErrorMsg.style.display = 'block'
-      }
-    }
-  })
 
   // Toggle Sido dropdown visibility
   btnSido?.addEventListener('click', (e) => {
@@ -195,7 +252,7 @@ function initLandingPage() {
   const populateSidoOptions = () => {
     if (!listSido) return
     listSido.innerHTML = ''
-    Object.keys(regionData).forEach(sido => {
+    Object.keys(regionData).forEach((sido) => {
       const li = document.createElement('li')
       li.className = 'px-4 py-2.5 text-sm hover:bg-primary-container/10 hover:text-primary-container cursor-pointer transition-colors text-on-surface'
       li.textContent = sido
@@ -212,7 +269,7 @@ function initLandingPage() {
       textSido.classList.remove('text-secondary')
       textSido.classList.add('text-on-surface', 'font-semibold')
     }
-    
+
     // Reset Sigungu
     selectedSigungu = ''
     if (textSigungu) {
@@ -231,7 +288,7 @@ function initLandingPage() {
     // Populate Sigungu list
     if (listSigungu && regionData[sido]) {
       listSigungu.innerHTML = ''
-      regionData[sido].forEach(region => {
+      regionData[sido].forEach((region) => {
         const li = document.createElement('li')
         li.className = 'px-4 py-2.5 text-sm hover:bg-primary-container/10 hover:text-primary-container cursor-pointer transition-colors text-on-surface'
         li.textContent = region.name
@@ -261,21 +318,21 @@ function initLandingPage() {
       const body = await response.json()
       if (body.success && body.data) {
         regionData = {}
-        body.data.forEach(r => {
+        body.data.forEach((r) => {
           const parts = r.regionName.split(' ')
           const sido = parts[0]
           const sigungu = parts[1] || r.regionName
-          
+
           if (!regionData[sido]) {
             regionData[sido] = []
           }
           regionData[sido].push({
             name: sigungu,
             lat: r.centerLatitude,
-            lng: r.centerLongitude
+            lng: r.centerLongitude,
           })
         })
-        
+
         populateSidoOptions()
       }
     } catch (err) {
@@ -293,9 +350,9 @@ function initLandingPage() {
     }
     if (selectedSido && selectedSigungu) {
       const targetList = regionData[selectedSido] || []
-      const region = targetList.find(r => r.name === selectedSigungu)
+      const region = targetList.find((r) => r.name === selectedSigungu)
       if (region) {
-        window.location.assign(`/map?lat=${region.lat}&lng=${region.lng}&name=${encodeURIComponent(region.name)}`)
+        navigateTo(`/map?lat=${region.lat}&lng=${region.lng}&name=${encodeURIComponent(region.name)}`)
       }
     } else {
       alert('활동 지역(시·도 및 시·군·구)을 모두 선택해 주세요.')
@@ -319,6 +376,56 @@ function initLandingPage() {
       alert('민지 님의 식사 테이블에 참가 요청을 보냈습니다!')
     }
   })
+}
+
+function initCommonHeader() {
+  const token = getAccessToken()
+  const headerAuth = document.querySelector('#header-auth')
+  if (!headerAuth) return
+
+  if (token) {
+    headerAuth.innerHTML = `
+      <div class="flex items-center gap-2 sm:gap-3">
+        <a href="/personality/survey" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-brand-navy text-xs font-bold transition-colors">
+          <span class="material-symbols-outlined text-sm text-primary-container">psychology</span>
+          <span>식사 성향</span>
+        </a>
+        <span class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-success/15 text-success text-xs font-bold">
+          <span class="w-1.5 h-1.5 rounded-full bg-success"></span>
+          로그인 됨
+        </span>
+        <button id="btn-logout" class="btn-secondary px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-semibold">
+          로그아웃
+        </button>
+      </div>
+    `
+    document.querySelector('#btn-logout')?.addEventListener('click', async (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      try {
+        await logout()
+      } catch (error) {
+        console.warn('로그아웃 요청 실패 (로컬 세션은 정리합니다):', error)
+      } finally {
+        clearAccessToken()
+        navigateTo('/')
+      }
+    })
+  } else {
+    headerAuth.innerHTML = `
+      <div class="flex items-center gap-3">
+        <button id="btn-header-login" class="btn-secondary px-4 py-2 rounded-full text-xs sm:text-sm font-semibold">
+          로그인
+        </button>
+        <button id="btn-header-start" class="btn-primary px-4 py-2 rounded-full text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow-md">
+          <span>시작하기</span>
+          <span class="material-symbols-outlined text-base">arrow_forward</span>
+        </button>
+      </div>
+    `
+    document.querySelector('#btn-header-login')?.addEventListener('click', () => openAuthModal(false))
+    document.querySelector('#btn-header-start')?.addEventListener('click', () => openAuthModal(false))
+  }
 }
 
 function renderProfileSetup(container) {
@@ -383,42 +490,37 @@ function initKakaoMap(lat, lng, name) {
   const checkKakao = setInterval(() => {
     if (window.kakao && window.kakao.maps) {
       clearInterval(checkKakao)
-      
-      // Kakao Maps SDK 내부의 비동기 리소스 로딩이 완전히 완료된 시점에 호출을 보장합니다.
+
       window.kakao.maps.load(() => {
         const container = document.getElementById('map')
         if (!container) return
 
         const options = {
           center: new window.kakao.maps.LatLng(lat, lng),
-          level: 4
+          level: 4,
         }
-        
+
         const map = new window.kakao.maps.Map(container, options)
-        
-        // 드래그 가능한 마커 생성
+
         const markerPosition = new window.kakao.maps.LatLng(lat, lng)
         const marker = new window.kakao.maps.Marker({
           position: markerPosition,
-          draggable: true
+          draggable: true,
         })
-        
+
         marker.setMap(map)
-        
-        // 마커 드래그 시 좌표 로깅
+
         window.kakao.maps.event.addListener(marker, 'dragend', () => {
           const position = marker.getPosition()
           console.log(`변경된 위치 좌표: Lat=${position.getLat()}, Lng=${position.getLng()}`)
         })
 
-        // 지도 클릭 시 마커 이동
         window.kakao.maps.event.addListener(map, 'click', (mouseEvent) => {
           const latlng = mouseEvent.latLng
           marker.setPosition(latlng)
           console.log(`클릭한 위치 좌표: Lat=${latlng.getLat()}, Lng=${latlng.getLng()}`)
         })
 
-        // 핀 확정 버튼 이벤트
         document.querySelector('#btn-confirm-location')?.addEventListener('click', () => {
           const finalPos = marker.getPosition()
           alert(`[${name}] 핀 위치 확정!\n위도: ${finalPos.getLat()}\n경도: ${finalPos.getLng()}`)

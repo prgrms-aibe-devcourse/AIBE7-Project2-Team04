@@ -1,4 +1,6 @@
 import { exchangeOAuthCode } from '../auth/auth-api.js'
+import { getPersonalityProfile } from '../personality/personality-api.js'
+import { navigateTo } from '../main.js'
 
 const ERROR_MESSAGES = {
   AUTH_001: '소셜 로그인에 실패했습니다. 다시 시도해 주세요.',
@@ -11,24 +13,40 @@ export async function renderOAuthCallback(container) {
   const code = params.get('code')
   const error = params.get('error')
 
-  window.history.replaceState({}, document.title, '/oauth/callback')
   renderStatus(container, '소셜 로그인을 확인하고 있습니다.', '잠시만 기다려 주세요.', true)
 
   if (error) {
+    window.history.replaceState({}, document.title, '/oauth/callback')
     renderFailure(container, ERROR_MESSAGES[error] || ERROR_MESSAGES.AUTH_001)
     return
   }
 
   if (!code) {
+    window.history.replaceState({}, document.title, '/oauth/callback')
     renderFailure(container, '로그인 인증 코드가 없습니다. 처음부터 다시 시도해 주세요.')
     return
   }
 
   try {
     const result = await exchangeOAuthCode(code)
-    const nextPath = result.profileSetupRequired ? '/profile/setup' : '/'
-    renderSuccess(container, result.profileSetupRequired, nextPath)
+    let nextPath = '/'
+    if (result.profileSetupRequired) {
+      nextPath = '/profile/setup'
+    } else {
+      try {
+        const personality = await getPersonalityProfile()
+        if (personality?.onboardingStatus === 'NOT_STARTED') {
+          nextPath = '/personality/survey'
+        }
+      } catch (profileError) {
+        console.warn('온보딩 상태 확인 중 오류:', profileError)
+      }
+    }
+
+    // 로그인 완료 창을 거치지 않고 바로 메인 페이지 또는 성향 설정 화면으로 즉시 이동
+    navigateTo(nextPath)
   } catch (exchangeError) {
+    window.history.replaceState({}, document.title, '/oauth/callback')
     renderFailure(container, exchangeError.message)
   }
 }
@@ -47,20 +65,6 @@ function renderStatus(container, title, description, busy = false) {
   `
   container.querySelector('.status-title').textContent = title
   container.querySelector('.status-description').textContent = description
-}
-
-function renderSuccess(container, profileSetupRequired, nextPath) {
-  renderStatus(
-    container,
-    '로그인이 완료되었습니다.',
-    profileSetupRequired ? '서비스 이용 전에 프로필을 완성해 주세요.' : '마주한끼를 시작할 준비가 되었습니다.',
-  )
-
-  const link = document.createElement('a')
-  link.className = 'primary-link'
-  link.href = nextPath
-  link.textContent = profileSetupRequired ? '프로필 설정하기' : '홈으로 이동'
-  container.querySelector('.auth-card').append(link)
 }
 
 function renderFailure(container, message) {
