@@ -1,4 +1,4 @@
-import { getPersonalityProfile, upsertPersonalityProfile, skipPersonalityProfile, updateFoodPreferences, getFoodPreferences } from '../personality/personality-api.js'
+import { getPersonalityProfile, upsertPersonalityProfile, skipPersonalityProfile, updateFoodPreferences, getFoodPreferences, suggestPersonalityTags } from '../personality/personality-api.js'
 import { navigateTo } from '../main.js'
 
 // V1 기본 스타일 차원 및 옵션 정의
@@ -102,7 +102,11 @@ export async function renderPersonalitySurvey(container) {
     NOVELTY_PREFERENCE: null,
   }
   const selectedTags = new Set()
+  const suggestedTags = new Set()
   const selectedFoods = new Set()
+  let selfDescription = ''
+  let aiAnalysisConsent = false
+  let isSuggesting = false
   let isSubmitting = false
   let errorMessage = ''
 
@@ -123,6 +127,8 @@ export async function renderPersonalitySurvey(container) {
         data.styleTags.forEach((t) => selectedTags.add(t))
         needsUpdate = true
       }
+      selfDescription = data.selfDescription || ''
+      aiAnalysisConsent = data.aiAnalysisConsent === true
     }
 
     if (foodData.status === 'fulfilled' && foodData.value) {
@@ -356,6 +362,29 @@ export async function renderPersonalitySurvey(container) {
             </div>
           </div>
         `).join('')}
+
+        <div class="pt-5 border-t border-slate-100 space-y-3">
+          <div>
+            <label for="personality-self-description" class="text-sm font-bold text-brand-navy">나의 식사 스타일 자유 설명 <span class="font-normal text-slate-400">(선택)</span></label>
+            <textarea id="personality-self-description" maxlength="300" rows="4" class="mt-2 w-full rounded-xl border border-slate-200 px-3.5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-container/30" placeholder="예: 처음에는 조용하지만 친해지면 대화를 많이 하고, 새로운 맛집을 찾아다니는 편이에요.">${escapeHtml(selfDescription)}</textarea>
+            <div class="mt-1 text-right text-xs text-slate-400"><span id="self-description-count">${selfDescription.length}</span> / 300</div>
+          </div>
+          <label class="flex items-start gap-2.5 text-xs text-slate-600 cursor-pointer">
+            <input id="ai-analysis-consent" type="checkbox" ${aiAnalysisConsent ? 'checked' : ''} class="mt-0.5 rounded border-slate-300">
+            <span>자유 설명을 AI 태그 추천과 성향 임베딩 생성에 사용하는 데 동의합니다. 동의를 철회하면 자유 설명과 파생 임베딩이 삭제됩니다.</span>
+          </label>
+          <button id="btn-suggest-tags" type="button" ${isSuggesting ? 'disabled' : ''} class="px-4 py-2 rounded-xl border border-primary text-primary text-xs font-bold hover:bg-primary-container/5 disabled:opacity-50">
+            ${isSuggesting ? '추천 중…' : 'AI 태그 추천받기'}
+          </button>
+          ${suggestedTags.size > 0 ? `
+            <div class="rounded-xl bg-primary-container/5 border border-primary-container/20 p-3">
+              <p class="text-xs text-slate-600 mb-2">추천 태그입니다. 눌러야 최종 선택에 반영됩니다.</p>
+              <div class="flex flex-wrap gap-2">
+                ${Array.from(suggestedTags).map((code) => `<button type="button" data-suggested-tag="${code}" class="px-3 py-1.5 rounded-lg bg-white border border-primary-container/30 text-xs text-primary font-semibold">+ ${tagLabel(code)}</button>`).join('')}
+              </div>
+            </div>
+          ` : ''}
+        </div>
       </div>
     `
   }
@@ -433,6 +462,57 @@ export async function renderPersonalitySurvey(container) {
             return
           }
           selectedTags.add(code)
+          errorMessage = ''
+        }
+        updateView()
+      })
+    })
+
+    const descriptionInput = container.querySelector('#personality-self-description')
+    descriptionInput?.addEventListener('input', () => {
+      selfDescription = descriptionInput.value
+      const count = container.querySelector('#self-description-count')
+      if (count) count.textContent = String(selfDescription.length)
+    })
+    container.querySelector('#ai-analysis-consent')?.addEventListener('change', (event) => {
+      aiAnalysisConsent = event.target.checked
+      if (!aiAnalysisConsent) suggestedTags.clear()
+      updateView()
+    })
+    container.querySelector('#btn-suggest-tags')?.addEventListener('click', async () => {
+      if (!aiAnalysisConsent) {
+        errorMessage = 'AI 태그 추천을 받으려면 분석 동의가 필요합니다.'
+        updateView()
+        return
+      }
+      if (!selfDescription.trim()) {
+        errorMessage = '태그 추천을 받을 자유 설명을 입력해 주세요.'
+        updateView()
+        return
+      }
+      isSuggesting = true
+      errorMessage = ''
+      updateView()
+      try {
+        const result = await suggestPersonalityTags({ selfDescription: selfDescription.trim(), aiAnalysisConsent: true })
+        suggestedTags.clear()
+        ;(result.suggestedTags || []).forEach((tag) => suggestedTags.add(tag))
+        if (!result.available) errorMessage = '현재 AI 추천을 사용할 수 없습니다. 직접 태그를 선택해 주세요.'
+      } catch (err) {
+        errorMessage = err.message || 'AI 태그 추천에 실패했습니다.'
+      } finally {
+        isSuggesting = false
+        updateView()
+      }
+    })
+    container.querySelectorAll('[data-suggested-tag]').forEach((el) => {
+      el.addEventListener('click', () => {
+        const code = el.getAttribute('data-suggested-tag')
+        if (!selectedTags.has(code) && selectedTags.size >= 5) {
+          errorMessage = '세부 스타일 태그는 최대 5개까지만 선택할 수 있습니다.'
+        } else {
+          selectedTags.add(code)
+          suggestedTags.delete(code)
           errorMessage = ''
         }
         updateView()
@@ -525,6 +605,8 @@ export async function renderPersonalitySurvey(container) {
           questionnaireVersion: 'MEAL_PERSONALITY_V1',
           answers: answerPayload,
           styleTags: Array.from(selectedTags),
+          selfDescription: aiAnalysisConsent ? selfDescription.trim() || null : null,
+          aiAnalysisConsent,
         })
 
         // 2. 음식 선호 카테고리 갱신
@@ -542,6 +624,16 @@ export async function renderPersonalitySurvey(container) {
   }
 
   updateView()
+}
+
+function tagLabel(code) {
+  return STYLE_TAG_GROUPS.flatMap((group) => group.tags).find((tag) => tag.code === code)?.label || code
+}
+
+function escapeHtml(value) {
+  return value.replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;',
+  })[character])
 }
 
 function renderCompletionView(container) {
