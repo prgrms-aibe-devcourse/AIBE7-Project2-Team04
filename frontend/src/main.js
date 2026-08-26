@@ -286,10 +286,6 @@ function initCommonHeader() {
           <span class="material-symbols-outlined text-sm text-primary-container">psychology</span>
           <span>식사 성향</span>
         </a>
-        <span class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-success/15 text-success text-xs font-bold">
-          <span class="w-1.5 h-1.5 rounded-full bg-success"></span>
-          로그인 됨
-        </span>
         <button id="btn-revoke-location" class="btn-secondary px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-semibold text-error hover:bg-error/10 hover:text-error border-error/30 flex items-center gap-1">
           <span class="material-symbols-outlined text-sm">no_accounts</span>
           <span>위치동의 철회</span>
