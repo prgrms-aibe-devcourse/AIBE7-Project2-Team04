@@ -2,7 +2,6 @@ package org.example.project2.domain.matching.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.example.project2.domain.matching.dto.scoring.MatchingPreferenceSnapshot;
 import org.example.project2.domain.personality.entity.PersonalityTag;
 import org.example.project2.global.entity.BaseEntity;
 import org.example.project2.domain.user.entity.User;
@@ -90,10 +89,6 @@ public class MatchRequest extends BaseEntity {
     @OnDelete(action = OnDeleteAction.CASCADE)
     private Set<PersonalityTag> desiredPersonalityTags = new HashSet<>();
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "preference_snapshot", columnDefinition = "jsonb")
-    private MatchingPreferenceSnapshot preferenceSnapshot;
-
     @Column(name = "matching_formula_version", length = 50)
     private String matchingFormulaVersion;
 
@@ -117,7 +112,6 @@ public class MatchRequest extends BaseEntity {
             int searchRadius,
             Set<PersonalityTag> desiredPersonalityTags,
             String desiredPersonalityText,
-            MatchingPreferenceSnapshot preferenceSnapshot,
             String matchingFormulaVersion
     ) {
         if (user == null || user.getId() == null) {
@@ -156,7 +150,6 @@ public class MatchRequest extends BaseEntity {
                 .searchRadius(searchRadius)
                 .desiredPersonalityTags(new HashSet<>(desiredPersonalityTags))
                 .desiredPersonalityText(normalize(desiredPersonalityText))
-                .preferenceSnapshot(preferenceSnapshot)
                 .matchingFormulaVersion(matchingFormulaVersion.strip())
                 .status(MatchRequestStatus.WAITING)
                 .rejectCount(0)

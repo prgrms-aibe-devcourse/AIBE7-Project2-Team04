@@ -4,21 +4,16 @@ import lombok.RequiredArgsConstructor;
 import org.example.project2.domain.matching.dto.request.RealtimeMatchRequestCreateRequest;
 import org.example.project2.domain.matching.dto.request.RealtimeMatchRequestResponse;
 import org.example.project2.domain.matching.dto.request.RealtimeMatchRequestStatusResponse;
-import org.example.project2.domain.matching.dto.scoring.DimensionMatchPreference;
-import org.example.project2.domain.matching.dto.scoring.MatchingPreferenceSnapshot;
 import org.example.project2.domain.matching.entity.MatchRequest;
 import org.example.project2.domain.matching.entity.MatchRequestStatus;
-import org.example.project2.domain.matching.entity.UserMatchingPreference;
 import org.example.project2.domain.matching.exception.request.AuthenticatedRealtimeMatchUserNotFoundException;
 import org.example.project2.domain.matching.exception.request.RealtimeMatchRequestErrorCode;
 import org.example.project2.domain.matching.exception.request.RealtimeMatchRequestException;
 import org.example.project2.domain.matching.repository.MatchRequestRepository;
 import org.example.project2.domain.matching.repository.RealtimeMatchWaitingStore;
-import org.example.project2.domain.matching.repository.UserMatchingPreferenceRepository;
 import org.example.project2.domain.matching.service.calculation.PersonalityCompatibilityCalculator;
 import org.example.project2.domain.matching.service.request.embedding.DesiredPersonalityEmbeddingRequestedEvent;
 import org.example.project2.domain.matching.service.proposal.RealtimeMatchRequestWaitingEvent;
-import org.example.project2.domain.personality.entity.PersonalityDimension;
 import org.example.project2.domain.region.entity.Region;
 import org.example.project2.domain.region.repository.RegionRepository;
 import org.example.project2.domain.region.service.RegionPinValidationResult;
@@ -40,9 +35,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.EnumMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -59,7 +52,6 @@ public class RealtimeMatchRequestService {
     private final UserLocationPreferenceRepository locationPreferenceRepository;
     private final RegionRepository regionRepository;
     private final RegionPinValidator regionPinValidator;
-    private final UserMatchingPreferenceRepository matchingPreferenceRepository;
     private final MatchRequestRepository matchRequestRepository;
     private final RealtimeMatchWaitingStore waitingStore;
     private final MatchingProperties matchingProperties;
@@ -91,7 +83,6 @@ public class RealtimeMatchRequestService {
             int searchRadius = request.searchRadius() == null
                     ? matchingProperties.defaultSearchRadiusMeters()
                     : request.searchRadius();
-            MatchingPreferenceSnapshot preferenceSnapshot = buildPreferenceSnapshot(userId);
             MatchRequest matchRequest = MatchRequest.create(
                     user,
                     request.foodCategory().name(),
@@ -103,7 +94,6 @@ public class RealtimeMatchRequestService {
                     searchRadius,
                     request.desiredPersonalityTags(),
                     request.desiredPersonalityText(),
-                    preferenceSnapshot,
                     PersonalityCompatibilityCalculator.FORMULA_VERSION
             );
             MatchRequest saved = matchRequestRepository.saveAndFlush(matchRequest);
@@ -225,28 +215,6 @@ public class RealtimeMatchRequestService {
                     RealtimeMatchRequestErrorCode.REGION_VALIDATION_UNAVAILABLE
             );
         }
-    }
-
-    private MatchingPreferenceSnapshot buildPreferenceSnapshot(UUID userId) {
-        List<UserMatchingPreference> preferences = matchingPreferenceRepository.findAllByUserId(userId);
-        if (preferences.size() != PersonalityDimension.values().length) {
-            return null;
-        }
-        Map<PersonalityDimension, DimensionMatchPreference> dimensions =
-                new EnumMap<>(PersonalityDimension.class);
-        for (UserMatchingPreference preference : preferences) {
-            dimensions.put(
-                    preference.getId().getDimension(),
-                    new DimensionMatchPreference(
-                            preference.getImportance(),
-                            preference.getPreferenceMode()
-                    )
-            );
-        }
-        if (dimensions.size() != PersonalityDimension.values().length) {
-            return null;
-        }
-        return MatchingPreferenceSnapshot.of(dimensions);
     }
 
     private Point createPoint(double longitude, double latitude) {

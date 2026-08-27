@@ -22,6 +22,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.Instant;
 import java.util.List;
@@ -30,6 +31,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -48,6 +50,7 @@ class MatchProposalSelectionServiceTest {
     @Mock UserPersonalityProfileRepository personalityProfileRepository;
     @Mock UserPersonalityEmbeddingRepository personalityEmbeddingRepository;
     @Mock PersonalityCompatibilityCalculator personalityCompatibilityCalculator;
+    @Mock ApplicationEventPublisher eventPublisher;
 
     @InjectMocks MatchProposalSelectionService service;
 
@@ -56,7 +59,7 @@ class MatchProposalSelectionServiceTest {
         MatchRequest source = request(1L, user("source"));
         MatchRequest candidate = request(2L, user("candidate"));
         prepareCandidate(source, candidate);
-        when(personalityCompatibilityCalculator.calculate(any(), any(), any(), any(), any(), any(), any()))
+        when(personalityCompatibilityCalculator.calculate(any(), any(), any(), any()))
                 .thenReturn(score((short) 82), score((short) 68));
         when(matchProposalRepository.save(any(MatchProposal.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -71,7 +74,29 @@ class MatchProposalSelectionServiceTest {
         assertThat(proposal.getScoreSnapshot().formulaVersion())
                 .isEqualTo(MatchProposalSelectionService.FORMULA_VERSION);
         verify(personalityCompatibilityCalculator, times(2))
-                .calculate(any(), any(), any(), any(), any(), any(), any());
+                .calculate(any(), any(), any(), any());
+    }
+
+    @Test
+    void publishesProfileConfirmationEventWithOneDeadlineForBothUsers() {
+        MatchRequest source = request(1L, user("source"));
+        MatchRequest candidate = request(2L, user("candidate"));
+        prepareCandidate(source, candidate);
+        when(personalityCompatibilityCalculator.calculate(any(), any(), any(), any()))
+                .thenReturn(score((short) 82), score((short) 68));
+        when(matchProposalRepository.save(any(MatchProposal.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        MatchProposal proposal = service.selectAndCreate(source.getUser().getId(), source.getId()).orElseThrow();
+
+        ArgumentCaptor<Object> eventCaptor = ArgumentCaptor.forClass(Object.class);
+        verify(eventPublisher).publishEvent(eventCaptor.capture());
+        assertThat(eventCaptor.getValue()).isInstanceOf(MatchProposalCreatedEvent.class);
+        MatchProposalCreatedEvent event = (MatchProposalCreatedEvent) eventCaptor.getValue();
+        assertThat(event.request1UserId()).isEqualTo(proposal.getRequest1().getUser().getId());
+        assertThat(event.request2UserId()).isEqualTo(proposal.getRequest2().getUser().getId());
+        assertThat(event.request1Payload().expiresAt()).isEqualTo(event.request2Payload().expiresAt());
+        assertThat(event.request1Payload().expiresAt()).isEqualTo(proposal.getExpiresAt());
     }
 
     @Test
@@ -79,8 +104,8 @@ class MatchProposalSelectionServiceTest {
         MatchRequest source = request(1L, user("source"));
         MatchRequest candidate = request(2L, user("candidate"));
         prepareCandidate(source, candidate);
-        when(personalityCompatibilityCalculator.calculate(any(), any(), any(), any(), any(), any(), any()))
-                .thenReturn(PersonalityCompatibilityScore.unavailable("PERSONALITY_MATCH_V1"));
+        when(personalityCompatibilityCalculator.calculate(any(), any(), any(), any()))
+                .thenReturn(PersonalityCompatibilityScore.unavailable("DESIRED_PERSONALITY_MATCH_V1"));
         when(matchProposalRepository.save(any(MatchProposal.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -122,7 +147,7 @@ class MatchProposalSelectionServiceTest {
 
     private PersonalityCompatibilityScore score(short value) {
         return new PersonalityCompatibilityScore(
-                true, value, value, value, null, null, Set.of(), "PERSONALITY_MATCH_V1"
+                true, value, value, null, Set.of(), "DESIRED_PERSONALITY_MATCH_V1"
         );
     }
 
@@ -142,8 +167,7 @@ class MatchProposalSelectionServiceTest {
                         PersonalityTag.ENJOY_DESSERT
                 ),
                 null,
-                null,
-                "PERSONALITY_MATCH_V1"
+                "DESIRED_PERSONALITY_MATCH_V1"
         );
         ReflectionTestUtils.setField(request, "id", id);
         return request;

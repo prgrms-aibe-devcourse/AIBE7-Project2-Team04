@@ -18,9 +18,11 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
         // 클라이언트가 메시지를 구독(수신)할 때 사용하는 Prefix
-        registry.enableSimpleBroker("/sub");
+        registry.enableSimpleBroker("/sub", "/queue");
         // 클라이언트가 메시지를 발행(전송)할 때 사용하는 Prefix
         registry.setApplicationDestinationPrefixes("/pub");
+        // convertAndSendToUser(..., "/queue/...")가 /user/queue/... 구독으로 라우팅되도록 설정합니다.
+        registry.setUserDestinationPrefix("/user");
     }
 
     @Override

@@ -2,23 +2,24 @@ package org.example.project2.domain.matching.service.proposal;
 
 import lombok.RequiredArgsConstructor;
 import org.example.project2.domain.matching.dto.candidate.BidirectionalMatchCandidate;
+import org.example.project2.domain.matching.dto.proposal.MatchProposalPartnerProfileResponse;
+import org.example.project2.domain.matching.dto.proposal.MatchProposalResponse;
 import org.example.project2.domain.matching.dto.scoring.BidirectionalMatchScoreSnapshot;
-import org.example.project2.domain.matching.dto.scoring.DimensionMatchPreference;
-import org.example.project2.domain.matching.dto.scoring.MatchingPreferenceSnapshot;
 import org.example.project2.domain.matching.dto.scoring.PersonalityCompatibilityScore;
 import org.example.project2.domain.matching.dto.scoring.PersonalityEmbeddingVector;
 import org.example.project2.domain.matching.entity.MatchProposal;
+import org.example.project2.domain.matching.entity.MatchProposalDecision;
 import org.example.project2.domain.matching.entity.MatchRequest;
 import org.example.project2.domain.matching.repository.MatchProposalRepository;
 import org.example.project2.domain.matching.repository.MatchRequestRepository;
 import org.example.project2.domain.matching.service.calculation.PersonalityCompatibilityCalculator;
 import org.example.project2.domain.matching.service.candidate.BidirectionalCandidateSearchService;
-import org.example.project2.domain.personality.dto.PersonalityScoresResponse;
+import org.example.project2.domain.personality.entity.PersonalityTag;
 import org.example.project2.domain.personality.entity.UserPersonalityEmbedding;
-import org.example.project2.domain.personality.entity.PersonalityDimension;
 import org.example.project2.domain.personality.entity.UserPersonalityProfile;
 import org.example.project2.domain.personality.repository.UserPersonalityEmbeddingRepository;
 import org.example.project2.domain.personality.repository.UserPersonalityProfileRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,14 +27,14 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class MatchProposalSelectionService {
-    public static final String FORMULA_VERSION = "PERSONALITY_MATCH_V1_BIDIRECTIONAL_MIN_V1";
+    public static final String FORMULA_VERSION = "DESIRED_PERSONALITY_MATCH_V1_BIDIRECTIONAL_MIN_V1";
 
     private static final short BASE_CONDITION_SCORE = 50;
     private static final Duration PROPOSAL_TTL = Duration.ofSeconds(15);
@@ -45,6 +46,7 @@ public class MatchProposalSelectionService {
     private final UserPersonalityProfileRepository personalityProfileRepository;
     private final UserPersonalityEmbeddingRepository personalityEmbeddingRepository;
     private final PersonalityCompatibilityCalculator personalityCompatibilityCalculator;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public Optional<MatchProposal> selectAndCreate(UUID userId, Long sourceRequestId) {
@@ -86,10 +88,10 @@ public class MatchProposalSelectionService {
                 .orElse(null);
 
         DirectionScore sourceToTarget = calculateDirection(
-                source, target, sourceProfile, targetProfile, targetEmbedding
+                source, targetProfile, targetEmbedding
         );
         DirectionScore targetToSource = calculateDirection(
-                target, source, targetProfile, sourceProfile, sourceEmbedding
+                target, sourceProfile, sourceEmbedding
         );
         short pairScore = (short) Math.min(sourceToTarget.score(), targetToSource.score());
 
@@ -102,15 +104,10 @@ public class MatchProposalSelectionService {
 
     private DirectionScore calculateDirection(
             MatchRequest requester,
-            MatchRequest candidate,
-            UserPersonalityProfile requesterProfile,
             UserPersonalityProfile candidateProfile,
             UserPersonalityEmbedding candidateEmbedding
     ) {
         PersonalityCompatibilityScore compatibility = personalityCompatibilityCalculator.calculate(
-                toScores(requesterProfile),
-                toScores(candidateProfile),
-                preferencesOf(requester),
                 requester.getDesiredPersonalityTags(),
                 candidateProfile == null ? null : candidateProfile.getStyleTags(),
                 requestedEmbeddingOf(requester),
@@ -159,22 +156,54 @@ public class MatchProposalSelectionService {
                 candidate.scoreSnapshot(),
                 Instant.now().plus(PROPOSAL_TTL)
         );
-        return Optional.of(matchProposalRepository.save(proposal));
+        MatchProposal saved = matchProposalRepository.save(proposal);
+        publishCreatedEvent(saved);
+        return Optional.of(saved);
     }
 
-    private PersonalityScoresResponse toScores(UserPersonalityProfile profile) {
-        if (profile == null) {
-            return null;
+    private void publishCreatedEvent(MatchProposal proposal) {
+        MatchRequest request1 = proposal.getRequest1();
+        MatchRequest request2 = proposal.getRequest2();
+        eventPublisher.publishEvent(new MatchProposalCreatedEvent(
+                request1.getUser().getId(),
+                toResponse(proposal, request1),
+                request2.getUser().getId(),
+                toResponse(proposal, request2)
+        ));
+    }
+
+    private MatchProposalResponse toResponse(MatchProposal proposal, MatchRequest viewerRequest) {
+        MatchRequest partnerRequest = proposal.getOtherRequest(viewerRequest.getId());
+        if (partnerRequest == null || partnerRequest.getUser() == null) {
+            throw new IllegalStateException("매칭 제안의 상대 사용자 정보를 찾을 수 없습니다.");
         }
-        return new PersonalityScoresResponse(
-                profile.getConversationLevel(), profile.getMealPace(),
-                profile.getPlanningStyle(), profile.getNoveltyPreference()
-        );
-    }
+        var partner = partnerRequest.getUser();
+        Set<PersonalityTag> publicTags =
+                personalityProfileRepository.findByUserId(partner.getId())
+                        .map(UserPersonalityProfile::getStyleTags)
+                        .orElse(Set.of());
+        BidirectionalMatchScoreSnapshot snapshot = proposal.getScoreSnapshot();
+        boolean viewerIsRequest1 = viewerRequest.getId().equals(proposal.getRequest1().getId());
+        List<String> reasons = snapshot == null
+                ? List.of()
+                : viewerIsRequest1 ? snapshot.sourceToTargetReasons() : snapshot.targetToSourceReasons();
+        Short score = snapshot == null ? null : snapshot.pairScore();
 
-    private Map<PersonalityDimension, DimensionMatchPreference> preferencesOf(MatchRequest request) {
-        MatchingPreferenceSnapshot preferenceSnapshot = request.getPreferenceSnapshot();
-        return preferenceSnapshot == null ? null : preferenceSnapshot.dimensions();
+        return new MatchProposalResponse(
+                proposal.getId(),
+                proposal.getExpiresAt(),
+                proposal.getStatus(),
+                MatchProposalDecision.PENDING,
+                new MatchProposalPartnerProfileResponse(
+                        partner.getId(),
+                        partner.getNickname(),
+                        partner.getProfileImageUrl(),
+                        partner.getDescription(),
+                        publicTags
+                ),
+                score,
+                reasons
+        );
     }
 
     private PersonalityEmbeddingVector requestedEmbeddingOf(MatchRequest request) {

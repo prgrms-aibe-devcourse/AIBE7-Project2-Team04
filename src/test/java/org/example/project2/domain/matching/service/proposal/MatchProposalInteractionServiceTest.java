@@ -75,7 +75,7 @@ class MatchProposalInteractionServiceTest {
                         (short) 74,
                         List.of("식사 취향을 반영했어요."),
                         (short) 74,
-                        "PERSONALITY_MATCH_V1_BIDIRECTIONAL_MIN_V1"
+                        "DESIRED_PERSONALITY_MATCH_V1_BIDIRECTIONAL_MIN_V1"
                 ),
                 NOW.plusSeconds(15)
         );
@@ -174,7 +174,7 @@ class MatchProposalInteractionServiceTest {
                 user, "KOREAN", NOW.plusSeconds(3600), "11680", "서울특별시 강남구", "테스트 장소",
                 point(127.000, 37.500), 3_000,
                 Set.of(PersonalityTag.GOOD_LISTENER, PersonalityTag.FOOD_TALK, PersonalityTag.ENJOY_DESSERT),
-                null, null, "PERSONALITY_MATCH_V1"
+                null, "DESIRED_PERSONALITY_MATCH_V1"
         );
         ReflectionTestUtils.setField(request, "id", id);
         return request;

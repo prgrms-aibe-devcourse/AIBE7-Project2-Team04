@@ -2,13 +2,9 @@ package org.example.project2.domain.matching.entity;
 
 import jakarta.persistence.EntityManager;
 import org.example.project2.domain.matching.dto.scoring.BidirectionalMatchScoreSnapshot;
-import org.example.project2.domain.matching.dto.scoring.DimensionMatchPreference;
-import org.example.project2.domain.matching.dto.scoring.MatchingPreferenceSnapshot;
-import org.example.project2.domain.matching.entity.PreferenceMode;
 import org.example.project2.domain.matching.repository.MatchProposalRepository;
 import org.example.project2.domain.matching.repository.MatchRequestRepository;
 import org.example.project2.domain.matching.service.proposal.MatchProposalLifecycleService;
-import org.example.project2.domain.personality.entity.PersonalityDimension;
 import org.example.project2.domain.user.entity.User;
 import org.example.project2.domain.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,7 +19,6 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.EnumMap;
 import java.util.List;
 import java.util.UUID;
 
@@ -58,7 +53,7 @@ class MatchingDataModelTest {
     }
 
     @Test
-    void storesTypedPreferenceSnapshotAndVectorEmbedding() {
+    void storesDesiredPersonalityVectorEmbedding() {
         float[] embedding = new float[1536];
         embedding[0] = 0.25f;
         request1.updateDesiredPersonalityEmbedding(embedding, "text-embedding-model", "v1", NOW);
@@ -69,8 +64,6 @@ class MatchingDataModelTest {
         entityManager.clear();
 
         MatchRequest reloaded = matchRequestRepository.findById(requestId).orElseThrow();
-        assertThat(reloaded.getPreferenceSnapshot().dimensions())
-                .containsOnlyKeys(PersonalityDimension.values());
         assertThat(reloaded.getDesiredPersonalityEmbedding()).hasSize(1536);
         assertThat(reloaded.getDesiredPersonalityEmbedding()[0]).isEqualTo(0.25f);
 
@@ -179,7 +172,7 @@ class MatchingDataModelTest {
         assertThat(stored.targetToSourceScore())
                 .isEqualTo(request2IsCanonicalFirst ? input.targetToSourceScore() : input.sourceToTargetScore());
         assertThat(stored.pairScore()).isEqualTo((short) 75);
-        assertThat(stored.formulaVersion()).isEqualTo("PERSONALITY_MATCH_V1");
+        assertThat(stored.formulaVersion()).isEqualTo("DESIRED_PERSONALITY_MATCH_V1_BIDIRECTIONAL_MIN_V1");
     }
 
     @Test
@@ -272,18 +265,8 @@ class MatchingDataModelTest {
                 .location(point)
                 .searchRadius(3000)
                 .desiredPersonalityText("편안하게 대화할 수 있는 분")
-                .preferenceSnapshot(MatchingPreferenceSnapshot.of(completePreferences()))
-                .matchingFormulaVersion("PERSONALITY_MATCH_V1")
+                .matchingFormulaVersion("DESIRED_PERSONALITY_MATCH_V1")
                 .build();
-    }
-
-    private EnumMap<PersonalityDimension, DimensionMatchPreference> completePreferences() {
-        EnumMap<PersonalityDimension, DimensionMatchPreference> preferences =
-                new EnumMap<>(PersonalityDimension.class);
-        for (PersonalityDimension dimension : PersonalityDimension.values()) {
-            preferences.put(dimension, new DimensionMatchPreference((short) 3, PreferenceMode.SIMILAR));
-        }
-        return preferences;
     }
 
     private BidirectionalMatchScoreSnapshot scoreSnapshot() {
@@ -293,7 +276,7 @@ class MatchingDataModelTest {
                 (short) 70,
                 List.of("식사 속도 선호가 잘 맞아요"),
                 (short) 75,
-                "PERSONALITY_MATCH_V1"
+                "DESIRED_PERSONALITY_MATCH_V1_BIDIRECTIONAL_MIN_V1"
         );
     }
 }

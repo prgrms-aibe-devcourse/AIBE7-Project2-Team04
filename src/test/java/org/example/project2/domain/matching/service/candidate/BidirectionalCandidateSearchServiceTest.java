@@ -155,8 +155,7 @@ class BidirectionalCandidateSearchServiceTest {
                         PersonalityTag.ENJOY_DESSERT
                 ),
                 null,
-                null,
-                "PERSONALITY_MATCH_V1"
+                "DESIRED_PERSONALITY_MATCH_V1"
         );
         org.springframework.test.util.ReflectionTestUtils.setField(request, "id", id);
         return request;

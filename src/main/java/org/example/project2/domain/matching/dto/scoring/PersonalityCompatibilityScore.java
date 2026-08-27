@@ -7,8 +7,6 @@ import java.util.Set;
 public record PersonalityCompatibilityScore(
         boolean available,
         short score,
-        Short structuredScore,
-        Short cardScore,
         Short tagScore,
         Short embeddingScore,
         Set<PersonalityTag> matchedTags,
@@ -16,8 +14,6 @@ public record PersonalityCompatibilityScore(
 ) {
     public PersonalityCompatibilityScore {
         validateScore(score, "최종 성향 호환도");
-        validateNullableScore(structuredScore, "정형 성향 호환도");
-        validateNullableScore(cardScore, "카드 성향 호환도");
         validateNullableScore(tagScore, "태그 성향 호환도");
         validateNullableScore(embeddingScore, "임베딩 성향 호환도");
         matchedTags = matchedTags == null ? Set.of() : Set.copyOf(matchedTags);
@@ -25,7 +21,7 @@ public record PersonalityCompatibilityScore(
 
     public static PersonalityCompatibilityScore unavailable(String formulaVersion) {
         return new PersonalityCompatibilityScore(
-                false, (short) 0, null, null, null, null, Set.of(), formulaVersion
+                false, (short) 0, null, null, Set.of(), formulaVersion
         );
     }
 

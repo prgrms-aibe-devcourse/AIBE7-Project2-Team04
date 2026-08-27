@@ -3,15 +3,11 @@ package org.example.project2.domain.matching.service.request;
 import org.example.project2.domain.matching.dto.request.RealtimeMatchRequestCreateRequest;
 import org.example.project2.domain.matching.entity.MatchRequest;
 import org.example.project2.domain.matching.entity.MatchRequestStatus;
-import org.example.project2.domain.matching.entity.PreferenceMode;
-import org.example.project2.domain.matching.entity.UserMatchingPreference;
 import org.example.project2.domain.matching.exception.request.RealtimeMatchRequestErrorCode;
 import org.example.project2.domain.matching.exception.request.RealtimeMatchRequestException;
 import org.example.project2.domain.matching.repository.MatchRequestRepository;
 import org.example.project2.domain.matching.repository.RealtimeMatchWaitingStore;
-import org.example.project2.domain.matching.repository.UserMatchingPreferenceRepository;
 import org.example.project2.domain.matching.service.calculation.PersonalityCompatibilityCalculator;
-import org.example.project2.domain.personality.entity.PersonalityDimension;
 import org.example.project2.domain.personality.entity.PersonalityTag;
 import org.example.project2.domain.region.entity.Region;
 import org.example.project2.domain.region.repository.RegionRepository;
@@ -58,7 +54,6 @@ class RealtimeMatchRequestServiceTest {
     @Autowired UserRepository userRepository;
     @Autowired UserLocationPreferenceRepository locationPreferenceRepository;
     @Autowired RegionRepository regionRepository;
-    @Autowired UserMatchingPreferenceRepository matchingPreferenceRepository;
     @Autowired MatchRequestRepository matchRequestRepository;
 
     @MockitoBean RealtimeMatchWaitingStore waitingStore;
@@ -91,14 +86,6 @@ class RealtimeMatchRequestServiceTest {
                 .regionName("서울특별시 강남구")
                 .locationServiceConsent(true)
                 .build());
-        for (PersonalityDimension dimension : PersonalityDimension.values()) {
-            matchingPreferenceRepository.save(UserMatchingPreference.of(
-                    user,
-                    dimension,
-                    (short) 3,
-                    PreferenceMode.SIMILAR
-            ));
-        }
         when(regionPinValidator.validate(eq(REGION_CODE), any(Double.class), any(Double.class)))
                 .thenReturn(RegionPinValidationResult.MATCHES);
         when(waitingStore.reserve(eq(user.getId()), any(String.class), any(Duration.class)))
@@ -111,9 +98,6 @@ class RealtimeMatchRequestServiceTest {
     void tearDown() {
         if (user != null && userRepository.existsById(user.getId())) {
             matchRequestRepository.deleteAll(matchRequestRepository.findAllByUserId(user.getId()));
-            matchingPreferenceRepository.deleteAll(
-                    matchingPreferenceRepository.findAllByUserId(user.getId())
-            );
             locationPreferenceRepository.deleteById(user.getId());
             userRepository.deleteById(user.getId());
         }
@@ -123,7 +107,7 @@ class RealtimeMatchRequestServiceTest {
     }
 
     @Test
-    void createsWaitingRequestWithNormalizedRegionPointAndPreferenceSnapshot() {
+    void createsWaitingRequestWithNormalizedRegionPointAndDesiredPersonality() {
         var response = service.create(user.getId(), validRequest(null));
 
         MatchRequest saved = matchRequestRepository.findDetailedById(response.requestId()).orElseThrow();
@@ -136,8 +120,6 @@ class RealtimeMatchRequestServiceTest {
         assertThat(saved.getSearchRadius()).isEqualTo(3_000);
         assertThat(saved.getMatchingFormulaVersion())
                 .isEqualTo(PersonalityCompatibilityCalculator.FORMULA_VERSION);
-        assertThat(saved.getPreferenceSnapshot()).isNotNull();
-        assertThat(saved.getPreferenceSnapshot().dimensions()).hasSize(4);
         assertThat(saved.getDesiredPersonalityTags()).hasSize(3);
         verify(waitingStore).activate(
                 eq(user.getId()), any(String.class), eq(saved.getId()), eq(Duration.ofMinutes(5))
