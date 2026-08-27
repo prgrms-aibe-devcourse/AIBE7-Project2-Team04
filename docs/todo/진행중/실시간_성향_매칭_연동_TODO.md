@@ -88,13 +88,14 @@
 
 ## 2. 상대방 선호 중요도 API
 
-- [ ] `UserMatchingPreferenceRepository`를 구현한다.
-- [ ] 네 가지 `PersonalityDimension`의 누락·중복을 거절하는 요청 DTO를 구현한다.
-- [ ] `importance`는 `0~5`, `mode`는 `SIMILAR`/`COMPLEMENTARY`만 허용한다.
-- [ ] `GET /users/me/matching-preferences`를 구현한다.
-- [ ] `PUT /users/me/matching-preferences`를 전체 교체 방식의 단일 트랜잭션으로 구현한다.
-- [ ] JWT 사용자 UUID로 본인 선호만 조회·수정하고 변경 요청에 CSRF 검증을 적용한다.
-- [ ] 선호가 없는 사용자를 위한 서버 기본값 또는 성향 점수 미적용 정책을 확정한다.
+- [x] 상대방 선호는 성향 조사 결과가 아니라 매칭 시작 전 조건이므로 관련 코드를 `matching` 도메인에 배치하고, `controller/preference`, `service/preference`, `dto/preference`, `exception/preference`로 책임을 분리한다.
+- [x] `UserMatchingPreferenceRepository`를 구현한다.
+- [x] 네 가지 `PersonalityDimension`의 누락·중복을 거절하는 요청 DTO를 구현한다.
+- [x] `importance`는 `0~5`, `mode`는 `SIMILAR`/`COMPLEMENTARY`만 허용한다.
+- [x] `GET /users/me/matching-preferences`를 구현한다.
+- [x] `PUT /users/me/matching-preferences`를 전체 교체 방식의 단일 트랜잭션으로 구현한다.
+- [x] JWT 사용자 UUID로 본인 선호만 조회·수정하고 변경 요청에 CSRF 검증을 적용한다.
+- [x] 선호 미설정 시 빈 목록을 반환하고 사용자별 성향 차원 점수를 적용하지 않는 정책으로 확정한다.
 
 ## 3. 실시간 매칭 요청 API
 

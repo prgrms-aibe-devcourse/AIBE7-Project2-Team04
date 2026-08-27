@@ -13,7 +13,7 @@
 - [ ] `user_personality_profiles` Entity와 Repository 구현
 - [ ] `user_personality_answers` Entity와 Repository 구현
 - [ ] `user_personality_embeddings` Entity와 Repository 구현
-- [ ] `user_matching_preferences` Entity와 Repository 구현
+- [x] `user_matching_preferences` Entity와 Repository를 `matching` 도메인에 구현
 - [ ] `match_requests`에 `desired_personality_text`, `preference_snapshot`, `matching_formula_version` 추가
 - [ ] `user_location_preferences`와 `match_requests`의 구 코드·핀 컬럼 변경이 함께 적용되는지 확인
 - [ ] Flyway 등 마이그레이션 도입 여부를 확정하고 `docs/specs/데이터모델링.md`의 DDL 적용
@@ -25,7 +25,7 @@
 - [x] `MEAL_PERSONALITY_V1` 문항 코드와 `1/3/5` 응답 규칙 정의
 - [ ] 응답에서 0~100 정형 점수를 계산하는 순수 Java 컴포넌트 구현
 - [ ] 설문 제출·조회·초기화 API 구현
-- [ ] 상대 성향 차원별 중요도(0~5)와 `SIMILAR`/`COMPLEMENTARY` 선호 API 구현
+- [x] 상대 성향 차원별 중요도(0~5)와 `SIMILAR`/`COMPLEMENTARY` 선호 API를 `matching` 도메인에 구현
 - [ ] 가입 및 OAuth 토큰 교환 응답에 성향 온보딩 완성 상태 추가
 - [ ] 온보딩 건너뛰기, 재응답, AI 분석 동의 철회 UX 구현
 

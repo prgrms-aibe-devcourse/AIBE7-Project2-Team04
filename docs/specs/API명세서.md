@@ -47,6 +47,7 @@
 | `LOCATION_001` | 403 | 위치 수집 미동의 상태에서 위치 기반 API 호출 (FR-04-06) |
 | `LOCATION_002` | 422 | 선택한 지도 핀이 요청한 구의 행정구역 범위를 벗어남 (FR-04-08) |
 | `PERSONALITY_002` | 422 | 지원하지 않는 설문 버전이거나 성향 응답 값이 유효하지 않음 |
+| `MATCHING_001` | 422 | 상대방 선호의 차원·중요도·선호 방식 입력값이 유효하지 않음 |
 
 ### 페이지네이션 (목록 조회 공통 파라미터)
 
@@ -81,8 +82,6 @@
 | POST | `/users/me/personality-profile/skip` | 선택형 성향 온보딩 건너뛰기 | Y |
 | GET | `/users/me/food-preferences` | 내 음식 카테고리 선호 조회 | Y |
 | PUT | `/users/me/food-preferences` | 내 음식 카테고리 선호 전체 갱신 | Y |
-| GET | `/users/me/matching-preferences` | 상대방 선호 중요도 조회 (FR-01-10) | Y |
-| PUT | `/users/me/matching-preferences` | 상대방 선호 중요도 전체 갱신 (FR-01-10) | Y |
 
 **POST /auth/signup**
 
@@ -344,6 +343,32 @@ V1 응답값은 `1`, `3`, `5`만 허용하며 각각 `0`, `50`, `100`점으로 �
 
 `PUT`, `POST`, `DELETE` 요청에는 인증 Access Token 쿠키와 `GET /auth/csrf`로 발급받은 `X-XSRF-TOKEN` 헤더가 필요하다. 지원하지 않는 버전·차원·응답값·태그·음식 코드는 `422 PERSONALITY_002`를 반환한다.
 
+---
+
+# 2. 실시간 1:1 매칭 (FR-03) — REST + WebSocket
+
+| Method/프로토콜 | Endpoint | 설명 | 인증 |
+| --- | --- | --- | --- |
+| GET | `/users/me/matching-preferences` | 매칭 시작 전에 사용할 상대방 선호 중요도 조회 (FR-03-11) | Y |
+| PUT | `/users/me/matching-preferences` | 매칭 시작 전에 사용할 상대방 선호 중요도 전체 갱신 (FR-03-11) | Y |
+| POST | `/matches/realtime/requests` | 실시간 매칭 요청 (FR-03-01~04) | Y |
+| DELETE | `/matches/realtime/requests/{requestId}` | 매칭 대기 취소 (FR-03-08) | Y |
+| GET | `/matches/realtime/requests/me` | 내 현재 대기 상태 조회 | Y |
+| WS(STOMP) SUBSCRIBE | `/user/queue/match-result` | 매칭 성사 결과 실시간 수신 (FR-03-07) | Y |
+
+**GET /users/me/matching-preferences**
+
+```json
+{
+  "success": true,
+  "data": {
+    "preferences": []
+  }
+}
+```
+
+저장된 선호가 없으면 서버 기본값을 임의로 만들지 않고 빈 배열을 반환한다. 이 경우 매칭 랭킹에서 사용자별 성향 차원 점수를 적용하지 않으며, 위치·시간 등 기본 조건 매칭은 계속 수행한다.
+
 **PUT /users/me/matching-preferences**
 
 ```json
@@ -357,18 +382,7 @@ V1 응답값은 `1`, `3`, `5`만 허용하며 각각 `0`, `50`, `100`점으로 �
 }
 ```
 
-`importance`는 0~5이며 0은 해당 차원을 최종 호환도 계산에서 제외한다. `mode`는 `SIMILAR` 또는 `COMPLEMENTARY`만 허용한다.
-
----
-
-# 2. 실시간 1:1 매칭 (FR-03) — REST + WebSocket
-
-| Method/프로토콜 | Endpoint | 설명 | 인증 |
-| --- | --- | --- | --- |
-| POST | `/matches/realtime/requests` | 실시간 매칭 요청 (FR-03-01~04) | Y |
-| DELETE | `/matches/realtime/requests/{requestId}` | 매칭 대기 취소 (FR-03-08) | Y |
-| GET | `/matches/realtime/requests/me` | 내 현재 대기 상태 조회 | Y |
-| WS(STOMP) SUBSCRIBE | `/user/queue/match-result` | 매칭 성사 결과 실시간 수신 (FR-03-07) | Y |
+요청은 네 가지 `PersonalityDimension`을 중복 없이 모두 포함해야 하며 기존 선호를 단일 트랜잭션에서 전체 교체한다. `importance`는 0~5이며 0은 해당 차원을 최종 호환도 계산에서 제외한다. `mode`는 `SIMILAR` 또는 `COMPLEMENTARY`만 허용한다. 누락·중복·범위 오류·지원하지 않는 Enum 값은 `422 MATCHING_001`을 반환한다. 이 설정은 성향 조사 결과가 아니라 매칭 시작 전에 정하는 상대방 조건이며, 매칭 요청 생성 시 `preference_snapshot`에 복사해 요청 도중 설정 변경의 영향을 차단한다. 응답은 `GET`과 같은 `preferences` 구조로 교체된 네 항목을 반환한다.
 
 **POST /matches/realtime/requests**
 
