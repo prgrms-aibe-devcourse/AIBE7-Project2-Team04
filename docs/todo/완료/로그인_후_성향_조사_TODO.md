@@ -94,7 +94,7 @@
 ## 2. 데이터 모델
 
 - [x] `UserPersonalityProfile`, `UserPersonalityAnswer` Entity가 존재하는지 확인한다.
-- [x] `UserPersonalityEmbedding`, `UserMatchingPreference` Entity가 존재하는지 확인한다.
+- [x] `UserPersonalityEmbedding` Entity가 존재하는지 확인한다. `UserMatchingPreference`는 별도 입력 UI가 없는 최종 기획에 따라 이후 제거했다.
 - [x] `user_personality_tags` 테이블을 `UserPersonalityProfile`의 `@ElementCollection`으로 추가한다.
 - [x] `PersonalityTag`를 문자열 Enum으로 저장하고 `(user_id, tag_code)`에 고유 제약조건을 설정한다.
 - [x] `user_food_preferences` 테이블을 `User`의 `@ElementCollection`으로 성향 데이터와 분리하여 추가한다.
@@ -185,5 +185,5 @@
 - [ ] 위치·시간·차단·식단 제한 하드 필터 이후에만 성향 점수를 적용한다.
 - [x] 정형 카드·태그 점수를 80%, 임베딩 점수를 최대 20%로 제한한다.
 - [x] AI 또는 임베딩이 없으면 정형 점수를 100%로 재정규화한다.
-- [x] 상대방 선호 중요도와 `SIMILAR`/`COMPLEMENTARY` 설정을 연동한다. 이후 매칭 시작 전 조건으로 확정되어 구현 소유권은 `matching` 도메인으로 이동했다.
+- [x] 상대방 조건은 매칭 시작 전 희망 태그·자유 텍스트로 입력하도록 확정했다. 별도 중요도와 `SIMILAR`/`COMPLEMENTARY` 설정은 이후 제거했다.
 - [ ] 실제 성향 호환도 및 랭킹 작업은 `성향_기반_매칭_TODO.md`와 함께 진행한다.

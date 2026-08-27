@@ -9,7 +9,7 @@
 | 도메인 | Entity |
 | --- | --- |
 | 사용자·인증 | `User`, `RefreshToken`, `UserLocationPreference` |
-| 성향 분석 | `UserPersonalityProfile`, `UserPersonalityAnswer`, `UserPersonalityEmbedding`, `UserMatchingPreference` |
+| 성향 분석 | `UserPersonalityProfile`, `UserPersonalityAnswer`, `UserPersonalityEmbedding` |
 | 실시간 매칭 | `MatchRequest`, `Match`, `MatchParticipant` |
 | 채팅 | `ChatRoom`, `ChatMessage` |
 | 식당 추천 | `Restaurant`, `RestaurantEmbedding` |
