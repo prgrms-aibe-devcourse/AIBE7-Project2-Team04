@@ -106,6 +106,63 @@ public class MatchRequest extends BaseEntity {
     @Column(name = "reject_count", nullable = false)
     private int rejectCount = 0;
 
+    public static MatchRequest create(
+            User user,
+            String foodCategory,
+            Instant mealAt,
+            String regionCode,
+            String regionName,
+            String locationName,
+            Point location,
+            int searchRadius,
+            Set<PersonalityTag> desiredPersonalityTags,
+            String desiredPersonalityText,
+            MatchingPreferenceSnapshot preferenceSnapshot,
+            String matchingFormulaVersion
+    ) {
+        if (user == null || user.getId() == null) {
+            throw new IllegalArgumentException("저장된 사용자는 필수입니다.");
+        }
+        if (foodCategory == null || foodCategory.isBlank()) {
+            throw new IllegalArgumentException("음식 카테고리는 필수입니다.");
+        }
+        if (mealAt == null) {
+            throw new IllegalArgumentException("희망 식사 일시는 필수입니다.");
+        }
+        if (regionCode == null || regionCode.isBlank() || regionName == null || regionName.isBlank()) {
+            throw new IllegalArgumentException("행정구역 코드와 표시명은 필수입니다.");
+        }
+        if (location == null || location.getSRID() != 4326) {
+            throw new IllegalArgumentException("매칭 장소는 SRID 4326 Point여야 합니다.");
+        }
+        if (searchRadius <= 0) {
+            throw new IllegalArgumentException("탐색 반경은 양수여야 합니다.");
+        }
+        if (desiredPersonalityTags == null || desiredPersonalityTags.size() < 3
+                || desiredPersonalityTags.size() > 5) {
+            throw new IllegalArgumentException("원하는 상대 성향 태그는 3개 이상 5개 이하여야 합니다.");
+        }
+        if (matchingFormulaVersion == null || matchingFormulaVersion.isBlank()) {
+            throw new IllegalArgumentException("매칭 산식 버전은 필수입니다.");
+        }
+        return MatchRequest.builder()
+                .user(user)
+                .foodCategory(foodCategory.strip())
+                .mealAt(mealAt)
+                .regionCode(regionCode.strip())
+                .regionName(regionName.strip())
+                .locationName(normalize(locationName))
+                .location(location)
+                .searchRadius(searchRadius)
+                .desiredPersonalityTags(new HashSet<>(desiredPersonalityTags))
+                .desiredPersonalityText(normalize(desiredPersonalityText))
+                .preferenceSnapshot(preferenceSnapshot)
+                .matchingFormulaVersion(matchingFormulaVersion.strip())
+                .status(MatchRequestStatus.WAITING)
+                .rejectCount(0)
+                .build();
+    }
+
     public void startConfirming() {
         if (this.status != MatchRequestStatus.WAITING) {
             throw new IllegalStateException("WAITING 상태의 요청만 제안 확인(CONFIRMING)으로 전환될 수 있습니다. 현재 상태: " + this.status);
@@ -222,5 +279,9 @@ public class MatchRequest extends BaseEntity {
         if (embeddedAt == null) {
             throw new IllegalArgumentException("희망 설명 임베딩 생성 시각은 필수입니다.");
         }
+    }
+
+    private static String normalize(String value) {
+        return value == null || value.isBlank() ? null : value.strip();
     }
 }

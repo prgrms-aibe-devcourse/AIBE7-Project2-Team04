@@ -25,3 +25,10 @@ spring:
 #      timeout: 3s
 #      ssl:
 #        enabled: false
+
+app:
+  kakao:
+    rest-api-key: ${KAKAO_REST_API_KEY:}
+  matching:
+    waiting-ttl: 5m
+    default-search-radius-meters: 3000

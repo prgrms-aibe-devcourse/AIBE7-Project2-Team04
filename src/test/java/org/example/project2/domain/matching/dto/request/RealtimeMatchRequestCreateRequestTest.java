@@ -3,8 +3,10 @@ package org.example.project2.domain.matching.dto.request;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import org.example.project2.domain.personality.entity.PersonalityTag;
+import org.example.project2.domain.user.entity.FoodCategory;
 import org.junit.jupiter.api.Test;
 
+import java.time.Instant;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -51,7 +53,7 @@ class RealtimeMatchRequestCreateRequestTest {
 
     @Test
     void normalizesOptionalDesiredPersonalityTextAndRejectsTextOver300Characters() {
-        RealtimeMatchRequestCreateRequest normalized = new RealtimeMatchRequestCreateRequest(
+        RealtimeMatchRequestCreateRequest normalized = requestWithText(
                 Set.of(
                         PersonalityTag.GOOD_LISTENER,
                         PersonalityTag.FOOD_TALK,
@@ -59,7 +61,7 @@ class RealtimeMatchRequestCreateRequestTest {
                 ),
                 "  대화를 편하게 이어가는 분  "
         );
-        RealtimeMatchRequestCreateRequest overLimit = new RealtimeMatchRequestCreateRequest(
+        RealtimeMatchRequestCreateRequest overLimit = requestWithText(
                 Set.of(
                         PersonalityTag.GOOD_LISTENER,
                         PersonalityTag.FOOD_TALK,
@@ -74,6 +76,24 @@ class RealtimeMatchRequestCreateRequestTest {
     }
 
     private RealtimeMatchRequestCreateRequest request(PersonalityTag... tags) {
-        return new RealtimeMatchRequestCreateRequest(Set.of(tags), "  대화를 편하게 이어가는 분  ");
+        return requestWithText(Set.of(tags), "  대화를 편하게 이어가는 분  ");
+    }
+
+    private RealtimeMatchRequestCreateRequest requestWithText(
+            Set<PersonalityTag> tags,
+            String desiredPersonalityText
+    ) {
+        return new RealtimeMatchRequestCreateRequest(
+                FoodCategory.KOREAN,
+                Instant.now().plusSeconds(3_600),
+                "11680",
+                "사용자 입력 표시명",
+                "강남역",
+                37.501,
+                127.039,
+                null,
+                tags,
+                desiredPersonalityText
+        );
     }
 }
