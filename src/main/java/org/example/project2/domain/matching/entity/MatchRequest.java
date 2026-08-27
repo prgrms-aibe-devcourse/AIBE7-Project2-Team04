@@ -2,6 +2,7 @@ package org.example.project2.domain.matching.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.example.project2.domain.matching.dto.MatchingPreferenceSnapshot;
 import org.example.project2.domain.personality.entity.PersonalityTag;
 import org.example.project2.global.entity.BaseEntity;
 import org.example.project2.domain.user.entity.User;
@@ -14,7 +15,6 @@ import org.locationtech.jts.geom.Point;
 
 import java.time.Instant;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 
 @Table(name = "match_requests", indexes = {
@@ -22,7 +22,11 @@ import java.util.Set;
         @Index(name = "idx_match_requests_region_status", columnList = "region_code, status")
 })
 @Entity
-@Check(constraints = "(search_radius IS NULL OR search_radius > 0) AND reject_count >= 0")
+@Check(constraints = "(search_radius IS NULL OR search_radius > 0) AND reject_count >= 0 " +
+        "AND ((desired_personality_embedding IS NULL AND embedding_model IS NULL " +
+        "AND embedding_version IS NULL AND embedded_at IS NULL) " +
+        "OR (desired_personality_embedding IS NOT NULL AND embedding_model IS NOT NULL " +
+        "AND embedding_version IS NOT NULL AND embedded_at IS NOT NULL))")
 @Getter
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -56,6 +60,20 @@ public class MatchRequest extends BaseEntity {
     @Column(name = "desired_personality_text", columnDefinition = "text")
     private String desiredPersonalityText;
 
+    @JdbcTypeCode(SqlTypes.VECTOR)
+    @Getter(AccessLevel.NONE)
+    @Column(name = "desired_personality_embedding", columnDefinition = "vector(1536)")
+    private float[] desiredPersonalityEmbedding;
+
+    @Column(name = "embedding_model", length = 100)
+    private String embeddingModel;
+
+    @Column(name = "embedding_version", length = 50)
+    private String embeddingVersion;
+
+    @Column(name = "embedded_at")
+    private Instant embeddedAt;
+
     @Builder.Default
     @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(
@@ -74,7 +92,7 @@ public class MatchRequest extends BaseEntity {
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "preference_snapshot", columnDefinition = "jsonb")
-    private Map<String, Object> preferenceSnapshot;
+    private MatchingPreferenceSnapshot preferenceSnapshot;
 
     @Column(name = "matching_formula_version", length = 50)
     private String matchingFormulaVersion;
@@ -87,4 +105,122 @@ public class MatchRequest extends BaseEntity {
     @Builder.Default
     @Column(name = "reject_count", nullable = false)
     private int rejectCount = 0;
+
+    public void startConfirming() {
+        if (this.status != MatchRequestStatus.WAITING) {
+            throw new IllegalStateException("WAITING 상태의 요청만 제안 확인(CONFIRMING)으로 전환될 수 있습니다. 현재 상태: " + this.status);
+        }
+        this.status = MatchRequestStatus.CONFIRMING;
+    }
+
+    public void returnToWaiting() {
+        if (this.status != MatchRequestStatus.CONFIRMING) {
+            throw new IllegalStateException("CONFIRMING 상태의 요청만 대기(WAITING)로 복귀할 수 있습니다. 현재 상태: " + this.status);
+        }
+        this.status = MatchRequestStatus.WAITING;
+        this.rejectCount++;
+    }
+
+    public void match() {
+        if (this.status != MatchRequestStatus.CONFIRMING) {
+            throw new IllegalStateException("CONFIRMING 상태의 요청만 MATCHED로 전환될 수 있습니다. 현재 상태: " + this.status);
+        }
+        this.status = MatchRequestStatus.MATCHED;
+    }
+
+    public void cancel() {
+        if (this.status == MatchRequestStatus.CANCELLED) {
+            return;
+        }
+        if (this.status != MatchRequestStatus.WAITING && this.status != MatchRequestStatus.CONFIRMING) {
+            throw new IllegalStateException("대기 또는 제안 확인 중인 요청만 취소할 수 있습니다. 현재 상태: " + this.status);
+        }
+        this.status = MatchRequestStatus.CANCELLED;
+    }
+
+    public void expire() {
+        if (this.status == MatchRequestStatus.EXPIRED) {
+            return;
+        }
+        if (this.status != MatchRequestStatus.WAITING && this.status != MatchRequestStatus.CONFIRMING) {
+            throw new IllegalStateException("대기 또는 제안 확인 중인 요청만 만료 처리할 수 있습니다. 현재 상태: " + this.status);
+        }
+        this.status = MatchRequestStatus.EXPIRED;
+    }
+
+    public boolean isWaiting() {
+        return this.status == MatchRequestStatus.WAITING;
+    }
+
+    public boolean isConfirming() {
+        return this.status == MatchRequestStatus.CONFIRMING;
+    }
+
+    public boolean isMatched() {
+        return this.status == MatchRequestStatus.MATCHED;
+    }
+
+    public boolean isTerminal() {
+        return this.status == MatchRequestStatus.MATCHED
+                || this.status == MatchRequestStatus.CANCELLED
+                || this.status == MatchRequestStatus.EXPIRED;
+    }
+
+    public void updateDesiredPersonalityEmbedding(float[] embedding, String model, String version, Instant embeddedAt) {
+        validateEmbedding(embedding, model, version, embeddedAt);
+        this.desiredPersonalityEmbedding = embedding.clone();
+        this.embeddingModel = model.trim();
+        this.embeddingVersion = version.trim();
+        this.embeddedAt = embeddedAt;
+    }
+
+    public float[] getDesiredPersonalityEmbedding() {
+        return desiredPersonalityEmbedding == null ? null : desiredPersonalityEmbedding.clone();
+    }
+
+    public void clearDesiredPersonalityEmbedding() {
+        this.desiredPersonalityEmbedding = null;
+        this.embeddingModel = null;
+        this.embeddingVersion = null;
+        this.embeddedAt = null;
+    }
+
+    @PrePersist
+    @PreUpdate
+    private void validateEmbeddingState() {
+        boolean allNull = desiredPersonalityEmbedding == null
+                && embeddingModel == null
+                && embeddingVersion == null
+                && embeddedAt == null;
+        boolean allPresent = desiredPersonalityEmbedding != null
+                && embeddingModel != null
+                && embeddingVersion != null
+                && embeddedAt != null;
+        if (!allNull && !allPresent) {
+            throw new IllegalStateException("희망 설명 임베딩과 모델명, 버전, 생성 시각은 모두 함께 설정되어야 합니다.");
+        }
+        if (allPresent) {
+            validateEmbedding(desiredPersonalityEmbedding, embeddingModel, embeddingVersion, embeddedAt);
+        }
+    }
+
+    private static void validateEmbedding(float[] embedding, String model, String version, Instant embeddedAt) {
+        if (embedding == null || embedding.length != 1536) {
+            throw new IllegalArgumentException("희망 설명 임베딩은 정확히 1536차원이어야 합니다.");
+        }
+        for (float value : embedding) {
+            if (!Float.isFinite(value)) {
+                throw new IllegalArgumentException("희망 설명 임베딩에는 유한한 값만 포함할 수 있습니다.");
+            }
+        }
+        if (model == null || model.isBlank()) {
+            throw new IllegalArgumentException("희망 설명 임베딩 모델명은 필수입니다.");
+        }
+        if (version == null || version.isBlank()) {
+            throw new IllegalArgumentException("희망 설명 임베딩 버전은 필수입니다.");
+        }
+        if (embeddedAt == null) {
+            throw new IllegalArgumentException("희망 설명 임베딩 생성 시각은 필수입니다.");
+        }
+    }
 }
