@@ -27,6 +27,31 @@ public interface MatchRequestRepository extends JpaRepository<MatchRequest, Long
             List<MatchRequestStatus> statuses
     );
 
+    @EntityGraph(attributePaths = "user")
+    @Query("SELECT r FROM MatchRequest r WHERE r.id = :requestId AND r.user.id = :userId")
+    Optional<MatchRequest> findOwnedById(
+            @Param("requestId") Long requestId,
+            @Param("userId") UUID userId
+    );
+
+    @EntityGraph(attributePaths = "user")
+    @Query("""
+            SELECT r FROM MatchRequest r
+            WHERE r.status = :status
+              AND r.id <> :sourceRequestId
+              AND r.user.id <> :sourceUserId
+            """)
+    List<MatchRequest> findWaitingCandidates(
+            @Param("status") MatchRequestStatus status,
+            @Param("sourceRequestId") Long sourceRequestId,
+            @Param("sourceUserId") UUID sourceUserId
+    );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @EntityGraph(attributePaths = {"user", "desiredPersonalityTags"})
+    @Query("SELECT r FROM MatchRequest r WHERE r.id IN :requestIds ORDER BY r.id")
+    List<MatchRequest> findAllByIdInForUpdate(@Param("requestIds") List<Long> requestIds);
+
     @EntityGraph(attributePaths = "desiredPersonalityTags")
     @Query("SELECT r FROM MatchRequest r WHERE r.id = :requestId")
     Optional<MatchRequest> findDetailedById(@Param("requestId") Long requestId);

@@ -17,6 +17,7 @@ import org.example.project2.domain.matching.repository.RealtimeMatchWaitingStore
 import org.example.project2.domain.matching.repository.UserMatchingPreferenceRepository;
 import org.example.project2.domain.matching.service.calculation.PersonalityCompatibilityCalculator;
 import org.example.project2.domain.matching.service.request.embedding.DesiredPersonalityEmbeddingRequestedEvent;
+import org.example.project2.domain.matching.service.proposal.RealtimeMatchRequestWaitingEvent;
 import org.example.project2.domain.personality.entity.PersonalityDimension;
 import org.example.project2.domain.region.entity.Region;
 import org.example.project2.domain.region.repository.RegionRepository;
@@ -116,6 +117,7 @@ public class RealtimeMatchRequestService {
                         saved.getDesiredPersonalityText()
                 ));
             }
+            eventPublisher.publishEvent(new RealtimeMatchRequestWaitingEvent(userId, saved.getId()));
             Instant expiresAt = Instant.now().plus(ttl);
             return new RealtimeMatchRequestResponse(
                     saved.getId(),
