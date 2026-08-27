@@ -48,6 +48,13 @@
 | `LOCATION_002` | 422 | 선택한 지도 핀이 요청한 구의 행정구역 범위를 벗어남 (FR-04-08) |
 | `PERSONALITY_002` | 422 | 지원하지 않는 설문 버전이거나 성향 응답 값이 유효하지 않음 |
 | `MATCHING_001` | 422 | 상대방 선호의 차원·중요도·선호 방식 입력값이 유효하지 않음 |
+| `MATCHING_002` | 422 | 실시간 매칭 요청 값 또는 선택 위치가 유효하지 않음 |
+| `MATCHING_003` | 409 | 동일 사용자의 활성 매칭 요청이 이미 존재함 |
+| `MATCHING_004` | 404 | 본인의 실시간 매칭 요청을 찾을 수 없음 |
+| `MATCHING_005` | 403 | 위치 서비스 미동의 |
+| `MATCHING_006` | 503 | 외부 행정구역 검증 일시 실패 |
+| `MATCHING_007` | 503 | Redis 대기 상태 등록 일시 실패 |
+| `MATCHING_008` | 409 | 요청 상태 전이 충돌 |
 
 ### 페이지네이션 (목록 조회 공통 파라미터)
 
@@ -390,10 +397,12 @@ V1 응답값은 `1`, `3`, `5`만 허용하며 각각 `0`, `50`, `100`점으로 �
 {
   "regionCode": "11680",
   "regionName": "서울특별시 강남구",
+  "foodCategory": "KOREAN",
   "locationName": "강남역 11번 출구",
   "latitude": 37.501,
   "longitude": 127.039,
-  "desiredTimeSlot": "2026-08-21T19:00:00+09:00",
+  "searchRadius": 3000,
+  "desiredTimeSlot": "2026-09-21T19:00:00+09:00",
   "desiredPersonalityTags": ["GOOD_LISTENER", "FOOD_TALK", "ENJOY_DESSERT"],
   "desiredPersonalityText": "대화를 편하게 이어가되 식사 속도가 비슷한 분"
 }
@@ -402,13 +411,17 @@ V1 응답값은 `1`, `3`, `5`만 허용하며 각각 `0`, `50`, `100`점으로 �
 응답:
 
 ```json
-{ "success": true, "data": { "requestId": 55, "status": "WAITING" } }
+{ "success": true, "data": { "requestId": 55, "status": "WAITING", "expiresAt": "2026-09-21T10:05:00Z" } }
 ```
 
 <aside>
 📎
 
-서버는 핀 좌표가 `regionCode`의 구에 속하는지 검증하고, PostGIS Point를 경도·위도 순서로 생성한다. 이 핀은 사용자의 실제 현재 위치가 아니라 희망 매칭 장소다. `desiredPersonalityTags`는 `PersonalityTag` 코드 3개 이상 5개 이하로 선택하며, 요청 생성 시점의 값 그대로 보존한다. 동일 사용자가 이미 `WAITING` 상태면 `409 CONFLICT` (FR-03-10). 서버는 Redis Geo 큐에 등록한 뒤 희망 매칭 장소 핀 기준 거리(기본 3km)·시간대(±30분)·대기 상태를 하드 필터링하고, 통과 후보에만 버전된 성향 호환도 공식을 적용한다. 자유 서술 임베딩은 제한된 보조 점수로만 사용하며 AI/임베딩 장애 또는 성향 미설정 시 하드 필터와 사용 가능한 정형 점수만으로 fallback한다 (FR-03-06, FR-03-11~12). 후보 쌍에 대한 15초 제한 시간의 상호 수락이 완료되면 양쪽 `match_requests`를 연결한 `matches`와 정확히 2개의 `match_participants`를 기록하고 STOMP로 두 사용자에게 결과를 push한다. 일정 시간(TTL 5분) 내 미매칭 시 상태가 `EXPIRED`로 자동 전환된다 (FR-03-09).
+서버는 `regionCode`를 `regions` 기준으로 조회해 표시명을 정규화하고, Kakao 좌표→행정구역 API로 핀이 해당 구에 속하는지 검증한 뒤 PostGIS Point를 경도·위도 순서로 생성한다. 위치 서비스 동의와 기본 활동지역 일치가 필수다. 이 핀은 사용자의 실제 현재 위치가 아니라 희망 매칭 장소다. `searchRadius`를 생략하면 3km를 사용하며 100m~10km를 허용한다. `desiredPersonalityTags`는 `PersonalityTag` 코드 3개 이상 5개 이하로 선택하며 요청 시점 그대로 보존한다. 동일 사용자의 Redis `match:user:{userId}` 예약은 원자적으로 생성하며 이미 `WAITING` 상태면 `409 MATCHING_003`을 반환한다. 현재 상대방 중요도 설정은 `preference_snapshot`에 복사하고 산식 버전은 `PERSONALITY_MATCH_V1`로 고정한다. 자유 서술은 커밋 이후 비동기로 임베딩하며 AI 장애는 요청 생성과 기본 대기 상태를 실패시키지 않는다. Redis Geo 후보 등록과 탐색은 4번 후보 탐색 단계에서 추가한다. 대기 TTL은 5분이며 DB에는 만료 시각을 중복 저장하지 않고 응답의 `expiresAt`은 Redis TTL 기준으로 계산한다.
+
+**GET /matches/realtime/requests/me**는 본인의 현재 `WAITING` 또는 `CONFIRMING` 요청을 반환한다. 활성 요청이 없으면 `404 MATCHING_004`를 반환한다.
+
+**DELETE /matches/realtime/requests/{requestId}**는 본인 소유 요청만 취소하며 `WAITING` 또는 `CONFIRMING` 상태만 허용한다. DB 커밋 이후 Redis 대기 키를 제거하며 다른 사용자의 요청 ID는 `404 MATCHING_004`로 응답한다.
 
 </aside>
 
