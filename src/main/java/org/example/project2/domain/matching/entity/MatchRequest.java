@@ -162,7 +162,6 @@ public class MatchRequest extends BaseEntity {
                 .rejectCount(0)
                 .build();
     }
-
     public void startConfirming() {
         if (this.status != MatchRequestStatus.WAITING) {
             throw new IllegalStateException("WAITING 상태의 요청만 제안 확인(CONFIRMING)으로 전환될 수 있습니다. 현재 상태: " + this.status);
@@ -280,7 +279,6 @@ public class MatchRequest extends BaseEntity {
             throw new IllegalArgumentException("희망 설명 임베딩 생성 시각은 필수입니다.");
         }
     }
-
     private static String normalize(String value) {
         return value == null || value.isBlank() ? null : value.strip();
     }

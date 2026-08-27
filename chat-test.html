@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>WebSocket Chat Test Client</title>
+    <!-- SockJS & STOMP CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+</head>
+<body>
+
+    <h2>WebSocket Chat Test</h2>
+
+    <!-- 연결 설정 영역 -->
+    <div>
+        <label>서버 주소: </label>
+        <input type="text" id="serverUrl" value="http://localhost:8080/ws-chat" style="width: 250px;">
+        <button id="btnConnect" onclick="connect()">연결하기</button>
+        <button id="btnDisconnect" onclick="disconnect()" disabled>연결끊기</button>
+    </div>
+    <br>
+
+    <!-- 채팅방 및 닉네임 설정 영역 -->
+    <div>
+        <label>채팅방 ID (Room ID): </label>
+        <input type="text" id="roomId" value="room-1">
+        <label>보내는 사람 (Sender): </label>
+        <input type="text" id="sender" value="UserA">
+        <button id="btnSubscribe" onclick="subscribeRoom()" disabled>채팅방 입장 (구독)</button>
+    </div>
+    <br>
+
+    <!-- 메시지 입력 및 전송 영역 -->
+    <div>
+        <input type="text" id="messageInput" placeholder="메시지를 입력하세요" style="width: 300px;" disabled>
+        <button id="btnSend" onclick="sendMessage()" disabled>전송</button>
+    </div>
+    <br>
+
+    <!-- 대화 로그 표시 영역 -->
+    <div style="border: 1px solid #ccc; width: 500px; height: 300px; overflow-y: scroll; padding: 10px;">
+        <div id="chatLog"></div>
+    </div>
+
+    <script>
+        let stompClient = null;
+        let subscription = null;
+
+        function log(message) {
+            const chatLog = document.getElementById("chatLog");
+            chatLog.innerHTML += `<div>[${new Date().toLocaleTimeString()}] ${message}</div>`;
+            chatLog.parentElement.scrollTop = chatLog.parentElement.scrollHeight;
+        }
+
+        function connect() {
+            const url = document.getElementById("serverUrl").value;
+            log(`연결 시도 중... (${url})`);
+
+            const socket = new SockJS(url);
+            stompClient = Stomp.over(socket);
+
+            stompClient.connect({}, function (frame) {
+                log("연결 성공!");
+                document.getElementById("btnConnect").disabled = true;
+                document.getElementById("btnDisconnect").disabled = false;
+                document.getElementById("btnSubscribe").disabled = false;
+            }, function (error) {
+                log("연결 에러: " + error);
+            });
+        }
+
+        function disconnect() {
+            if (stompClient !== null) {
+                if (subscription) {
+                    subscription.unsubscribe();
+                }
+                stompClient.disconnect(function () {
+                    log("연결 해제됨.");
+                    resetUI();
+                });
+            }
+        }
+
+        function subscribeRoom() {
+            const roomId = document.getElementById("roomId").value;
+            const subDestination = `/sub/chat/room/${roomId}`;
+
+            // 기존 구독이 있으면 해제
+            if (subscription) {
+                subscription.unsubscribe();
+            }
+
+            log(`${roomId} 방 구독 요청...`);
+            subscription = stompClient.subscribe(subDestination, function (messageOutput) {
+                const body = JSON.parse(messageOutput.body);
+                log(`<b>${body.sender}</b>: ${body.message}`);
+            });
+
+            log(`${roomId} 방에 입장했습니다.`);
+            document.getElementById("messageInput").disabled = false;
+            document.getElementById("btnSend").disabled = false;
+        }
+
+        function sendMessage() {
+            const roomId = document.getElementById("roomId").value;
+            const sender = document.getElementById("sender").value;
+            const message = document.getElementById("messageInput").value;
+
+            if (!message.trim()) return;
+
+            const payload = {
+                roomId: roomId,
+                sender: sender,
+                message: message
+            };
+
+            // @MessageMapping("/chat/message") 주소로 전송
+            stompClient.send("/pub/chat/message", {}, JSON.stringify(payload));
+            document.getElementById("messageInput").value = "";
+        }
+
+        function resetUI() {
+            document.getElementById("btnConnect").disabled = false;
+            document.getElementById("btnDisconnect").disabled = true;
+            document.getElementById("btnSubscribe").disabled = true;
+            document.getElementById("messageInput").disabled = true;
+            document.getElementById("btnSend").disabled = true;
+            subscription = null;
+        }
+    </script>
+</body>
+</html>

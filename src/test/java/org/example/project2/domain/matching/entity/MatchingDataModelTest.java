@@ -4,6 +4,7 @@ import jakarta.persistence.EntityManager;
 import org.example.project2.domain.matching.dto.scoring.BidirectionalMatchScoreSnapshot;
 import org.example.project2.domain.matching.dto.scoring.DimensionMatchPreference;
 import org.example.project2.domain.matching.dto.scoring.MatchingPreferenceSnapshot;
+import org.example.project2.domain.matching.entity.PreferenceMode;
 import org.example.project2.domain.matching.repository.MatchProposalRepository;
 import org.example.project2.domain.matching.repository.MatchRequestRepository;
 import org.example.project2.domain.matching.service.proposal.MatchProposalLifecycleService;

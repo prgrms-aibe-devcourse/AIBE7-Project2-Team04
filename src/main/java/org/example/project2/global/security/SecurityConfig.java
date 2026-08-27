@@ -88,7 +88,9 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         if (StringUtils.hasText(p.cors().allowedOrigin())) {
-            configuration.setAllowedOrigins(List.of(p.cors().allowedOrigin()));
+            configuration.setAllowedOrigins(List.of(p.cors().allowedOrigin(), "null"));  // null은 채팅테스트용
+        }else{
+            configuration.setAllowedOrigins(List.of("null"));
         }
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-XSRF-TOKEN"));
@@ -185,6 +187,8 @@ public class SecurityConfig {
                                         "/swagger-ui.html",
                                         "/actuator/health"
                                 ).permitAll()
+                                .requestMatchers("/ws-chat/**").permitAll() // 웹소켓
+                                .requestMatchers("/chat-test.html").permitAll() // 채팅테스트 페이지
                                 .requestMatchers("/admin/**").hasRole("ADMIN")
                                 .anyRequest()
                                 .authenticated()
