@@ -1,4 +1,4 @@
-package org.example.project2.domain.matching.service;
+package org.example.project2.domain.matching.service.proposal;
 
 import lombok.RequiredArgsConstructor;
 import org.example.project2.domain.matching.entity.MatchProposal;

@@ -1,13 +1,13 @@
 package org.example.project2.domain.matching.service.calculation;
 
-import org.example.project2.domain.matching.dto.DesiredPersonalityTagMatchScore;
-import org.example.project2.domain.matching.dto.DimensionMatchPreference;
-import org.example.project2.domain.matching.dto.PersonalityCompatibilityScore;
-import org.example.project2.domain.matching.dto.PersonalityEmbeddingVector;
+import org.example.project2.domain.matching.dto.scoring.DesiredPersonalityTagMatchScore;
+import org.example.project2.domain.matching.dto.scoring.DimensionMatchPreference;
+import org.example.project2.domain.matching.dto.scoring.PersonalityCompatibilityScore;
+import org.example.project2.domain.matching.dto.scoring.PersonalityEmbeddingVector;
 import org.example.project2.domain.personality.dto.PersonalityScoresResponse;
 import org.example.project2.domain.personality.entity.PersonalityDimension;
 import org.example.project2.domain.personality.entity.PersonalityTag;
-import org.example.project2.domain.personality.entity.PreferenceMode;
+import org.example.project2.domain.matching.entity.PreferenceMode;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;

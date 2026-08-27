@@ -2,7 +2,7 @@ package org.example.project2.domain.matching.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.example.project2.domain.matching.dto.BidirectionalMatchScoreSnapshot;
+import org.example.project2.domain.matching.dto.scoring.BidirectionalMatchScoreSnapshot;
 import org.example.project2.global.entity.BaseEntity;
 import org.hibernate.annotations.Check;
 import org.hibernate.annotations.JdbcTypeCode;

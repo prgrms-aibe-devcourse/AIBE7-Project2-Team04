@@ -1,4 +1,4 @@
-package org.example.project2.domain.personality.entity;
+package org.example.project2.domain.matching.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
@@ -9,6 +9,7 @@ import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.example.project2.domain.personality.entity.PersonalityDimension;
 
 import java.io.Serializable;
 import java.util.UUID;
@@ -25,4 +26,14 @@ public class UserMatchingPreferenceId implements Serializable {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
     private PersonalityDimension dimension;
+
+    public static UserMatchingPreferenceId of(UUID userId, PersonalityDimension dimension) {
+        if (userId == null) {
+            throw new IllegalArgumentException("사용자 ID는 필수입니다.");
+        }
+        if (dimension == null) {
+            throw new IllegalArgumentException("성향 차원은 필수입니다.");
+        }
+        return new UserMatchingPreferenceId(userId, dimension);
+    }
 }

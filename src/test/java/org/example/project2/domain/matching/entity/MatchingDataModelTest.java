@@ -1,14 +1,13 @@
 package org.example.project2.domain.matching.entity;
 
 import jakarta.persistence.EntityManager;
-import org.example.project2.domain.matching.dto.BidirectionalMatchScoreSnapshot;
-import org.example.project2.domain.matching.dto.DimensionMatchPreference;
-import org.example.project2.domain.matching.dto.MatchingPreferenceSnapshot;
+import org.example.project2.domain.matching.dto.scoring.BidirectionalMatchScoreSnapshot;
+import org.example.project2.domain.matching.dto.scoring.DimensionMatchPreference;
+import org.example.project2.domain.matching.dto.scoring.MatchingPreferenceSnapshot;
 import org.example.project2.domain.matching.repository.MatchProposalRepository;
 import org.example.project2.domain.matching.repository.MatchRequestRepository;
-import org.example.project2.domain.matching.service.MatchProposalLifecycleService;
+import org.example.project2.domain.matching.service.proposal.MatchProposalLifecycleService;
 import org.example.project2.domain.personality.entity.PersonalityDimension;
-import org.example.project2.domain.personality.entity.PreferenceMode;
 import org.example.project2.domain.user.entity.User;
 import org.example.project2.domain.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;

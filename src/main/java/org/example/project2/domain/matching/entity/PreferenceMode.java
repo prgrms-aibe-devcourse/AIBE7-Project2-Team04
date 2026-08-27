@@ -1,4 +1,4 @@
-package org.example.project2.domain.personality.entity;
+package org.example.project2.domain.matching.entity;
 
 public enum PreferenceMode {
     SIMILAR,

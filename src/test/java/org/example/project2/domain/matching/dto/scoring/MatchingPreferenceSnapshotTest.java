@@ -1,7 +1,7 @@
-package org.example.project2.domain.matching.dto;
+package org.example.project2.domain.matching.dto.scoring;
 
 import org.example.project2.domain.personality.entity.PersonalityDimension;
-import org.example.project2.domain.personality.entity.PreferenceMode;
+import org.example.project2.domain.matching.entity.PreferenceMode;
 import org.junit.jupiter.api.Test;
 
 import java.util.EnumMap;

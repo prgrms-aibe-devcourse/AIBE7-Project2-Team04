@@ -1,6 +1,6 @@
 package org.example.project2.domain.matching.service.calculation;
 
-import org.example.project2.domain.matching.dto.DesiredPersonalityTagMatchScore;
+import org.example.project2.domain.matching.dto.scoring.DesiredPersonalityTagMatchScore;
 import org.example.project2.domain.personality.entity.PersonalityTag;
 
 import java.util.EnumSet;

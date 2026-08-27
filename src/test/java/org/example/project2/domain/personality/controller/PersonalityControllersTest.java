@@ -49,7 +49,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(
-        controllers = {PersonalityProfileController.class, FoodPreferenceController.class},
+        controllers = {
+                PersonalityProfileController.class,
+                FoodPreferenceController.class
+        },
         properties = {
                 "app.auth.password.encoding-id=argon2",
                 "app.auth.jwt.issuer=project2",
@@ -351,4 +354,5 @@ class PersonalityControllersTest {
                 }
                 """;
     }
+
 }

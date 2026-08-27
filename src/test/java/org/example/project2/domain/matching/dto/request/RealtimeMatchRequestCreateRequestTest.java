@@ -1,4 +1,4 @@
-package org.example.project2.domain.matching.dto;
+package org.example.project2.domain.matching.dto.request;
 
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;

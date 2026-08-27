@@ -1,4 +1,4 @@
-package org.example.project2.domain.matching.dto;
+package org.example.project2.domain.matching.dto.scoring;
 
 import org.example.project2.domain.personality.entity.PersonalityDimension;
 import java.util.EnumMap;
