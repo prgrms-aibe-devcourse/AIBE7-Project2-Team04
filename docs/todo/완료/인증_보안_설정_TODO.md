@@ -35,9 +35,9 @@ JWT_SECRET=<Base64로 인코딩된 32바이트 이상의 무작위 키>
 
 ### 2.2 인증 의존성 활성화
 
-- [ ] OAuth2 Client 의존성의 주석을 해제한다.
-- [ ] OAuth2 Resource Server 의존성의 주석을 해제한다.
-- [ ] Argon2 구현에 필요한 암호화 라이브러리를 추가한다.
+- [x] OAuth2 Client 의존성의 주석을 해제한다.
+- [x] OAuth2 Resource Server 의존성의 주석을 해제한다.
+- [x] Argon2 구현에 필요한 암호화 라이브러리를 추가한다.
 
 ```gradle
 // 카카오·Google OAuth2 로그인
@@ -51,10 +51,10 @@ Spring Security `JwtEncoder`, `JwtDecoder`를 사용하므로 별도의 `jjwt` �
 
 ### 2.3 Argon2 구현 방식 확정
 
-- [ ] 비밀번호는 Argon2로 단방향 해싱한다.
-- [ ] 원문 비밀번호를 DB나 로그에 저장하지 않는다.
-- [ ] 비밀번호 해시에 `{argon2}` 알고리즘 식별자를 포함한다.
-- [ ] 서버 환경에서 비밀번호 검증 시간이 지나치게 길거나 짧지 않은지 측정한다.
+- [x] 비밀번호는 Argon2로 단방향 해싱한다.
+- [x] 원문 비밀번호를 DB나 로그에 저장하지 않는다.
+- [x] 비밀번호 해시에 `{argon2}` 알고리즘 식별자를 포함한다.
+- [x] 서버 환경에서 비밀번호 검증 시간이 지나치게 길거나 짧지 않은지 측정한다.
 
 저장 예시:
 
@@ -126,7 +126,7 @@ global/security/
 
 - [x] `PasswordEncoder` Bean을 등록한다.
 - [x] 기본 인코딩 알고리즘을 Argon2로 설정한다.
-- [ ] 회원가입에는 `encode`, 로그인에는 `matches`를 사용한다.
+- [x] 회원가입에는 `encode`, 로그인에는 `matches`를 사용한다.
 - [x] LOCAL 계정에만 비밀번호 인증을 허용한다.
 
 ```text
@@ -173,10 +173,10 @@ JWT에 포함하지 않을 정보:
 
 ### 3.4 JWT 발급 서비스
 
-- [ ] `JwtTokenService`를 구현한다.
-- [ ] 사용자 UUID와 권한으로 Access Token을 생성한다.
-- [ ] Access Token 만료시간을 응답에 함께 제공한다.
-- [ ] 발급 시각과 만료 시각 계산을 서버 시간 기준으로 통일한다.
+- [x] `JwtTokenService`를 구현한다.
+- [x] 사용자 UUID와 권한으로 Access Token을 생성한다.
+- [x] Access Token 만료시간을 응답에 함께 제공한다.
+- [x] 발급 시각과 만료 시각 계산을 서버 시간 기준으로 통일한다.
 
 권장 책임:
 
@@ -248,7 +248,7 @@ DaoAuthenticationProvider
 - [x] 공개 API에 `permitAll`을 적용한다.
 - [x] 일반 API에 `authenticated`를 적용한다.
 - [x] `/admin/**`에 `hasRole("ADMIN")`을 적용한다.
-- [ ] Resource Server JWT 검증을 활성화한다.
+- [x] Resource Server JWT 검증을 활성화한다.
 - [x] JWT의 `roles` 클레임을 Spring Security Authority로 변환한다.
 - [x] API와 OAuth2 로그인 세션 정책을 분리한다.
 
@@ -291,13 +291,13 @@ JWT 기본 설정 단계에서 CSRF를 임시 비활성화했다면 Refresh Toke
 
 ## 5. 기본 설정 이후 구현 순서
 
-- [ ] LOCAL 회원가입 구현
-- [ ] LOCAL 로그인 및 Access Token 발급 구현
-- [ ] Refresh Token 생성·해시 저장·쿠키 전달 구현
+- [x] LOCAL 회원가입 구현
+- [x] LOCAL 로그인 및 Access Token 발급 구현
+- [x] Refresh Token 생성·해시 저장·쿠키 전달 구현
 - [x] Refresh Token Rotation과 재사용 탐지 서비스 구현
-- [ ] 로그아웃 및 전체 세션 폐기 구현
-- [ ] Google OAuth2 로그인 구현
-- [ ] 카카오 OAuth2 로그인 구현
+- [x] 로그아웃 및 전체 세션 폐기 구현
+- [x] Google OAuth2 로그인 구현
+- [x] 카카오 OAuth2 로그인 구현
 - [x] 카카오 사용자 정보를 `(provider, provider_id)` 기준으로 서비스 사용자에 매핑
 - [x] OAuth 성공·실패 핸들러에서 일회성 코드 리다이렉트 및 임시 세션 제거
 - [x] OAuth 일회용 코드 교환 구현
@@ -315,20 +315,20 @@ OAuth 이메일 없음 또는 미검증 → 가입 실패
 
 ## 6. 테스트 체크리스트
 
-- [ ] JWT Secret 누락 시 애플리케이션 시작 실패
-- [ ] 32바이트 미만 JWT Secret 사용 시 시작 실패
-- [ ] HS256 이외 알고리즘으로 생성한 JWT 거부
+- [x] JWT Secret 누락 시 애플리케이션 시작 실패
+- [x] 32바이트 미만 JWT Secret 사용 시 시작 실패
+- [x] HS256 이외 알고리즘으로 생성한 JWT 거부
 - [x] 잘못된 issuer 또는 audience를 가진 JWT 거부
 - [x] 만료된 JWT 요청에 401 반환
 - [x] 토큰 없이 보호 API 접근 시 401 반환
 - [x] USER가 관리자 API 접근 시 403 반환
-- [ ] ADMIN이 관리자 API 접근 가능
-- [ ] LOCAL 사용자 비밀번호 일치·불일치 테스트
-- [ ] KAKAO·GOOGLE 사용자 비밀번호 로그인 차단
-- [ ] Refresh Token 원문이 DB와 로그에 저장되지 않는지 확인
-- [ ] 로그아웃 후 Refresh Token 재사용 차단
+- [x] ADMIN이 관리자 API 접근 가능
+- [x] LOCAL 사용자 비밀번호 일치·불일치 테스트
+- [x] KAKAO·GOOGLE 사용자 비밀번호 로그인 차단
+- [x] Refresh Token 원문이 DB와 로그에 저장되지 않는지 확인
+- [x] 로그아웃 후 Refresh Token 재사용 차단
 - [x] 회전된 이전 Refresh Token 재사용 시 토큰 패밀리 전체 폐기
-- [ ] OAuth2 로그인 흐름에서 임시 세션과 콜백 정상 동작
+- [x] OAuth2 로그인 흐름에서 임시 세션과 콜백 정상 동작
 
 ---
 
