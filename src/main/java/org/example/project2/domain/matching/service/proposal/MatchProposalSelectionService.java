@@ -27,6 +27,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -80,18 +81,24 @@ public class MatchProposalSelectionService {
         UserPersonalityProfile targetProfile = personalityProfileRepository
                 .findByUserId(target.getUser().getId())
                 .orElse(null);
-        UserPersonalityEmbedding sourceEmbedding = personalityEmbeddingRepository
+        UserPersonalityEmbedding sourceSelfDescriptionEmbedding = personalityEmbeddingRepository
                 .findById(source.getUser().getId())
                 .orElse(null);
-        UserPersonalityEmbedding targetEmbedding = personalityEmbeddingRepository
+        UserPersonalityEmbedding targetSelfDescriptionEmbedding = personalityEmbeddingRepository
                 .findById(target.getUser().getId())
                 .orElse(null);
+        sourceSelfDescriptionEmbedding = eligibleSelfDescriptionEmbedding(
+                sourceProfile, sourceSelfDescriptionEmbedding
+        );
+        targetSelfDescriptionEmbedding = eligibleSelfDescriptionEmbedding(
+                targetProfile, targetSelfDescriptionEmbedding
+        );
 
         DirectionScore sourceToTarget = calculateDirection(
-                source, targetProfile, targetEmbedding
+                source, targetProfile, targetSelfDescriptionEmbedding
         );
         DirectionScore targetToSource = calculateDirection(
-                target, sourceProfile, sourceEmbedding
+                target, sourceProfile, sourceSelfDescriptionEmbedding
         );
         short pairScore = (short) Math.min(sourceToTarget.score(), targetToSource.score());
 
@@ -105,13 +112,13 @@ public class MatchProposalSelectionService {
     private DirectionScore calculateDirection(
             MatchRequest requester,
             UserPersonalityProfile candidateProfile,
-            UserPersonalityEmbedding candidateEmbedding
+            UserPersonalityEmbedding candidateSelfDescriptionEmbedding
     ) {
         PersonalityCompatibilityScore compatibility = personalityCompatibilityCalculator.calculate(
                 requester.getDesiredPersonalityTags(),
                 candidateProfile == null ? null : candidateProfile.getStyleTags(),
-                requestedEmbeddingOf(requester),
-                toEmbedding(candidateEmbedding)
+                requestedFreeTextEmbeddingOf(requester),
+                selfDescriptionEmbeddingOf(candidateSelfDescriptionEmbedding)
         );
         if (!compatibility.available()) {
             return new DirectionScore(BASE_CONDITION_SCORE, List.of(FALLBACK_REASON));
@@ -206,19 +213,41 @@ public class MatchProposalSelectionService {
         );
     }
 
-    private PersonalityEmbeddingVector requestedEmbeddingOf(MatchRequest request) {
+    private PersonalityEmbeddingVector requestedFreeTextEmbeddingOf(MatchRequest request) {
+        if (request.getDesiredPersonalityText() == null
+                || request.getDesiredPersonalityText().isBlank()) {
+            return null;
+        }
         return new PersonalityEmbeddingVector(
                 request.getDesiredPersonalityEmbedding(), request.getEmbeddingModel(), request.getEmbeddingVersion()
         );
     }
 
-    private PersonalityEmbeddingVector toEmbedding(UserPersonalityEmbedding embedding) {
+    private PersonalityEmbeddingVector selfDescriptionEmbeddingOf(UserPersonalityEmbedding embedding) {
         if (embedding == null) {
             return null;
         }
         return new PersonalityEmbeddingVector(
                 embedding.getEmbedding(), embedding.getModelName(), embedding.getSourceVersion()
         );
+    }
+
+    private UserPersonalityEmbedding eligibleSelfDescriptionEmbedding(
+            UserPersonalityProfile profile,
+            UserPersonalityEmbedding embedding
+    ) {
+        if (profile == null || !profile.isAiAnalysisConsent()
+                || profile.getSelfDescription() == null || embedding == null) {
+            return null;
+        }
+        if (!Objects.equals(normalize(profile.getSelfDescription()), normalize(embedding.getSourceText()))) {
+            return null;
+        }
+        return embedding;
+    }
+
+    private String normalize(String value) {
+        return value == null || value.isBlank() ? null : value.strip();
     }
 
     private record DirectionScore(short score, List<String> reasons) {

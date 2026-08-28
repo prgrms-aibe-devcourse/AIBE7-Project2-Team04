@@ -3,6 +3,7 @@ package org.example.project2.domain.matching.repository;
 import org.example.project2.domain.matching.entity.MatchRequest;
 import org.example.project2.domain.matching.entity.MatchRequestStatus;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Lock;
@@ -19,6 +20,11 @@ public interface MatchRequestRepository extends JpaRepository<MatchRequest, Long
     List<MatchRequest> findAllByUserIdAndStatusIn(UUID userId, List<MatchRequestStatus> statuses);
     List<MatchRequest> findAllByUserId(UUID userId);
     void deleteAllByUserIdAndStatusIn(UUID userId, List<MatchRequestStatus> statuses);
+
+    List<MatchRequest> findAllByStatusInAndDesiredPersonalityTextIsNotNull(
+            List<MatchRequestStatus> statuses,
+            Pageable pageable
+    );
 
     boolean existsByUserIdAndStatus(UUID userId, MatchRequestStatus status);
 

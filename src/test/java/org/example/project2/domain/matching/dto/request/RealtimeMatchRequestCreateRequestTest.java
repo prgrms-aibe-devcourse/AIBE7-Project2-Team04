@@ -75,6 +75,20 @@ class RealtimeMatchRequestCreateRequestTest {
                 .containsExactly("원하는 상대 성향 설명은 최대 300자까지 입력할 수 있습니다.");
     }
 
+    @Test
+    void normalizesBlankDesiredPersonalityTextToNull() {
+        RealtimeMatchRequestCreateRequest request = requestWithText(
+                Set.of(
+                        PersonalityTag.GOOD_LISTENER,
+                        PersonalityTag.FOOD_TALK,
+                        PersonalityTag.ENJOY_DESSERT
+                ),
+                "   "
+        );
+
+        assertThat(request.desiredPersonalityText()).isNull();
+    }
+
     private RealtimeMatchRequestCreateRequest request(PersonalityTag... tags) {
         return requestWithText(Set.of(tags), "  대화를 편하게 이어가는 분  ");
     }

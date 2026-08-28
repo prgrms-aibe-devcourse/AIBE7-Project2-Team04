@@ -22,16 +22,20 @@ public class PersonalityCompatibilityCalculator {
         this.tagScoreCalculator = tagScoreCalculator;
     }
 
+    /**
+     * 요청자의 희망 태그와 후보자의 확정 태그, 그리고 양쪽 자유 텍스트 벡터를 독립적으로 계산합니다.
+     * 카드 응답·차원 점수는 이 산식의 입력으로 받지 않습니다.
+     */
     public PersonalityCompatibilityScore calculate(
             Set<PersonalityTag> desiredTags,
             Set<PersonalityTag> candidateTags,
-            PersonalityEmbeddingVector desiredDescriptionEmbedding,
-            PersonalityEmbeddingVector candidateStyleEmbedding
+            PersonalityEmbeddingVector desiredFreeTextEmbedding,
+            PersonalityEmbeddingVector candidateSelfDescriptionEmbedding
     ) {
         DesiredPersonalityTagMatchScore tagScore = tagScoreCalculator.calculate(desiredTags, candidateTags);
-        OptionalInt embeddingScore = calculateEmbeddingScore(
-                desiredDescriptionEmbedding,
-                candidateStyleEmbedding
+        OptionalInt embeddingScore = calculateFreeTextEmbeddingScore(
+                desiredFreeTextEmbedding,
+                candidateSelfDescriptionEmbedding
         );
         if (!tagScore.available() && embeddingScore.isEmpty()) {
             return PersonalityCompatibilityScore.unavailable(FORMULA_VERSION);
@@ -59,16 +63,17 @@ public class PersonalityCompatibilityCalculator {
         );
     }
 
-    private OptionalInt calculateEmbeddingScore(
-            PersonalityEmbeddingVector desiredEmbedding,
-            PersonalityEmbeddingVector candidateEmbedding
+    private OptionalInt calculateFreeTextEmbeddingScore(
+            PersonalityEmbeddingVector desiredFreeTextEmbedding,
+            PersonalityEmbeddingVector candidateSelfDescriptionEmbedding
     ) {
-        if (desiredEmbedding == null || !desiredEmbedding.isCompatibleWith(candidateEmbedding)) {
+        if (desiredFreeTextEmbedding == null
+                || !desiredFreeTextEmbedding.isCompatibleWith(candidateSelfDescriptionEmbedding)) {
             return OptionalInt.empty();
         }
 
-        float[] desiredValues = desiredEmbedding.values();
-        float[] candidateValues = candidateEmbedding.values();
+        float[] desiredValues = desiredFreeTextEmbedding.values();
+        float[] candidateValues = candidateSelfDescriptionEmbedding.values();
         double dotProduct = 0;
         double desiredNorm = 0;
         double candidateNorm = 0;

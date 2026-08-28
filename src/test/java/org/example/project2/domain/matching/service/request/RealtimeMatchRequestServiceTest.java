@@ -9,6 +9,7 @@ import org.example.project2.domain.matching.repository.MatchRequestRepository;
 import org.example.project2.domain.matching.repository.RealtimeMatchWaitingStore;
 import org.example.project2.domain.matching.service.calculation.PersonalityCompatibilityCalculator;
 import org.example.project2.domain.personality.entity.PersonalityTag;
+import org.example.project2.domain.personality.service.ai.PersonalityAiClient;
 import org.example.project2.domain.region.entity.Region;
 import org.example.project2.domain.region.repository.RegionRepository;
 import org.example.project2.domain.region.service.RegionPinValidationResult;
@@ -41,6 +42,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -58,13 +60,15 @@ class RealtimeMatchRequestServiceTest {
 
     @MockitoBean RealtimeMatchWaitingStore waitingStore;
     @MockitoBean RegionPinValidator regionPinValidator;
+    @MockitoBean PersonalityAiClient aiClient;
 
     private User user;
     private User otherUser;
 
     @BeforeEach
     void setUp() {
-        reset(waitingStore, regionPinValidator);
+        reset(waitingStore, regionPinValidator, aiClient);
+        when(aiClient.embeddingModelName()).thenReturn("integration-embedding-model");
         String suffix = UUID.randomUUID().toString();
         user = userRepository.save(User.builder()
                 .email("realtime-request-" + suffix + "@test.com")
@@ -124,6 +128,43 @@ class RealtimeMatchRequestServiceTest {
         verify(waitingStore).activate(
                 eq(user.getId()), any(String.class), eq(saved.getId()), eq(Duration.ofMinutes(5))
         );
+    }
+
+    @Test
+    void savesDesiredTextEmbeddingAsynchronouslyAfterRequestSave() {
+        float[] vector = new float[1536];
+        vector[0] = 1.0f;
+        String desiredText = "편안하게 대화하는 분";
+        when(aiClient.embed(desiredText)).thenReturn(Optional.of(vector));
+
+        var response = service.create(user.getId(), validRequest(desiredText));
+
+        MatchRequest saved = awaitDesiredEmbedding(response.requestId());
+
+        assertThat(response.status()).isEqualTo(MatchRequestStatus.WAITING);
+        assertThat(saved.getDesiredPersonalityText()).isEqualTo(desiredText);
+        assertThat(saved.getDesiredPersonalityEmbedding()).hasSize(1536);
+        assertThat(saved.getDesiredPersonalityEmbedding()[0]).isEqualTo(1.0f);
+        assertThat(saved.getEmbeddingModel()).isEqualTo("integration-embedding-model");
+        assertThat(saved.getEmbeddingVersion()).isEqualTo("PERSONALITY_FREE_TEXT_V2");
+        assertThat(saved.getEmbeddedAt()).isNotNull();
+        verify(aiClient).embed(desiredText);
+    }
+
+    @Test
+    void keepsWaitingRequestAndTagFallbackWhenDesiredEmbeddingFails() {
+        String desiredText = "AI 장애가 나도 요청은 대기해야 해요.";
+        when(aiClient.embed(desiredText)).thenReturn(Optional.empty());
+
+        var response = service.create(user.getId(), validRequest(desiredText));
+
+        MatchRequest saved = matchRequestRepository.findById(response.requestId()).orElseThrow();
+        assertThat(response.status()).isEqualTo(MatchRequestStatus.WAITING);
+        assertThat(saved.getDesiredPersonalityEmbedding()).isNull();
+        assertThat(saved.getEmbeddingModel()).isNull();
+        assertThat(saved.getEmbeddingVersion()).isNull();
+        assertThat(saved.getEmbeddedAt()).isNull();
+        verify(aiClient, timeout(5_000)).embed(desiredText);
     }
 
     @Test
@@ -222,5 +263,22 @@ class RealtimeMatchRequestServiceTest {
                 ),
                 desiredText
         );
+    }
+
+    private MatchRequest awaitDesiredEmbedding(Long requestId) {
+        long deadline = System.nanoTime() + 5_000_000_000L;
+        while (System.nanoTime() < deadline) {
+            MatchRequest request = matchRequestRepository.findById(requestId).orElseThrow();
+            if (request.getDesiredPersonalityEmbedding() != null) {
+                return request;
+            }
+            try {
+                Thread.sleep(25L);
+            } catch (InterruptedException interruptedException) {
+                Thread.currentThread().interrupt();
+                throw new AssertionError("비동기 희망 텍스트 임베딩을 기다리는 중 인터럽트가 발생했습니다.", interruptedException);
+            }
+        }
+        throw new AssertionError("매칭 요청 저장 후 5초 안에 희망 텍스트 임베딩이 저장되지 않았습니다.");
     }
 }
