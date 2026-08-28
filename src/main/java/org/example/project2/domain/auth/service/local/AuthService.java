@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import org.example.project2.domain.auth.dto.LoginRequest;
 import org.example.project2.domain.auth.dto.SignUpRequest;
 import org.example.project2.domain.auth.dto.SignUpResponse;
+import org.example.project2.domain.auth.exception.LoginFailedException;
+import org.example.project2.domain.auth.service.token.RefreshTokenService;
 import org.example.project2.domain.user.entity.AuthProvider;
 import org.example.project2.domain.user.entity.User;
 import org.example.project2.domain.user.entity.UserRole;
@@ -30,21 +32,21 @@ public class AuthService {
     public LoginResult login(LoginRequest request) {
         // [보안 규칙] 이메일 대소문자를 구분하지 않고 LOCAL 계정 사용자를 검색합니다.
         User user = userRepository.findByEmailIgnoreCaseAndProvider(request.email(), AuthProvider.LOCAL)
-                .orElseThrow(org.example.project2.domain.auth.exception.LoginFailedException::new);
+                .orElseThrow(LoginFailedException::new);
 
         // Argon2 패스워드 해시 매칭 검증
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
-            throw new org.example.project2.domain.auth.exception.LoginFailedException();
+            throw new LoginFailedException();
         }
 
         // 유저 계정 상태 검증
         if (user.getStatus() != UserStatus.ACTIVE) {
-            throw new org.example.project2.domain.auth.exception.LoginFailedException();
+            throw new LoginFailedException();
         }
 
         // 토큰 발급
         String accessToken = jwtProvider.issueToken(user.getId(), user.getRole());
-        org.example.project2.domain.auth.service.token.RefreshTokenService.IssuedRefreshToken refreshToken = refreshTokenService.issue(user);
+        RefreshTokenService.IssuedRefreshToken refreshToken = refreshTokenService.issue(user);
 
         return new LoginResult(accessToken, refreshToken.rawToken());
     }
