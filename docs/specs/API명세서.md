@@ -58,6 +58,7 @@
 | `MATCHING_010` | 404 | 현재 확인할 수 있는 후보 제안이 없음 |
 | `MATCHING_011` | 403 | 후보 제안 당사자가 아님 |
 | `MATCHING_012` | 409 | 만료·종료된 후보 제안의 결정 변경 |
+| `MATCHING_013` | 404 | 현재 확인할 수 있는 매칭 결과가 없음 |
 
 ### 페이지네이션 (목록 조회 공통 파라미터)
 
@@ -362,6 +363,7 @@ V1 응답값은 `1`, `3`, `5`만 허용하며 각각 `0`, `50`, `100`점으로 �
 | POST | `/matches/realtime/requests` | 실시간 매칭 요청 (FR-03-01~04) | Y |
 | DELETE | `/matches/realtime/requests/{requestId}` | 매칭 대기 취소 (FR-03-08) | Y |
 | GET | `/matches/realtime/requests/me` | 내 현재 대기 상태 조회 | Y |
+| GET | `/matches/realtime/results/latest` | WebSocket 연결 유실 시 내 최신 매칭 결과 복구 조회 | Y |
 | WS(STOMP) SUBSCRIBE | `/user/queue/match-proposal` | 후보 프로필 확인 및 15초 응답 제한 이벤트 | Y |
 | WS(STOMP) SUBSCRIBE | `/user/queue/match-result` | 매칭 성사 결과 실시간 수신 (FR-03-07) | Y |
 
@@ -391,7 +393,7 @@ V1 응답값은 `1`, `3`, `5`만 허용하며 각각 `0`, `50`, `100`점으로 �
 <aside>
 📎
 
-서버는 `regionCode`를 `regions` 기준으로 조회해 표시명을 정규화하고, Kakao 좌표→행정구역 API로 핀이 해당 구에 속하는지 검증한 뒤 PostGIS Point를 경도·위도 순서로 생성한다. 위치 서비스 동의와 기본 활동지역 일치가 필수다. 이 핀은 사용자의 실제 현재 위치가 아니라 희망 매칭 장소다. `searchRadius`를 생략하면 3km를 사용하며 100m~10km를 허용한다. `desiredPersonalityTags`는 `PersonalityTag` 코드 3개 이상 5개 이하로 선택하며 요청 시점 그대로 보존한다. 동일 사용자의 Redis `match:user:{userId}` 예약은 원자적으로 생성하며 이미 `WAITING` 또는 `CONFIRMING` 상태면 `409 MATCHING_003`을 반환한다. 요청 저장 후 `match:waiting:{requestId}`와 `match:waiting:geo`에 식별자·Geo 멤버를 5분 TTL로 등록하고, Geo 개별 TTL 보조 키로 만료 정리를 보장한다. 산식 버전은 `DESIRED_PERSONALITY_MATCH_V1`로 저장한다. 자유 서술은 커밋 이후 비동기로 임베딩하며, 빈 입력에서는 임베딩 이벤트를 발행하지 않고, 요청이 삭제·변경된 경우 오래된 결과를 저장하지 않는다. AI 장애는 요청 생성과 기본 대기 상태를 실패시키지 않는다. 후보 쌍에 대한 15초 제한 시간의 상호 수락이 완료되면 요청 ID 오름차순 잠금과 DB 트랜잭션 안에서 양쪽 `match_requests`를 `MATCHED`로 변경하고 `matches`, 정확히 2개의 `match_participants`, 1개의 `chat_rooms`를 함께 기록한다. 커밋 후에만 두 사용자의 인증 전용 `/user/queue/match-result`로 결과를 push한다. 제안 중에는 대기 Geo 멤버를 제거하고 사용자 중복 잠금은 제안 TTL 동안 유지하며 `match:proposal:{proposalId}`에 제안 ID만 15초 TTL로 보관한다. 대기 키가 먼저 사라지면 보정 작업이 DB 상태를 `EXPIRED`로 변경하거나 남은 DB 대기 시간을 기준으로 Redis 키·Geo 멤버를 복구한다. 대기 TTL은 5분이며 DB에는 만료 시각을 중복 저장하지 않고 응답의 `expiresAt`은 Redis TTL 기준으로 계산한다.
+서버는 `regionCode`를 `regions` 기준으로 조회해 표시명을 정규화하고, Kakao 좌표→행정구역 API로 핀이 해당 구에 속하는지 검증한 뒤 PostGIS Point를 경도·위도 순서로 생성한다. 위치 서비스 동의와 기본 활동지역 일치가 필수다. 이 핀은 사용자의 실제 현재 위치가 아니라 희망 매칭 장소다. `searchRadius`를 생략하면 3km를 사용하며 100m~10km를 허용한다. `desiredPersonalityTags`는 `PersonalityTag` 코드 3개 이상 5개 이하로 선택하며 요청 시점 그대로 보존한다. 동일 사용자의 Redis `match:user:{userId}` 예약은 원자적으로 생성하며 이미 `WAITING` 또는 `CONFIRMING` 상태면 `409 MATCHING_003`을 반환한다. 요청 저장 후 `match:waiting:{requestId}`와 `match:waiting:geo`에 식별자·Geo 멤버를 5분 TTL로 등록하고, Geo 개별 TTL 보조 키로 만료 정리를 보장한다. 산식 버전은 `DESIRED_PERSONALITY_MATCH_V1`로 저장한다. 자유 서술은 커밋 이후 비동기로 임베딩하며, 빈 입력에서는 임베딩 이벤트를 발행하지 않고, 요청이 삭제·변경된 경우 오래된 결과를 저장하지 않는다. AI 장애는 요청 생성과 기본 대기 상태를 실패시키지 않는다. 요청 저장 직후의 제안 탐색이 실패하거나 당시 후보가 없더라도 서버는 `WAITING` 요청을 ID 커서 순서로 5초마다 다시 탐색한다. 이미 상태가 변경되거나 종료된 요청은 건너뛰고 일시적인 DB 오류는 다음 주기에 재시도하며, 요청의 5분 TTL이 재탐색 상한이 된다. 후보 쌍에 대한 15초 제한 시간의 상호 수락이 완료되면 요청 ID 오름차순 잠금과 DB 트랜잭션 안에서 양쪽 `match_requests`를 `MATCHED`로 변경하고 `matches`, 정확히 2개의 `match_participants`, 1개의 `chat_rooms`를 함께 기록한다. 커밋 후에만 두 사용자의 인증 전용 `/user/queue/match-result`로 결과를 push한다. 제안 중에는 대기 Geo 멤버를 제거하고 사용자 중복 잠금은 제안 TTL 동안 유지하며 `match:proposal:{proposalId}`에 제안 ID만 15초 TTL로 보관한다. 대기 키가 먼저 사라지면 보정 작업이 DB 상태를 `EXPIRED`로 변경하거나 남은 DB 대기 시간을 기준으로 Redis 키·Geo 멤버를 복구한다. 대기 TTL은 5분이며 DB에는 만료 시각을 중복 저장하지 않고 응답의 `expiresAt`은 Redis TTL 기준으로 계산한다.
 
 **GET /matches/realtime/requests/me**는 본인의 현재 `WAITING` 또는 `CONFIRMING` 요청을 반환한다. 활성 요청이 없으면 `404 MATCHING_004`를 반환한다.
 
@@ -458,6 +460,10 @@ V1 응답값은 `1`, `3`, `5`만 허용하며 각각 `0`, `50`, `100`점으로 �
 **GET /matches/realtime/proposals/current**는 본인의 `PENDING` 제안과 상대의 `nickname`, `profileImageUrl`, `User.description`, 공개 `styleTags`, 최종 호환 점수, 방향별 상위 `matchedTags`와 사용자용 사유를 반환한다. 성향 분석용 자기소개, 희망 상대 설명, 원본 설문 답변과 임베딩은 반환하지 않는다.
 
 **POST /matches/realtime/proposals/{proposalId}/decision**는 제안 당사자만 `ACCEPT` 또는 `REJECT`를 결정할 수 있도록 하며, 동일 결정은 멱등 처리한다. 제안이 만료되었거나 종료된 뒤의 결정 변경은 `409 MATCHING_012`로 거절한다.
+
+**GET /matches/realtime/results/latest**는 인증 사용자가 참여한 가장 최근 매칭의 `matchId`, `status`, `chatRoomId`, 호환도와 상대방 공개 프로필을 반환한다. WebSocket 결과 이벤트를 수신하지 못했거나 연결이 끊긴 경우 복구 조회에 사용한다. 참여한 매칭이 없거나 결과 구성에 필요한 확정 제안·채팅방이 없으면 `404 MATCHING_013`을 반환한다.
+
+WebSocket `/ws-chat` 핸드셰이크는 HttpOnly `accessToken` 쿠키의 서명·발급자·대상·만료를 검증한다. 허용 Origin은 `FRONTEND_ORIGIN`과 동일하게 제한하고 미설정 환경은 동일 출처만 허용한다. 인증된 세션은 `/user/queue/match-proposal`, `/user/queue/match-result` 및 참여 중인 `/topic/chat/{roomId}`만 구독할 수 있으며, 지원하지 않는 구독·전송 경로는 거절한다.
 
 ---
 

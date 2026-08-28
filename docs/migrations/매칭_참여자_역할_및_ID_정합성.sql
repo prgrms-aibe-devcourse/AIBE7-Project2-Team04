@@ -1,6 +1,12 @@
--- 기존 ddl-auto=update 데이터베이스에서 한 번만 실행하는 호환성 마이그레이션입니다.
--- 구 역할 값을 중립 역할로 변환하고, 새 매칭 테이블의 ID 시퀀스를 현재 데이터 뒤로 맞춥니다.
+-- 기존 ddl-auto=update 데이터베이스에 배포마다 반복 실행할 수 있는 호환성 마이그레이션입니다.
+-- 매칭 요청 인덱스, 참여자 역할, 새 매칭 테이블의 ID 시퀀스를 현재 모델과 맞춥니다.
 BEGIN;
+
+CREATE INDEX IF NOT EXISTS idx_match_requests_location
+    ON match_requests USING GIST (location);
+
+CREATE INDEX IF NOT EXISTS idx_match_requests_region_status
+    ON match_requests (region_code, status);
 
 ALTER TABLE match_participants
     DROP CONSTRAINT IF EXISTS match_participants_role_check;
