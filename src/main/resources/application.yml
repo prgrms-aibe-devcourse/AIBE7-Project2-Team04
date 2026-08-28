@@ -34,5 +34,7 @@ app:
     default-search-radius-meters: 3000
     waiting-reconcile-delay: 5s
     waiting-reconcile-initial-delay: 30s
+    proposal-search-delay: 5s
+    proposal-search-initial-delay: 30s
     proposal-reconcile-delay: 1s
     proposal-reconcile-initial-delay: 30s

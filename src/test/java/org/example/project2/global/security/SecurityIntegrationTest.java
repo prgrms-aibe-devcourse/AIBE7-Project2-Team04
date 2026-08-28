@@ -189,6 +189,13 @@ class SecurityIntegrationTest {
     }
 
     @Test
+    void latestMatchResultWithoutTokenIsUnauthorized() throws Exception {
+        mockMvc.perform(get("/matches/realtime/results/latest"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("AUTH_001"));
+    }
+
+    @Test
     void malformedJwtIsUnauthorized() throws Exception {
         mockMvc.perform(get("/users/me")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer invalid-token"))

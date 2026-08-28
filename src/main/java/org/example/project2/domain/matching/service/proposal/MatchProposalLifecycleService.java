@@ -1,11 +1,11 @@
 package org.example.project2.domain.matching.service.proposal;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
+import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import org.example.project2.domain.chat.entity.ChatRoom;
 import org.example.project2.domain.chat.repository.ChatRoomRepository;
-import org.example.project2.domain.matching.dto.proposal.MatchProposalPartnerProfileResponse;
-import org.example.project2.domain.matching.dto.result.MatchResultCompatibilityResponse;
-import org.example.project2.domain.matching.dto.result.MatchResultResponse;
 import org.example.project2.domain.matching.entity.Match;
 import org.example.project2.domain.matching.entity.MatchParticipant;
 import org.example.project2.domain.matching.entity.MatchParticipantRole;
@@ -18,31 +18,33 @@ import org.example.project2.domain.matching.repository.MatchProposalRepository;
 import org.example.project2.domain.matching.repository.MatchRepository;
 import org.example.project2.domain.matching.repository.MatchRequestRepository;
 import org.example.project2.domain.matching.service.request.RealtimeMatchRedisLifecycleService;
-import org.example.project2.domain.personality.entity.PersonalityTag;
-import org.example.project2.domain.personality.entity.UserPersonalityProfile;
-import org.example.project2.domain.personality.repository.UserPersonalityProfileRepository;
+import org.example.project2.domain.matching.service.result.MatchResultResponseAssembler;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.Instant;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class MatchProposalLifecycleService {
+    /**
+     * 제안 락(Lock) 쿼리가 영속성 컨텍스트(1차 캐시)에서 이미 관리 중인 요청 인스턴스를 반환할 수 있습니다
+     * 이 경우 다른 트랜잭션이 커밋하기 전에 읽었던 이전 상태가 하이버네이트에 그대로 유지되어 있을 수 있습니다.
+     * 따라서 락이 걸린 엔티티를 새로고침(Refresh)하여, 이후의 상태 검증이 DB 락으로 보호되는 최신 값을 사용하도록 보장합니다.
+     */
+    @PersistenceContext
+    private EntityManager entityManager;
+
     private final MatchProposalRepository matchProposalRepository;
     private final MatchRequestRepository matchRequestRepository;
     private final MatchRepository matchRepository;
     private final MatchParticipantRepository matchParticipantRepository;
     private final ChatRoomRepository chatRoomRepository;
-    private final UserPersonalityProfileRepository personalityProfileRepository;
+    private final MatchResultResponseAssembler matchResultResponseAssembler;
     private final ApplicationEventPublisher eventPublisher;
     private final RealtimeMatchRedisLifecycleService redisLifecycleService;
     private final Clock clock;
@@ -222,89 +224,14 @@ public class MatchProposalLifecycleService {
     }
 
     private void publishMatchResult(MatchProposal proposal, Match match, ChatRoom chatRoom) {
-        Map<UUID, UserPersonalityProfile> profilesByUserId = loadProfiles(proposal);
-        MatchRequest request1 = proposal.getRequest1();
-        MatchRequest request2 = proposal.getRequest2();
+        MatchResultResponseAssembler.MatchResultViews views =
+                matchResultResponseAssembler.assemble(proposal, match, chatRoom);
         eventPublisher.publishEvent(new MatchResultCreatedEvent(
-                request1.getUser().getId(),
-                toResultResponse(proposal, request1, match, chatRoom, profilesByUserId),
-                request2.getUser().getId(),
-                toResultResponse(proposal, request2, match, chatRoom, profilesByUserId)
+                views.request1UserId(),
+                views.request1Response(),
+                views.request2UserId(),
+                views.request2Response()
         ));
-    }
-
-    private MatchResultResponse toResultResponse(
-            MatchProposal proposal,
-            MatchRequest viewerRequest,
-            Match match,
-            ChatRoom chatRoom,
-            Map<UUID, UserPersonalityProfile> profilesByUserId
-    ) {
-        MatchRequest partnerRequest = proposal.getOtherRequest(viewerRequest.getId());
-        if (partnerRequest == null || partnerRequest.getUser() == null) {
-            throw new IllegalStateException("매칭 결과의 상대 사용자 정보를 확인할 수 없습니다.");
-        }
-        UserPersonalityProfile partnerProfile = profilesByUserId.get(partnerRequest.getUser().getId());
-        Set<PersonalityTag> styleTags = partnerProfile == null
-                ? Set.of()
-                : partnerProfile.getStyleTags();
-        var partner = partnerRequest.getUser();
-        MatchProposalPartnerProfileResponse partnerResponse =
-                new MatchProposalPartnerProfileResponse(
-                        partner.getId(),
-                        partner.getNickname(),
-                        partner.getProfileImageUrl(),
-                        partner.getDescription(),
-                        styleTags
-                );
-
-        MatchResultCompatibilityResponse compatibility = compatibilityFor(proposal, viewerRequest);
-        return new MatchResultResponse(
-                match.getId(),
-                match.getStatus(),
-                chatRoom.getId(),
-                compatibility,
-                partnerResponse
-        );
-    }
-
-    private MatchResultCompatibilityResponse compatibilityFor(
-            MatchProposal proposal,
-            MatchRequest viewerRequest
-    ) {
-        var snapshot = proposal.getScoreSnapshot();
-        if (snapshot == null) {
-            return null;
-        }
-        boolean viewerIsRequest1 = viewerRequest.getId().equals(proposal.getRequest1().getId());
-        return new MatchResultCompatibilityResponse(
-                snapshot.pairScore(),
-                viewerIsRequest1
-                        ? snapshot.sourceToTargetMatchedTags()
-                        : snapshot.targetToSourceMatchedTags(),
-                viewerIsRequest1
-                        ? snapshot.sourceToTargetReasons()
-                        : snapshot.targetToSourceReasons(),
-                snapshot.formulaVersion()
-        );
-    }
-
-    private Map<UUID, UserPersonalityProfile> loadProfiles(MatchProposal proposal) {
-        List<UUID> userIds = List.of(
-                proposal.getRequest1().getUser().getId(),
-                proposal.getRequest2().getUser().getId()
-        );
-        List<UserPersonalityProfile> profiles = personalityProfileRepository.findAllByUserIdIn(userIds);
-        if (profiles == null || profiles.isEmpty()) {
-            return Map.of();
-        }
-        Map<UUID, UserPersonalityProfile> result = new LinkedHashMap<>();
-        profiles.forEach(profile -> {
-            if (profile != null && profile.getUserId() != null) {
-                result.putIfAbsent(profile.getUserId(), profile);
-            }
-        });
-        return Map.copyOf(result);
     }
 
     private MatchProposal findForUpdate(Long proposalId) {
@@ -326,6 +253,7 @@ public class MatchProposalLifecycleService {
         if (locked == null || locked.size() != 2) {
             throw new IllegalStateException("매칭 확정에 필요한 요청 잠금에 실패했습니다.");
         }
+        refreshLockedRequests(locked);
         MatchRequest request1 = locked.stream()
                 .filter(request -> requestIds.get(0).equals(request.getId()))
                 .findFirst()
@@ -335,6 +263,15 @@ public class MatchProposalLifecycleService {
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("두 번째 매칭 요청 잠금에 실패했습니다."));
         return new LockedRequests(request1, request2);
+    }
+
+    private void refreshLockedRequests(List<MatchRequest> lockedRequests) {
+        if (entityManager == null) {
+            // Unit tests construct this service without a persistence context.
+            return;
+        }
+        lockedRequests.forEach(request ->
+                entityManager.refresh(request, LockModeType.PESSIMISTIC_WRITE));
     }
 
     private void returnRequestsToWaiting(MatchProposal proposal) {

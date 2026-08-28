@@ -50,5 +50,21 @@ public interface MatchProposalRepository extends JpaRepository<MatchProposal, Lo
 
     boolean existsByRequest1IdAndRequest2Id(Long request1Id, Long request2Id);
 
+    @Query("""
+            SELECT p
+            FROM MatchProposal p
+            JOIN FETCH p.request1 r1
+            JOIN FETCH r1.user
+            JOIN FETCH p.request2 r2
+            JOIN FETCH r2.user
+            WHERE p.status = 'MATCHED'
+              AND r1.id = :request1Id
+              AND r2.id = :request2Id
+            """)
+    Optional<MatchProposal> findMatchedByRequestPair(
+            @Param("request1Id") Long request1Id,
+            @Param("request2Id") Long request2Id
+    );
+
     List<MatchProposal> findAllByStatusAndExpiresAtBefore(MatchProposalStatus status, Instant now);
 }

@@ -22,13 +22,18 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.ArrayList;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -49,13 +54,17 @@ class RealtimeMatchWaitingReconciliationServiceTest {
         service = new RealtimeMatchWaitingReconciliationService(
                 matchRequestRepository,
                 waitingStore,
-                redisLifecycleService,
-                new MatchingProperties(Duration.ofMinutes(5), 3_000),
-                Clock.fixed(NOW, ZoneOffset.UTC)
+                new RealtimeMatchWaitingRepairService(
+                        matchRequestRepository,
+                        waitingStore,
+                        redisLifecycleService,
+                        new MatchingProperties(Duration.ofMinutes(5), 3_000),
+                        Clock.fixed(NOW, ZoneOffset.UTC)
+                )
         );
         request = request();
         ReflectionTestUtils.setField(request, "id", 42L);
-        when(matchRequestRepository.findByIdForUpdate(42L)).thenReturn(Optional.of(request));
+        lenient().when(matchRequestRepository.findByIdForUpdate(42L)).thenReturn(Optional.of(request));
     }
 
     @Test
@@ -91,6 +100,77 @@ class RealtimeMatchWaitingReconciliationServiceTest {
                 .isEqualTo(RealtimeMatchWaitingReconciliationService.RepairResult.REDIS_UNAVAILABLE);
         assertThat(request.getStatus()).isEqualTo(MatchRequestStatus.WAITING);
         verify(redisLifecycleService, never()).removeWaitingAfterCommit(any());
+    }
+
+    @Test
+    void processesRequestsAfterFirstHundredAcrossReconciliationCycles() {
+        List<MatchRequest> firstBatch = new ArrayList<>();
+        List<MatchRequest> requestsById = new ArrayList<>();
+        IntStream.rangeClosed(1, 101).forEach(id -> {
+            MatchRequest waitingRequest = org.mockito.Mockito.mock(MatchRequest.class);
+            when(waitingRequest.getId()).thenReturn((long) id);
+            when(waitingRequest.isWaiting()).thenReturn(true);
+            requestsById.add(waitingRequest);
+            if (id <= 100) {
+                firstBatch.add(waitingRequest);
+            }
+        });
+        when(matchRequestRepository.findAllByStatusAfterId(
+                org.mockito.ArgumentMatchers.eq(MatchRequestStatus.WAITING),
+                org.mockito.ArgumentMatchers.eq(0L),
+                any(org.springframework.data.domain.Pageable.class)
+        )).thenReturn(firstBatch);
+        when(matchRequestRepository.findAllByStatusAfterId(
+                org.mockito.ArgumentMatchers.eq(MatchRequestStatus.WAITING),
+                org.mockito.ArgumentMatchers.eq(100L),
+                any(org.springframework.data.domain.Pageable.class)
+        )).thenReturn(List.of(requestsById.get(100)));
+        when(matchRequestRepository.findByIdForUpdate(any()))
+                .thenAnswer(invocation -> Optional.of(requestsById.get(
+                        Math.toIntExact((Long) invocation.getArgument(0)) - 1
+                )));
+        when(waitingStore.remainingTtl(anyLong())).thenReturn(Optional.of(Duration.ofSeconds(100)));
+
+        assertThat(service.reconcileWaitingRequests()).isZero();
+        assertThat(service.reconcileWaitingRequests()).isZero();
+
+        verify(matchRequestRepository).findAllByStatusAfterId(
+                MatchRequestStatus.WAITING,
+                100L,
+                org.springframework.data.domain.PageRequest.of(0, 100)
+        );
+        verify(matchRequestRepository, org.mockito.Mockito.times(101)).findByIdForUpdate(any());
+    }
+
+    @Test
+    void continuesWithNextRequestWhenOneRepairFails() {
+        RealtimeMatchWaitingRepairService repairService = org.mockito.Mockito.mock(
+                RealtimeMatchWaitingRepairService.class
+        );
+        RealtimeMatchWaitingReconciliationService batchService =
+                new RealtimeMatchWaitingReconciliationService(
+                        matchRequestRepository,
+                        waitingStore,
+                        repairService
+                );
+        MatchRequest first = org.mockito.Mockito.mock(MatchRequest.class);
+        MatchRequest second = org.mockito.Mockito.mock(MatchRequest.class);
+        when(first.getId()).thenReturn(1L);
+        when(second.getId()).thenReturn(2L);
+        when(matchRequestRepository.findAllByStatusAfterId(
+                org.mockito.ArgumentMatchers.eq(MatchRequestStatus.WAITING),
+                org.mockito.ArgumentMatchers.eq(0L),
+                any(org.springframework.data.domain.Pageable.class)
+        )).thenReturn(List.of(first, second));
+        when(repairService.repair(1L)).thenThrow(new IllegalStateException("temporary"));
+        when(repairService.repair(2L)).thenReturn(
+                RealtimeMatchWaitingReconciliationService.RepairResult.RESTORED
+        );
+
+        assertThat(batchService.reconcileWaitingRequests()).isEqualTo(1);
+
+        verify(repairService).repair(1L);
+        verify(repairService).repair(2L);
     }
 
     private MatchRequest request() {

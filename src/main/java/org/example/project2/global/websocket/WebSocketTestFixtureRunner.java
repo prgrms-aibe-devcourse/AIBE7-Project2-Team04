@@ -20,7 +20,7 @@ import java.util.UUID;
  * <ul>
  *   <li>서버 구동 시점에 로컬 테스트용 계정(usera, userb)을 생성합니다.</li>
  *   <li>웹소켓 채팅 인터셉터의 '참여자 권한 검증'을 통과시키기 위해, DB에 1번 매칭 및 1번 채팅방 정보를 강제 주입합니다.</li>
- *   <li>현재 DB에 등록된 모든 유저를 1번 채팅방의 참여자(REQUESTER)로 강제 등록합니다.</li>
+ *   <li>현재 DB에 등록된 모든 유저를 1번 채팅방의 참여자(PARTICIPANT)로 강제 등록합니다.</li>
  * </ul>
  *
  * <p>이 파일이 활성화되어 있어야 프론트엔드 테스트 페이지에서 방 번호 1번으로 즉시 실시간 채팅을 진행할 수 있습니다.
@@ -98,7 +98,7 @@ public class WebSocketTestFixtureRunner implements ApplicationRunner {
 
                 jdbcTemplate.update(
                         "INSERT INTO match_participants (match_id, user_id, role, joined_at) " +
-                        "VALUES (1, ?, 'REQUESTER', NOW()) " +
+                        "VALUES (1, ?, 'PARTICIPANT', NOW()) " +
                         "ON CONFLICT (match_id, user_id) DO NOTHING",
                         userId
                 );

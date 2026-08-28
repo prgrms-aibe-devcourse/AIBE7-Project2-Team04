@@ -12,8 +12,11 @@ import org.example.project2.domain.matching.repository.MatchProposalRepository;
 import org.example.project2.domain.matching.repository.MatchRepository;
 import org.example.project2.domain.matching.repository.MatchRequestRepository;
 import org.example.project2.domain.matching.service.request.RealtimeMatchRedisLifecycleService;
+import org.example.project2.domain.matching.service.result.MatchResultResponseAssembler;
+import org.example.project2.domain.matching.dto.result.MatchResultResponse;
+import org.example.project2.domain.matching.dto.proposal.MatchProposalPartnerProfileResponse;
+import org.example.project2.domain.matching.entity.MatchStatus;
 import org.example.project2.domain.personality.entity.PersonalityTag;
-import org.example.project2.domain.personality.repository.UserPersonalityProfileRepository;
 import org.example.project2.domain.user.entity.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -53,7 +56,7 @@ class MatchProposalLifecycleServiceRedisTest {
     @Mock MatchRepository matchRepository;
     @Mock MatchParticipantRepository participantRepository;
     @Mock ChatRoomRepository chatRoomRepository;
-    @Mock UserPersonalityProfileRepository profileRepository;
+    @Mock MatchResultResponseAssembler resultResponseAssembler;
     @Mock ApplicationEventPublisher eventPublisher;
     @Mock RealtimeMatchRedisLifecycleService redisLifecycleService;
 
@@ -70,7 +73,7 @@ class MatchProposalLifecycleServiceRedisTest {
                 matchRepository,
                 participantRepository,
                 chatRoomRepository,
-                profileRepository,
+                resultResponseAssembler,
                 eventPublisher,
                 redisLifecycleService,
                 Clock.fixed(NOW, ZoneOffset.UTC)
@@ -108,8 +111,16 @@ class MatchProposalLifecycleServiceRedisTest {
         when(matchRepository.findByRequestPair(1L, 2L)).thenReturn(Optional.empty());
         when(matchRepository.save(org.mockito.ArgumentMatchers.any(Match.class))).thenReturn(match);
         when(chatRoomRepository.save(org.mockito.ArgumentMatchers.any(ChatRoom.class))).thenReturn(chatRoom);
-        when(profileRepository.findAllByUserIdIn(org.mockito.ArgumentMatchers.anyList()))
-                .thenReturn(List.of());
+        MatchResultResponse request1Response = resultResponse(request2.getUser());
+        MatchResultResponse request2Response = resultResponse(request1.getUser());
+        when(resultResponseAssembler.assemble(proposal, match, chatRoom)).thenReturn(
+                new MatchResultResponseAssembler.MatchResultViews(
+                        request1.getUser().getId(),
+                        request1Response,
+                        request2.getUser().getId(),
+                        request2Response
+                )
+        );
 
         MatchProposal firstDecision = service.decide(
                 301L, request1.getId(), MatchProposalDecision.ACCEPTED, NOW);
@@ -130,6 +141,22 @@ class MatchProposalLifecycleServiceRedisTest {
 
         // 확정된 제안의 재실행은 이미 저장된 결과를 다시 만들지 않는다.
         assertThat(service.completeMatch(301L)).isSameAs(proposal);
+    }
+
+    private MatchResultResponse resultResponse(User partner) {
+        return new MatchResultResponse(
+                501L,
+                MatchStatus.MATCHED,
+                601L,
+                null,
+                new MatchProposalPartnerProfileResponse(
+                        partner.getId(),
+                        partner.getNickname(),
+                        partner.getProfileImageUrl(),
+                        partner.getDescription(),
+                        Set.of()
+                )
+        );
     }
 
     @Test

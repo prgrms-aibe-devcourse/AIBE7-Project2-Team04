@@ -33,6 +33,20 @@ public interface MatchRequestRepository extends JpaRepository<MatchRequest, Long
             Pageable pageable
     );
 
+    @EntityGraph(attributePaths = "user")
+    @Query("""
+            SELECT r
+            FROM MatchRequest r
+            WHERE r.status = :status
+              AND r.id > :afterId
+            ORDER BY r.id
+            """)
+    List<MatchRequest> findAllByStatusAfterId(
+            @Param("status") MatchRequestStatus status,
+            @Param("afterId") Long afterId,
+            Pageable pageable
+    );
+
     boolean existsByUserIdAndStatus(UUID userId, MatchRequestStatus status);
 
     boolean existsByUserIdAndStatusIn(UUID userId, List<MatchRequestStatus> statuses);
@@ -98,6 +112,14 @@ public interface MatchRequestRepository extends JpaRepository<MatchRequest, Long
     @EntityGraph(attributePaths = "desiredPersonalityTags")
     @Query("SELECT r FROM MatchRequest r WHERE r.id = :requestId")
     Optional<MatchRequest> findDetailedById(@Param("requestId") Long requestId);
+
+    /**
+     * 후보 랭킹에 필요한 요청과 희망 태그를 한 번에 조회한다.
+     * 컬렉션 fetch로 생기는 중복 행은 DISTINCT로 제거한다.
+     */
+    @EntityGraph(attributePaths = {"user", "desiredPersonalityTags"})
+    @Query("SELECT DISTINCT r FROM MatchRequest r WHERE r.id IN :requestIds")
+    List<MatchRequest> findAllDetailedByIdIn(@Param("requestIds") List<Long> requestIds);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT r FROM MatchRequest r WHERE r.id = :requestId AND r.user.id = :userId")

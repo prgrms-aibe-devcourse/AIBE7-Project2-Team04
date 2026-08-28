@@ -62,9 +62,13 @@ public class MatchProposalSelectionService {
             return Optional.empty();
         }
 
-        MatchRequest source = matchRequestRepository.findDetailedById(sourceRequestId)
-                .orElseThrow(() -> new IllegalStateException("후보 탐색 요청을 찾을 수 없습니다."));
-        List<UUID> userIds = collectUserIds(source, hardFilteredCandidates);
+        List<Long> requestIds = collectRequestIds(sourceRequestId, hardFilteredCandidates);
+        Map<Long, MatchRequest> requestsById = loadRequestsById(requestIds);
+        MatchRequest source = requestsById.get(sourceRequestId);
+        if (source == null) {
+            throw new IllegalStateException("후보 탐색 요청을 찾을 수 없습니다.");
+        }
+        List<UUID> userIds = collectUserIds(source, hardFilteredCandidates, requestsById);
         Map<UUID, UserPersonalityProfile> profilesByUserId = loadProfilesByUserId(userIds);
         Map<UUID, UserPersonalityEmbedding> embeddingsByUserId = loadEmbeddingsByUserId(userIds);
 
@@ -73,6 +77,7 @@ public class MatchProposalSelectionService {
                 .map(candidate -> assembleRankingInput(
                         source,
                         candidate,
+                        requestsById,
                         profilesByUserId,
                         embeddingsByUserId
                 ))
@@ -115,11 +120,14 @@ public class MatchProposalSelectionService {
     private PersonalityRankingInput assembleRankingInput(
             MatchRequest source,
             BidirectionalMatchCandidate candidate,
+            Map<Long, MatchRequest> requestsById,
             Map<UUID, UserPersonalityProfile> profilesByUserId,
             Map<UUID, UserPersonalityEmbedding> embeddingsByUserId
     ) {
-        MatchRequest target = matchRequestRepository.findDetailedById(candidate.requestId())
-                .orElseThrow(() -> new IllegalStateException("후보 요청을 찾을 수 없습니다."));
+        MatchRequest target = requestsById.get(candidate.requestId());
+        if (target == null) {
+            throw new IllegalStateException("후보 요청을 찾을 수 없습니다.");
+        }
 
         UserPersonalityProfile sourceProfile = profilesByUserId.get(source.getUser().getId());
         UserPersonalityProfile targetProfile = profilesByUserId.get(target.getUser().getId());
@@ -305,16 +313,50 @@ public class MatchProposalSelectionService {
         );
     }
 
+    private List<Long> collectRequestIds(
+            Long sourceRequestId,
+            List<BidirectionalMatchCandidate> candidates
+    ) {
+        Set<Long> requestIds = new LinkedHashSet<>();
+        if (sourceRequestId != null) {
+            requestIds.add(sourceRequestId);
+        }
+        candidates.stream()
+                .map(BidirectionalMatchCandidate::requestId)
+                .filter(Objects::nonNull)
+                .forEach(requestIds::add);
+        return List.copyOf(requestIds);
+    }
+
+    private Map<Long, MatchRequest> loadRequestsById(List<Long> requestIds) {
+        if (requestIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, MatchRequest> requestsById = new LinkedHashMap<>();
+        matchRequestRepository.findAllDetailedByIdIn(requestIds).forEach(request -> {
+            if (request != null && request.getId() != null) {
+                requestsById.putIfAbsent(request.getId(), request);
+            }
+        });
+        return Map.copyOf(requestsById);
+    }
+
     private List<UUID> collectUserIds(
             MatchRequest source,
-            List<BidirectionalMatchCandidate> candidates
+            List<BidirectionalMatchCandidate> candidates,
+            Map<Long, MatchRequest> requestsById
     ) {
         Set<UUID> userIds = new LinkedHashSet<>();
         if (source.getUser() != null && source.getUser().getId() != null) {
             userIds.add(source.getUser().getId());
         }
         candidates.stream()
-                .map(BidirectionalMatchCandidate::userId)
+                .map(BidirectionalMatchCandidate::requestId)
+                .map(requestsById::get)
+                .filter(Objects::nonNull)
+                .map(MatchRequest::getUser)
+                .filter(Objects::nonNull)
+                .map(org.example.project2.domain.user.entity.User::getId)
                 .filter(Objects::nonNull)
                 .forEach(userIds::add);
         return List.copyOf(userIds);

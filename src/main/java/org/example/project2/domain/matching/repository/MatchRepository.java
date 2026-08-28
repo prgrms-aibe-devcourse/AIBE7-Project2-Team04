@@ -4,9 +4,12 @@ import org.example.project2.domain.matching.entity.Match;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public interface MatchRepository extends JpaRepository<Match, Long> {
@@ -18,5 +21,20 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
     Optional<Match> findByRequestPair(
             @Param("request1Id") Long request1Id,
             @Param("request2Id") Long request2Id
+    );
+
+    @Query("""
+            SELECT m
+            FROM Match m
+            JOIN FETCH m.request1 r1
+            JOIN FETCH r1.user
+            JOIN FETCH m.request2 r2
+            JOIN FETCH r2.user
+            WHERE r1.user.id = :userId OR r2.user.id = :userId
+            ORDER BY m.matchedAt DESC, m.id DESC
+            """)
+    List<Match> findLatestByParticipantUserId(
+            @Param("userId") UUID userId,
+            Pageable pageable
     );
 }

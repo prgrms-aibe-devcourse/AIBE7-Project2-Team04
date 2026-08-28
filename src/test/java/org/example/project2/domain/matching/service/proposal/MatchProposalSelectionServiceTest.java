@@ -164,6 +164,8 @@ class MatchProposalSelectionServiceTest {
         assertThat(desiredVectors.get(1).values()).containsExactly(candidateDesiredValues);
         assertThat(candidateVectors.get(1).values())
                 .containsExactly(sourceEmbedding.getEmbedding());
+        verify(matchRequestRepository, times(1)).findAllDetailedByIdIn(anyList());
+        verify(matchRequestRepository, never()).findDetailedById(any());
         verify(personalityProfileRepository, times(1)).findAllByUserIdIn(anyList());
         verify(personalityEmbeddingRepository, times(1)).findAllByUserIdIn(anyList());
         verify(personalityProfileRepository, never()).findByUserId(any());
@@ -336,11 +338,8 @@ class MatchProposalSelectionServiceTest {
                                 earlierCandidate.getId(), earlierCandidate.getUser().getId(), 500, earlier
                         )
                 ));
-        when(matchRequestRepository.findDetailedById(source.getId())).thenReturn(Optional.of(source));
-        when(matchRequestRepository.findDetailedById(laterCandidate.getId()))
-                .thenReturn(Optional.of(laterCandidate));
-        when(matchRequestRepository.findDetailedById(earlierCandidate.getId()))
-                .thenReturn(Optional.of(earlierCandidate));
+        when(matchRequestRepository.findAllDetailedByIdIn(anyList()))
+                .thenReturn(List.of(source, laterCandidate, earlierCandidate));
         when(personalityProfileRepository.findAllByUserIdIn(anyList())).thenReturn(List.of());
         when(personalityEmbeddingRepository.findAllByUserIdIn(anyList())).thenReturn(List.of());
         when(personalityCompatibilityCalculator.calculate(any(), any(), any(), any()))
@@ -363,8 +362,8 @@ class MatchProposalSelectionServiceTest {
         );
         when(candidateSearchService.findCandidates(source.getUser().getId(), source.getId()))
                 .thenReturn(List.of(candidateInfo));
-        when(matchRequestRepository.findDetailedById(source.getId())).thenReturn(Optional.of(source));
-        when(matchRequestRepository.findDetailedById(candidate.getId())).thenReturn(Optional.of(candidate));
+        when(matchRequestRepository.findAllDetailedByIdIn(anyList()))
+                .thenReturn(List.of(source, candidate));
         when(matchRequestRepository.findAllByIdInForUpdate(List.of(source.getId(), candidate.getId())))
                 .thenReturn(List.of(source, candidate));
         when(candidateSearchService.isMutuallyEligible(source, candidate)).thenReturn(true);

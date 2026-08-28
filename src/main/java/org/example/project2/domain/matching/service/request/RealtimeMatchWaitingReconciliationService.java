@@ -1,6 +1,7 @@
 package org.example.project2.domain.matching.service.request;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.example.project2.domain.matching.entity.MatchRequest;
 import org.example.project2.domain.matching.entity.MatchRequestStatus;
 import org.example.project2.domain.matching.repository.MatchRequestRepository;
@@ -9,17 +10,13 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.annotation.Propagation;
 
-import java.time.Clock;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class RealtimeMatchWaitingReconciliationService {
     private static final int BATCH_SIZE = 100;
 
@@ -33,29 +30,65 @@ public class RealtimeMatchWaitingReconciliationService {
 
     private final MatchRequestRepository matchRequestRepository;
     private final RealtimeMatchWaitingStore waitingStore;
-    private final RealtimeMatchRedisLifecycleService redisLifecycleService;
-    private final MatchingProperties matchingProperties;
-    private final Clock clock;
+    private final RealtimeMatchWaitingRepairService repairService;
+    private final AtomicLong lastScannedRequestId = new AtomicLong(0L);
 
     @Scheduled(
             fixedDelayString = "${app.matching.waiting-reconcile-delay:5000}",
             initialDelayString = "${app.matching.waiting-reconcile-initial-delay:30000}"
     )
-    @Transactional
     public int reconcileWaitingRequests() {
         cleanupExpiredGeoMembers();
-        List<MatchRequest> requests = matchRequestRepository.findAllByStatus(
-                MatchRequestStatus.WAITING,
-                PageRequest.of(0, BATCH_SIZE)
-        );
+        List<MatchRequest> requests;
+        try {
+            requests = findNextBatch();
+        } catch (DataAccessException exception) {
+            log.warn(
+                    "Redis 대기 재조정 대상을 조회하지 못했습니다. errorType={}",
+                    exception.getClass().getSimpleName()
+            );
+            return 0;
+        }
         int repaired = 0;
         for (MatchRequest request : requests) {
-            RepairResult result = repair(request.getId());
-            if (result == RepairResult.RESTORED || result == RepairResult.EXPIRED) {
-                repaired++;
+            if (request == null || request.getId() == null) {
+                continue;
+            }
+            lastScannedRequestId.set(request.getId());
+            try {
+                RepairResult result = repairService.repair(request.getId());
+                if (result == RepairResult.RESTORED || result == RepairResult.EXPIRED) {
+                    repaired++;
+                }
+            } catch (RuntimeException exception) {
+                // 한 요청의 DB 잠금·일시 오류가 배치 전체를 중단시키지 않도록 다음 요청으로 진행합니다.
+                log.warn(
+                        "대기 요청 재조정을 다음 주기로 보류합니다. requestId={}, errorType={}",
+                        request.getId(),
+                        exception.getClass().getSimpleName()
+                );
             }
         }
         return repaired;
+    }
+
+    private List<MatchRequest> findNextBatch() {
+        List<MatchRequest> requests = matchRequestRepository.findAllByStatusAfterId(
+                MatchRequestStatus.WAITING,
+                lastScannedRequestId.get(),
+                PageRequest.of(0, BATCH_SIZE)
+        );
+        if (!requests.isEmpty() || lastScannedRequestId.get() == 0L) {
+            return requests;
+        }
+
+        // 마지막 ID까지 순회하면 다음 배치에서 첫 요청부터 다시 확인합니다.
+        lastScannedRequestId.set(0L);
+        return matchRequestRepository.findAllByStatusAfterId(
+                MatchRequestStatus.WAITING,
+                0L,
+                PageRequest.of(0, BATCH_SIZE)
+        );
     }
 
     private void cleanupExpiredGeoMembers() {
@@ -66,48 +99,7 @@ public class RealtimeMatchWaitingReconciliationService {
         }
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public RepairResult repair(Long requestId) {
-        if (requestId == null) {
-            return RepairResult.NOT_WAITING;
-        }
-        MatchRequest request = matchRequestRepository.findByIdForUpdate(requestId).orElse(null);
-        if (request == null || !request.isWaiting()) {
-            return RepairResult.NOT_WAITING;
-        }
-
-        Optional<Duration> redisTtl;
-        try {
-            redisTtl = Optional.ofNullable(waitingStore.remainingTtl(requestId))
-                    .orElse(Optional.empty());
-        } catch (DataAccessException ignored) {
-            // Redis 장애 중에는 DB 상태를 임의로 만료시키지 않습니다.
-            return RepairResult.REDIS_UNAVAILABLE;
-        }
-        if (redisTtl.isPresent()) {
-            return RepairResult.PRESENT;
-        }
-
-        Duration remaining = remainingWaitingTtl(request);
-        if (remaining.isZero() || remaining.isNegative()) {
-            request.expire();
-            redisLifecycleService.removeWaitingAfterCommit(request);
-            return RepairResult.EXPIRED;
-        }
-
-        // Redis 키가 사라졌지만 DB 기준 대기 시간이 남아 있으면 Geo/TTL 키를 복구합니다.
-        return redisLifecycleService.restoreWaiting(request, remaining)
-                ? RepairResult.RESTORED
-                : RepairResult.REDIS_UNAVAILABLE;
-    }
-
-    private Duration remainingWaitingTtl(MatchRequest request) {
-        Instant waitingSince = request.getUpdatedAt() != null
-                ? request.getUpdatedAt()
-                : request.getCreatedAt();
-        if (waitingSince == null) {
-            return matchingProperties.waitingTtl();
-        }
-        return matchingProperties.waitingTtl().minus(Duration.between(waitingSince, clock.instant()));
+        return repairService.repair(requestId);
     }
 }
