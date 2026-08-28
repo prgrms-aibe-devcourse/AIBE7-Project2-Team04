@@ -5,6 +5,7 @@ import { renderOAuthCallback } from './pages/oauth-callback.js'
 import { renderPreferredRegionPage } from './pages/preferred-region.js'
 import { renderMatchMapPage } from './pages/match-map.js'
 import { renderPersonalitySurvey } from './pages/personality-survey.js'
+import { renderChatPage } from './pages/chat.js'
 
 const app = document.querySelector('#app')
 
@@ -104,6 +105,8 @@ const routeApp = async () => {
     }
   } else if (path === '/personality/survey') {
     renderPersonalitySurvey(app)
+  } else if (path === '/chat') {
+    renderChatPage(app)
   } else {
     // 기본 메인 랜딩 페이지
     initLandingPage()
@@ -253,6 +256,13 @@ function initLandingPage() {
   }
 
   btnHeroMatch?.addEventListener('click', handleMatchStart)
+
+  // 채팅방 가기 버튼: project2.isLoggedIn === 'true' 일 때만 표시
+  const btnGoChat = document.querySelector('#btn-go-chat')
+  if (sessionStorage.getItem('project2.isLoggedIn') === 'true') {
+    btnGoChat?.classList.remove('hidden')
+  }
+  btnGoChat?.addEventListener('click', () => navigateTo('/chat'))
 
   if (sessionStorage.getItem('project2.isLoggedIn') === 'true') {
     btnRegisterPreferred?.classList.remove('hidden')

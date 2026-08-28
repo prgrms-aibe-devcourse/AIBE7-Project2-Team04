@@ -93,6 +93,9 @@
         },
       }
     </script>
+    <!-- SockJS & STOMP (채팅 페이지용) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
   </head>
   <body class="font-body text-on-surface antialiased min-h-screen flex flex-col pt-[88px] bg-[#FAF7F2]">
     <!-- Top Navigation Header -->
@@ -146,6 +149,11 @@
 
             <!-- Quick Match Box -->
             <div class="bg-surface-container-lowest p-3 sm:p-4 rounded-card shadow-soft flex flex-col sm:flex-row items-center gap-3 max-w-xl mx-auto lg:mx-0 border border-outline-variant/30">
+              <!-- 채팅방 가기 버튼: 로그인 시에만 표시 -->
+              <button id="btn-go-chat" class="hidden w-full sm:w-auto btn-secondary py-3 px-5 rounded-full text-sm font-semibold flex items-center justify-center gap-1.5 shrink-0">
+                <span class="material-symbols-outlined text-lg">chat</span>
+                <span>채팅방 가기</span>
+              </button>
               <button id="btn-hero-match" class="w-full sm:flex-1 btn-primary py-3 px-6 rounded-full text-sm font-bold shadow-md pulse-ring flex items-center justify-center gap-2">
                 <span class="material-symbols-outlined text-lg">local_dining</span>
                 <span>마주한끼 찾기</span>

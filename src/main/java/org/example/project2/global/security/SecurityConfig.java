@@ -185,7 +185,8 @@ public class SecurityConfig {
                                         "/swagger-ui/**",
                                         "/v3/api-docs/**",
                                         "/swagger-ui.html",
-                                        "/actuator/health"
+                                        "/actuator/health",
+                                        "/error"
                                 ).permitAll()
                                 .requestMatchers("/ws-chat/**").permitAll() // 웹소켓
                                 .requestMatchers("/chat-test.html").permitAll() // 채팅테스트 페이지

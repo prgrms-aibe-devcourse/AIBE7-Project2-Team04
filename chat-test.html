@@ -1,132 +1,123 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <title>WebSocket Chat Test Client</title>
-    <!-- SockJS & STOMP CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+  <meta charset="UTF-8">
+  <title>채팅 테스트</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
 </head>
 <body>
 
-    <h2>WebSocket Chat Test</h2>
+<h2>채팅방 테스트</h2>
+<p><a href="/">← 인덱스로 돌아가기</a></p>
+<hr>
 
-    <!-- 연결 설정 영역 -->
-    <div>
-        <label>서버 주소: </label>
-        <input type="text" id="serverUrl" value="http://localhost:8080/ws-chat" style="width: 250px;">
-        <button id="btnConnect" onclick="connect()">연결하기</button>
-        <button id="btnDisconnect" onclick="disconnect()" disabled>연결끊기</button>
-    </div>
-    <br>
+<div>
+  <b>로그인 유저 ID:</b> <span id="display-user-id">불러오는 중...</span><br>
+  <b>채팅방 ID:</b> <span id="display-room-id">-</span><br>
+  <b>연결 상태:</b> <span id="display-status">미연결</span>
+</div>
+<hr>
 
-    <!-- 채팅방 및 닉네임 설정 영역 -->
-    <div>
-        <label>채팅방 ID (Room ID): </label>
-        <input type="text" id="roomId" value="room-1">
-        <label>보내는 사람 (Sender): </label>
-        <input type="text" id="sender" value="UserA">
-        <button id="btnSubscribe" onclick="subscribeRoom()" disabled>채팅방 입장 (구독)</button>
-    </div>
-    <br>
+<div>
+  <label>채팅방 ID: </label>
+  <input type="number" id="roomId" value="1" min="1">
+  <button id="btnConnect" onclick="connect()">채팅방 입장</button>
+  <button id="btnDisconnect" onclick="disconnect()" disabled>연결 끊기</button>
+</div>
+<br>
 
-    <!-- 메시지 입력 및 전송 영역 -->
-    <div>
-        <input type="text" id="messageInput" placeholder="메시지를 입력하세요" style="width: 300px;" disabled>
-        <button id="btnSend" onclick="sendMessage()" disabled>전송</button>
-    </div>
-    <br>
+<div>
+  <input type="text" id="messageInput" placeholder="메시지 입력" style="width:300px;" disabled>
+  <button id="btnSend" onclick="sendMessage()" disabled>전송</button>
+</div>
+<br>
 
-    <!-- 대화 로그 표시 영역 -->
-    <div style="border: 1px solid #ccc; width: 500px; height: 300px; overflow-y: scroll; padding: 10px;">
-        <div id="chatLog"></div>
-    </div>
+<b>채팅 내역</b>
+<div id="chatBox" style="border:1px solid #aaa; width:520px; height:300px; overflow-y:scroll; padding:8px; background:#fafafa;"></div>
 
-    <script>
-        let stompClient = null;
-        let subscription = null;
+<script>
+  const accessToken = sessionStorage.getItem("project2.accessToken");
+  const userId      = sessionStorage.getItem("project2.userId");
 
-        function log(message) {
-            const chatLog = document.getElementById("chatLog");
-            chatLog.innerHTML += `<div>[${new Date().toLocaleTimeString()}] ${message}</div>`;
-            chatLog.parentElement.scrollTop = chatLog.parentElement.scrollHeight;
-        }
+  document.getElementById("display-user-id").textContent = userId || "(없음 - 로그인 필요)";
 
-        function connect() {
-            const url = document.getElementById("serverUrl").value;
-            log(`연결 시도 중... (${url})`);
+  if (!accessToken) {
+    alert("로그인이 필요합니다. 인덱스 페이지에서 먼저 로그인해주세요.");
+  }
 
-            const socket = new SockJS(url);
-            stompClient = Stomp.over(socket);
+  let stompClient  = null;
+  let subscription = null;
 
-            stompClient.connect({}, function (frame) {
-                log("연결 성공!");
-                document.getElementById("btnConnect").disabled = true;
-                document.getElementById("btnDisconnect").disabled = false;
-                document.getElementById("btnSubscribe").disabled = false;
-            }, function (error) {
-                log("연결 에러: " + error);
-            });
-        }
+  function log(text, color) {
+    const box  = document.getElementById("chatBox");
+    const line = document.createElement("div");
+    if (color) line.style.color = color;
+    line.textContent = "[" + new Date().toLocaleTimeString() + "] " + text;
+    box.appendChild(line);
+    box.scrollTop = box.scrollHeight;
+  }
 
-        function disconnect() {
-            if (stompClient !== null) {
-                if (subscription) {
-                    subscription.unsubscribe();
-                }
-                stompClient.disconnect(function () {
-                    log("연결 해제됨.");
-                    resetUI();
-                });
-            }
-        }
+  function connect() {
+    if (!accessToken) { log("accessToken 없음. 로그인 필요.", "red"); return; }
 
-        function subscribeRoom() {
-            const roomId = document.getElementById("roomId").value;
-            const subDestination = `/sub/chat/room/${roomId}`;
+    const roomId = document.getElementById("roomId").value;
+    document.getElementById("display-room-id").textContent = roomId;
+    document.getElementById("display-status").textContent  = "연결 중...";
 
-            // 기존 구독이 있으면 해제
-            if (subscription) {
-                subscription.unsubscribe();
-            }
+    const socket = new SockJS("http://localhost:8080/ws-chat");
+    stompClient  = Stomp.over(socket);
+    stompClient.debug = null;
 
-            log(`${roomId} 방 구독 요청...`);
-            subscription = stompClient.subscribe(subDestination, function (messageOutput) {
-                const body = JSON.parse(messageOutput.body);
-                log(`<b>${body.sender}</b>: ${body.message}`);
-            });
+    stompClient.connect({ "Authorization": "Bearer " + accessToken }, function () {
+      log("연결 성공!", "green");
+      document.getElementById("display-status").textContent = "연결됨";
+      document.getElementById("btnConnect").disabled    = true;
+      document.getElementById("btnDisconnect").disabled = false;
 
-            log(`${roomId} 방에 입장했습니다.`);
-            document.getElementById("messageInput").disabled = false;
-            document.getElementById("btnSend").disabled = false;
-        }
+      subscription = stompClient.subscribe("/topic/chat/" + roomId, function (msg) {
+        const body  = JSON.parse(msg.body);
+        const isMine = body.sender === userId;
+        log((isMine ? "▶ 나" : "◀ " + body.sender) + ": " + body.message, isMine ? "blue" : "black");
+      });
 
-        function sendMessage() {
-            const roomId = document.getElementById("roomId").value;
-            const sender = document.getElementById("sender").value;
-            const message = document.getElementById("messageInput").value;
+      log("채팅방 " + roomId + " 입장 완료.");
+      document.getElementById("messageInput").disabled = false;
+      document.getElementById("btnSend").disabled      = false;
+    }, function (err) {
+      log("연결 실패: " + err, "red");
+      document.getElementById("display-status").textContent = "연결 실패";
+    });
+  }
 
-            if (!message.trim()) return;
+  function disconnect() {
+    if (stompClient) {
+      if (subscription) subscription.unsubscribe();
+      stompClient.disconnect(function () { log("연결 해제됨.", "gray"); resetUI(); });
+    }
+  }
 
-            const payload = {
-                roomId: roomId,
-                sender: sender,
-                message: message
-            };
+  function sendMessage() {
+    const roomId  = document.getElementById("roomId").value;
+    const message = document.getElementById("messageInput").value.trim();
+    if (!message) return;
+    stompClient.send("/app/chat/" + roomId + "/send", {}, JSON.stringify({ message: message }));
+    document.getElementById("messageInput").value = "";
+  }
 
-            // @MessageMapping("/chat/message") 주소로 전송
-            stompClient.send("/pub/chat/message", {}, JSON.stringify(payload));
-            document.getElementById("messageInput").value = "";
-        }
+  document.getElementById("messageInput").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") sendMessage();
+  });
 
-        function resetUI() {
-            document.getElementById("btnConnect").disabled = false;
-            document.getElementById("btnDisconnect").disabled = true;
-            document.getElementById("btnSubscribe").disabled = true;
-            document.getElementById("messageInput").disabled = true;
-            document.getElementById("btnSend").disabled = true;
-            subscription = null;
-        }
-    </script>
+  function resetUI() {
+    document.getElementById("display-status").textContent  = "미연결";
+    document.getElementById("display-room-id").textContent = "-";
+    document.getElementById("btnConnect").disabled    = false;
+    document.getElementById("btnDisconnect").disabled = true;
+    document.getElementById("messageInput").disabled  = true;
+    document.getElementById("btnSend").disabled       = true;
+    subscription = null;
+  }
+</script>
 </body>
 </html>
