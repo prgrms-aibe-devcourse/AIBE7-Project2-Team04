@@ -391,11 +391,11 @@ V1 응답값은 `1`, `3`, `5`만 허용하며 각각 `0`, `50`, `100`점으로 �
 <aside>
 📎
 
-서버는 `regionCode`를 `regions` 기준으로 조회해 표시명을 정규화하고, Kakao 좌표→행정구역 API로 핀이 해당 구에 속하는지 검증한 뒤 PostGIS Point를 경도·위도 순서로 생성한다. 위치 서비스 동의와 기본 활동지역 일치가 필수다. 이 핀은 사용자의 실제 현재 위치가 아니라 희망 매칭 장소다. `searchRadius`를 생략하면 3km를 사용하며 100m~10km를 허용한다. `desiredPersonalityTags`는 `PersonalityTag` 코드 3개 이상 5개 이하로 선택하며 요청 시점 그대로 보존한다. 동일 사용자의 Redis `match:user:{userId}` 예약은 원자적으로 생성하며 이미 `WAITING` 상태면 `409 MATCHING_003`을 반환한다. 산식 버전은 `DESIRED_PERSONALITY_MATCH_V1`로 저장한다. 자유 서술은 커밋 이후 비동기로 임베딩하며, 빈 입력에서는 임베딩 이벤트를 발행하지 않고, 요청이 삭제·변경된 경우 오래된 결과를 저장하지 않는다. AI 장애는 요청 생성과 기본 대기 상태를 실패시키지 않는다. 후보 쌍에 대한 15초 제한 시간의 상호 수락이 완료되면 양쪽 `match_requests`를 연결한 `matches`와 정확히 2개의 `match_participants`를 기록하고 STOMP로 두 사용자에게 결과를 push한다. 대기 TTL은 5분이며 DB에는 만료 시각을 중복 저장하지 않고 응답의 `expiresAt`은 Redis TTL 기준으로 계산한다.
+서버는 `regionCode`를 `regions` 기준으로 조회해 표시명을 정규화하고, Kakao 좌표→행정구역 API로 핀이 해당 구에 속하는지 검증한 뒤 PostGIS Point를 경도·위도 순서로 생성한다. 위치 서비스 동의와 기본 활동지역 일치가 필수다. 이 핀은 사용자의 실제 현재 위치가 아니라 희망 매칭 장소다. `searchRadius`를 생략하면 3km를 사용하며 100m~10km를 허용한다. `desiredPersonalityTags`는 `PersonalityTag` 코드 3개 이상 5개 이하로 선택하며 요청 시점 그대로 보존한다. 동일 사용자의 Redis `match:user:{userId}` 예약은 원자적으로 생성하며 이미 `WAITING` 또는 `CONFIRMING` 상태면 `409 MATCHING_003`을 반환한다. 요청 저장 후 `match:waiting:{requestId}`와 `match:waiting:geo`에 식별자·Geo 멤버를 5분 TTL로 등록하고, Geo 개별 TTL 보조 키로 만료 정리를 보장한다. 산식 버전은 `DESIRED_PERSONALITY_MATCH_V1`로 저장한다. 자유 서술은 커밋 이후 비동기로 임베딩하며, 빈 입력에서는 임베딩 이벤트를 발행하지 않고, 요청이 삭제·변경된 경우 오래된 결과를 저장하지 않는다. AI 장애는 요청 생성과 기본 대기 상태를 실패시키지 않는다. 후보 쌍에 대한 15초 제한 시간의 상호 수락이 완료되면 요청 ID 오름차순 잠금과 DB 트랜잭션 안에서 양쪽 `match_requests`를 `MATCHED`로 변경하고 `matches`, 정확히 2개의 `match_participants`, 1개의 `chat_rooms`를 함께 기록한다. 커밋 후에만 두 사용자의 인증 전용 `/user/queue/match-result`로 결과를 push한다. 제안 중에는 대기 Geo 멤버를 제거하고 사용자 중복 잠금은 제안 TTL 동안 유지하며 `match:proposal:{proposalId}`에 제안 ID만 15초 TTL로 보관한다. 대기 키가 먼저 사라지면 보정 작업이 DB 상태를 `EXPIRED`로 변경하거나 남은 DB 대기 시간을 기준으로 Redis 키·Geo 멤버를 복구한다. 대기 TTL은 5분이며 DB에는 만료 시각을 중복 저장하지 않고 응답의 `expiresAt`은 Redis TTL 기준으로 계산한다.
 
 **GET /matches/realtime/requests/me**는 본인의 현재 `WAITING` 또는 `CONFIRMING` 요청을 반환한다. 활성 요청이 없으면 `404 MATCHING_004`를 반환한다.
 
-**DELETE /matches/realtime/requests/{requestId}**는 본인 소유 요청만 취소하며 `WAITING` 또는 `CONFIRMING` 상태만 허용한다. DB 커밋 이후 Redis 대기 키를 제거하며 다른 사용자의 요청 ID는 `404 MATCHING_004`로 응답한다.
+**DELETE /matches/realtime/requests/{requestId}**는 본인 소유 요청만 취소하며 `WAITING` 또는 `CONFIRMING` 상태만 허용한다. DB 커밋 이후 Redis 대기 키와 Geo 멤버를 제거하며 다른 사용자의 요청 ID는 `404 MATCHING_004`로 응답한다. Redis 정리 실패가 DB 취소를 되돌리지는 않으며 보정 작업에서 다시 시도한다.
 
 </aside>
 
@@ -415,6 +415,7 @@ V1 응답값은 `1`, `3`, `5`만 허용하며 각각 `0`, `50`, `100`점으로 �
     "styleTags": ["GOOD_LISTENER", "FOOD_TALK"]
   },
   "compatibilityScore": 84,
+  "matchedTags": ["GOOD_LISTENER"],
   "compatibilityReasons": ["선호 성향이 잘 맞아요."]
 }
 ```
@@ -430,8 +431,9 @@ V1 응답값은 `1`, `3`, `5`만 허용하며 각각 `0`, `50`, `100`점으로 �
   "chatRoomId": 12,
   "compatibility": {
     "score": 84,
+    "matchedTags": ["GOOD_LISTENER"],
     "reasons": ["대화 선호가 비슷해요", "식사 속도 선호가 잘 맞아요"],
-    "formulaVersion": "DESIRED_PERSONALITY_MATCH_V1"
+    "formulaVersion": "DESIRED_PERSONALITY_MATCH_V1_BIDIRECTIONAL_MIN_V1"
   },
   "partner": {
     "userId": "8ccaa7af-909f-44e7-84cb-67cdccb56be6",
@@ -440,7 +442,7 @@ V1 응답값은 `1`, `3`, `5`만 허용하며 각각 `0`, `50`, `100`점으로 �
 }
 ```
 
-`compatibility`는 양쪽 모두 계산 가능한 성향 데이터가 있을 때만 포함한다. 원본 설문 답변, 자유 서술, 차원별 상세 점수는 상대방에게 노출하지 않는다.
+`compatibility`는 저장된 호환도 스냅샷이 있을 때만 포함하며, 성향 데이터가 없는 방향은 기본 조건 fallback 사유로 표시할 수 있다. 원본 설문 답변, 자유 서술, 차원별 상세 점수, 임베딩 벡터와 정밀 위치는 상대방에게 노출하지 않는다. 동일한 결과를 재전송하더라도 매칭·채팅방 레코드를 중복 생성하지 않는다.
 
 ### 희망 상대 성향 호환도 V1 산식
 
@@ -449,11 +451,11 @@ V1 응답값은 `1`, `3`, `5`만 허용하며 각각 `0`, `50`, `100`점으로 �
 최종 호환도          = 희망 태그 일치 점수 × 80% + 임베딩 유사도 × 20%
 ```
 
-희망 태그 일치 점수는 후보자의 확정 태그와 겹친 요청 태그 코드만 반환하므로 일치 사유를 설명할 수 있다. `desiredPersonalityText`는 선택 입력이며 최대 300자이고 앞뒤 공백을 제거해 저장한다. 성향 임베딩은 희망 상대 자유 텍스트와 후보자 자기소개 자유 텍스트만 동일한 정규화·임베딩 문서 버전 계열(`PERSONALITY_FREE_TEXT_V2`)로 생성한다. 카드 점수와 태그는 임베딩 입력에 포함하지 않는다. 동일한 임베딩 모델, 벡터 차원 및 문서 버전 계열로 생성된 양쪽 벡터가 모두 있을 때만 코사인 유사도를 0~100으로 정규화하여 사용한다. `personality-document-v1` 등 구버전 계열은 양쪽 벡터가 모두 구버전이어도 새 산식에서 제외한다. 임베딩을 사용할 수 없으면 태그 점수를 최종 점수 100%로 사용하고, 후보 태그를 사용할 수 없지만 호환되는 임베딩이 있으면 임베딩 점수를 사용한다. 두 입력 모두 계산할 수 없으면 기본 조건 점수로 대체한다. 산식 또는 가중치를 변경할 때는 `formulaVersion`을 올린다.
+희망 태그 일치 점수는 후보자의 확정 태그와 겹친 요청 태그 코드만 반환하므로 일치 사유를 설명할 수 있다. 응답의 `matchedTags`는 방향별 상위 3개 일치 태그만 포함한다. `desiredPersonalityText`는 선택 입력이며 최대 300자이고 앞뒤 공백을 제거해 저장한다. 성향 임베딩은 희망 상대 자유 텍스트와 후보자 자기소개 자유 텍스트만 동일한 정규화·임베딩 문서 버전 계열(`PERSONALITY_FREE_TEXT_V2`)로 생성한다. 카드 점수와 태그는 임베딩 입력에 포함하지 않는다. 동일한 임베딩 모델, 1536차원 및 문서 버전 계열로 생성된 양쪽 벡터가 모두 있을 때만 코사인 유사도를 0~100으로 정규화하여 사용한다. `personality-document-v1` 등 구버전 계열은 양쪽 벡터가 모두 구버전이어도 새 산식에서 제외한다. 임베딩을 사용할 수 없으면 태그 점수를 최종 점수 100%로 사용하고, 후보 태그를 사용할 수 없지만 호환되는 임베딩이 있으면 임베딩 점수를 사용한다. 두 입력 모두 계산할 수 없으면 기본 조건 점수로 대체한다. 산식 또는 가중치를 변경할 때는 `formulaVersion`을 올린다.
 
 양방향 후보 쌍은 `A → B`, `B → A` 점수 중 낮은 값을 최종 쌍 점수로 사용한다. 한 방향의 성향 정보를 계산할 수 없으면 해당 방향에는 기본 조건 점수 50점을 적용하며, 이 사유만으로 후보를 제외하지 않는다. 이 쌍 점수 정책은 `DESIRED_PERSONALITY_MATCH_V1_BIDIRECTIONAL_MIN_V1`로 `match_proposals.score_snapshot`에 보존한다.
 
-**GET /matches/realtime/proposals/current**는 본인의 `PENDING` 제안과 상대의 `nickname`, `profileImageUrl`, `User.description`, 공개 `styleTags`, 최종 호환 점수와 사용자용 사유를 반환한다. 성향 분석용 자기소개, 희망 상대 설명, 원본 설문 답변과 임베딩은 반환하지 않는다.
+**GET /matches/realtime/proposals/current**는 본인의 `PENDING` 제안과 상대의 `nickname`, `profileImageUrl`, `User.description`, 공개 `styleTags`, 최종 호환 점수, 방향별 상위 `matchedTags`와 사용자용 사유를 반환한다. 성향 분석용 자기소개, 희망 상대 설명, 원본 설문 답변과 임베딩은 반환하지 않는다.
 
 **POST /matches/realtime/proposals/{proposalId}/decision**는 제안 당사자만 `ACCEPT` 또는 `REJECT`를 결정할 수 있도록 하며, 동일 결정은 멱등 처리한다. 제안이 만료되었거나 종료된 뒤의 결정 변경은 `409 MATCHING_012`로 거절한다.
 
