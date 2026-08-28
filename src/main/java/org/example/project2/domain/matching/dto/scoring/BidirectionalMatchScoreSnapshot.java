@@ -1,27 +1,55 @@
 package org.example.project2.domain.matching.dto.scoring;
 
+import org.example.project2.domain.personality.entity.PersonalityTag;
+
 import java.util.List;
 
 public record BidirectionalMatchScoreSnapshot(
         Short sourceToTargetScore,
         List<String> sourceToTargetReasons,
+        List<PersonalityTag> sourceToTargetMatchedTags,
         Short targetToSourceScore,
         List<String> targetToSourceReasons,
+        List<PersonalityTag> targetToSourceMatchedTags,
         Short pairScore,
         String formulaVersion
 ) {
+    public BidirectionalMatchScoreSnapshot(
+            Short sourceToTargetScore,
+            List<String> sourceToTargetReasons,
+            Short targetToSourceScore,
+            List<String> targetToSourceReasons,
+            Short pairScore,
+            String formulaVersion
+    ) {
+        this(
+                sourceToTargetScore,
+                sourceToTargetReasons,
+                List.of(),
+                targetToSourceScore,
+                targetToSourceReasons,
+                List.of(),
+                pairScore,
+                formulaVersion
+        );
+    }
+
     public BidirectionalMatchScoreSnapshot {
         validateNullableScore(sourceToTargetScore, "정방향 성향 호환도");
         validateNullableScore(targetToSourceScore, "역방향 성향 호환도");
         validateNullableScore(pairScore, "최종 후보 쌍 호환도");
         sourceToTargetReasons = copyReasons(sourceToTargetReasons);
         targetToSourceReasons = copyReasons(targetToSourceReasons);
+        sourceToTargetMatchedTags = copyTags(sourceToTargetMatchedTags);
+        targetToSourceMatchedTags = copyTags(targetToSourceMatchedTags);
 
         boolean hasScoreData = sourceToTargetScore != null
                 || targetToSourceScore != null
                 || pairScore != null
                 || !sourceToTargetReasons.isEmpty()
-                || !targetToSourceReasons.isEmpty();
+                || !targetToSourceReasons.isEmpty()
+                || !sourceToTargetMatchedTags.isEmpty()
+                || !targetToSourceMatchedTags.isEmpty();
         if (hasScoreData && (formulaVersion == null || formulaVersion.isBlank())) {
             throw new IllegalArgumentException("성향 점수 스냅샷의 산식 버전은 필수입니다.");
         }
@@ -32,8 +60,10 @@ public record BidirectionalMatchScoreSnapshot(
         return new BidirectionalMatchScoreSnapshot(
                 targetToSourceScore,
                 targetToSourceReasons,
+                targetToSourceMatchedTags,
                 sourceToTargetScore,
                 sourceToTargetReasons,
+                sourceToTargetMatchedTags,
                 pairScore,
                 formulaVersion
         );
@@ -47,6 +77,16 @@ public record BidirectionalMatchScoreSnapshot(
             throw new IllegalArgumentException("성향 호환 사유는 비어 있을 수 없습니다.");
         }
         return List.copyOf(reasons);
+    }
+
+    private static List<PersonalityTag> copyTags(List<PersonalityTag> tags) {
+        if (tags == null) {
+            return List.of();
+        }
+        if (tags.stream().anyMatch(tag -> tag == null)) {
+            throw new IllegalArgumentException("일치 성향 태그는 null일 수 없습니다.");
+        }
+        return List.copyOf(tags);
     }
 
     private static void validateNullableScore(Short score, String name) {

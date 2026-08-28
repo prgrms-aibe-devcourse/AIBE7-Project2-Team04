@@ -19,7 +19,14 @@ import java.util.UUID;
 public interface MatchProposalRepository extends JpaRepository<MatchProposal, Long> {
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT p FROM MatchProposal p JOIN FETCH p.request1 JOIN FETCH p.request2 WHERE p.id = :proposalId")
+    @Query("""
+            SELECT p FROM MatchProposal p
+            JOIN FETCH p.request1 r1
+            JOIN FETCH r1.user
+            JOIN FETCH p.request2 r2
+            JOIN FETCH r2.user
+            WHERE p.id = :proposalId
+            """)
     Optional<MatchProposal> findByIdForUpdate(@Param("proposalId") Long proposalId);
 
     @Query("SELECT p FROM MatchProposal p WHERE p.status = :status AND (p.request1.id = :requestId OR p.request2.id = :requestId)")

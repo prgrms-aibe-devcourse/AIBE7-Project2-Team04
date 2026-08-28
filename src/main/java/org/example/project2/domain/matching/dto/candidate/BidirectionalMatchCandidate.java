@@ -1,5 +1,6 @@
 package org.example.project2.domain.matching.dto.candidate;
 
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -10,6 +11,14 @@ import java.util.UUID;
 public record BidirectionalMatchCandidate(
         Long requestId,
         UUID userId,
-        int distanceMeters
+        int distanceMeters,
+        Instant waitingStartedAt
 ) {
+    public BidirectionalMatchCandidate(
+            Long requestId,
+            UUID userId,
+            int distanceMeters
+    ) {
+        this(requestId, userId, distanceMeters, null);
+    }
 }

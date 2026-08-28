@@ -89,7 +89,7 @@ class BidirectionalCandidateSearchServiceTest {
     }
 
     @Test
-    void excludesCandidatesOutsideMealTimeWindowOrWithAnotherFoodCategory() {
+    void excludesCandidatesOutsideMealTimeWindowButAllowsAnotherFoodCategory() {
         User sourceUser = user("source");
         MatchRequest source = request(1L, sourceUser, MEAL_AT, "KOREAN", 2_000, 127.000, 37.500);
         MatchRequest timeMismatch = request(
@@ -107,7 +107,7 @@ class BidirectionalCandidateSearchServiceTest {
         List<BidirectionalMatchCandidate> result = service.findCandidates(sourceUser.getId(), source.getId());
 
         assertThat(result).extracting(BidirectionalMatchCandidate::requestId)
-                .containsExactly(valid.getId());
+                .containsExactlyInAnyOrder(foodMismatch.getId(), valid.getId());
     }
 
     @Test
@@ -122,6 +122,16 @@ class BidirectionalCandidateSearchServiceTest {
                 .isInstanceOfSatisfying(RealtimeMatchRequestException.class, exception ->
                         assertThat(exception.getErrorCode())
                                 .isEqualTo(RealtimeMatchRequestErrorCode.REQUEST_STATE_CONFLICT));
+    }
+
+    @Test
+    void requiresBothRequestsToBeWaitingForMutualEligibility() {
+        MatchRequest source = request(1L, user("source"), MEAL_AT, "KOREAN", 2_000, 127.000, 37.500);
+        MatchRequest candidate = request(2L, user("candidate"), MEAL_AT, "KOREAN", 2_000, 127.005, 37.500);
+
+        source.startConfirming();
+
+        assertThat(service.isMutuallyEligible(source, candidate)).isFalse();
     }
 
     private void candidatesFor(MatchRequest source, List<MatchRequest> candidates) {

@@ -204,6 +204,28 @@ class PersonalityCompatibilityCalculatorTest {
         ));
     }
 
+    @Test
+    void validatesStoredEmbeddingForCurrentRankingBeforeUsingIt() {
+        float[] validValues = new float[PersonalityEmbeddingVector.EXPECTED_DIMENSION];
+        validValues[0] = 1;
+
+        assertThat(new PersonalityEmbeddingVector(
+                validValues,
+                "embedding-model",
+                "PERSONALITY_FREE_TEXT_V2:request"
+        ).isValidForCurrentRanking()).isTrue();
+        assertThat(new PersonalityEmbeddingVector(
+                new float[]{1, 0},
+                "embedding-model",
+                "PERSONALITY_FREE_TEXT_V2"
+        ).isValidForCurrentRanking()).isFalse();
+        assertThat(new PersonalityEmbeddingVector(
+                validValues,
+                "embedding-model",
+                "PERSONALITY_FREE_TEXT_V3"
+        ).isValidForCurrentRanking()).isFalse();
+    }
+
     private PersonalityEmbeddingVector embedding(float[] values, String sourceVersion) {
         return new PersonalityEmbeddingVector(values, "embedding-model", sourceVersion);
     }

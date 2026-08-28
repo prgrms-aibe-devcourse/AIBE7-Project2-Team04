@@ -32,3 +32,7 @@ app:
   matching:
     waiting-ttl: 5m
     default-search-radius-meters: 3000
+    waiting-reconcile-delay: 5s
+    waiting-reconcile-initial-delay: 30s
+    proposal-reconcile-delay: 1s
+    proposal-reconcile-initial-delay: 30s

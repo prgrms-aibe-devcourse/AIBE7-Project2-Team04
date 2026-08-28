@@ -10,6 +10,7 @@ import org.example.project2.domain.matching.repository.MatchProposalRepository;
 import org.example.project2.domain.matching.repository.MatchRequestRepository;
 import org.example.project2.domain.matching.service.calculation.PersonalityCompatibilityCalculator;
 import org.example.project2.domain.matching.service.candidate.BidirectionalCandidateSearchService;
+import org.example.project2.domain.matching.service.request.RealtimeMatchRedisLifecycleService;
 import org.example.project2.domain.personality.entity.PersonalityQuestionnaireVersion;
 import org.example.project2.domain.personality.entity.PersonalityTag;
 import org.example.project2.domain.personality.entity.UserPersonalityEmbedding;
@@ -37,7 +38,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -55,6 +56,7 @@ class MatchProposalSelectionServiceTest {
     @Mock UserPersonalityEmbeddingRepository personalityEmbeddingRepository;
     @Mock PersonalityCompatibilityCalculator personalityCompatibilityCalculator;
     @Mock ApplicationEventPublisher eventPublisher;
+    @Mock RealtimeMatchRedisLifecycleService redisLifecycleService;
 
     @InjectMocks MatchProposalSelectionService service;
 
@@ -75,8 +77,11 @@ class MatchProposalSelectionServiceTest {
         assertThat(proposal.getScoreSnapshot().sourceToTargetScore()).isEqualTo((short) 82);
         assertThat(proposal.getScoreSnapshot().targetToSourceScore()).isEqualTo((short) 68);
         assertThat(proposal.getScoreSnapshot().pairScore()).isEqualTo((short) 68);
+        assertThat(proposal.getScoreSnapshot().sourceToTargetMatchedTags()).isEmpty();
         assertThat(proposal.getScoreSnapshot().formulaVersion())
                 .isEqualTo(MatchProposalSelectionService.FORMULA_VERSION);
+        verify(redisLifecycleService).suspendWaitingForProposalAfterCommit(proposal);
+        verify(redisLifecycleService).putProposalAfterCommit(proposal);
         verify(personalityCompatibilityCalculator, times(2))
                 .calculate(any(), any(), any(), any());
     }
@@ -124,14 +129,10 @@ class MatchProposalSelectionServiceTest {
         );
 
         prepareCandidate(source, candidate);
-        when(personalityProfileRepository.findByUserId(source.getUser().getId()))
-                .thenReturn(Optional.of(sourceProfile));
-        when(personalityProfileRepository.findByUserId(candidate.getUser().getId()))
-                .thenReturn(Optional.of(candidateProfile));
-        when(personalityEmbeddingRepository.findById(source.getUser().getId()))
-                .thenReturn(Optional.of(sourceEmbedding));
-        when(personalityEmbeddingRepository.findById(candidate.getUser().getId()))
-                .thenReturn(Optional.of(candidateEmbedding));
+        when(personalityProfileRepository.findAllByUserIdIn(anyList()))
+                .thenReturn(List.of(sourceProfile, candidateProfile));
+        when(personalityEmbeddingRepository.findAllByUserIdIn(anyList()))
+                .thenReturn(List.of(sourceEmbedding, candidateEmbedding));
         when(personalityCompatibilityCalculator.calculate(any(), any(), any(), any()))
                 .thenReturn(score((short) 82), score((short) 68));
         when(matchProposalRepository.save(any(MatchProposal.class)))
@@ -163,6 +164,68 @@ class MatchProposalSelectionServiceTest {
         assertThat(desiredVectors.get(1).values()).containsExactly(candidateDesiredValues);
         assertThat(candidateVectors.get(1).values())
                 .containsExactly(sourceEmbedding.getEmbedding());
+        verify(personalityProfileRepository, times(1)).findAllByUserIdIn(anyList());
+        verify(personalityEmbeddingRepository, times(1)).findAllByUserIdIn(anyList());
+        verify(personalityProfileRepository, never()).findByUserId(any());
+        verify(personalityEmbeddingRepository, never()).findById(any());
+    }
+
+    @Test
+    void passesDesiredAndCandidateTagsToTheCalculatorAndReturnsTopMatchedTags() {
+        MatchRequest source = request(1L, user("source"));
+        MatchRequest candidate = request(2L, user("candidate"));
+        UserPersonalityProfile sourceProfile = profile(
+                source.getUser(),
+                Set.of(PersonalityTag.GOOD_LISTENER),
+                "source"
+        );
+        UserPersonalityProfile candidateProfile = profile(
+                candidate.getUser(),
+                Set.of(
+                        PersonalityTag.GOOD_LISTENER,
+                        PersonalityTag.FOOD_TALK,
+                        PersonalityTag.ENJOY_DESSERT,
+                        PersonalityTag.DEEP_TALK
+                ),
+                "candidate"
+        );
+        prepareCandidate(source, candidate);
+        when(personalityProfileRepository.findAllByUserIdIn(anyList()))
+                .thenReturn(List.of(sourceProfile, candidateProfile));
+        when(personalityCompatibilityCalculator.calculate(any(), any(), any(), any()))
+                .thenReturn(score(
+                        (short) 82,
+                        Set.of(
+                                PersonalityTag.GOOD_LISTENER,
+                                PersonalityTag.FOOD_TALK,
+                                PersonalityTag.ENJOY_DESSERT,
+                                PersonalityTag.DEEP_TALK
+                        )
+                ), score((short) 68, Set.of(PersonalityTag.GOOD_LISTENER)));
+        when(matchProposalRepository.save(any(MatchProposal.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        MatchProposal proposal = service.selectAndCreate(source.getUser().getId(), source.getId()).orElseThrow();
+
+        assertThat(proposal.getScoreSnapshot().sourceToTargetMatchedTags())
+                .containsExactly(
+                        PersonalityTag.DEEP_TALK,
+                        PersonalityTag.ENJOY_DESSERT,
+                        PersonalityTag.FOOD_TALK
+                );
+        assertThat(proposal.getScoreSnapshot().targetToSourceMatchedTags())
+                .containsExactly(PersonalityTag.GOOD_LISTENER);
+        verify(personalityProfileRepository, times(1)).findAllByUserIdIn(anyList());
+
+        ArgumentCaptor<Object> eventCaptor = ArgumentCaptor.forClass(Object.class);
+        verify(eventPublisher).publishEvent(eventCaptor.capture());
+        MatchProposalCreatedEvent event = (MatchProposalCreatedEvent) eventCaptor.getValue();
+        assertThat(event.request1Payload().matchedTags())
+                .containsExactly(
+                        PersonalityTag.DEEP_TALK,
+                        PersonalityTag.ENJOY_DESSERT,
+                        PersonalityTag.FOOD_TALK
+                );
     }
 
     @Test
@@ -177,10 +240,16 @@ class MatchProposalSelectionServiceTest {
         );
 
         prepareCandidate(source, candidate);
-        when(personalityProfileRepository.findByUserId(candidate.getUser().getId()))
-                .thenReturn(Optional.of(withdrawnProfile));
-        when(personalityEmbeddingRepository.findById(candidate.getUser().getId()))
-                .thenReturn(Optional.of(org.mockito.Mockito.mock(UserPersonalityEmbedding.class)));
+        UserPersonalityEmbedding withdrawnEmbedding = embeddingEntity(
+                withdrawnProfile,
+                candidate.getUser().getId(),
+                "withdrawn",
+                embeddingValues(1, 0)
+        );
+        when(personalityProfileRepository.findAllByUserIdIn(anyList()))
+                .thenReturn(List.of(withdrawnProfile));
+        when(personalityEmbeddingRepository.findAllByUserIdIn(anyList()))
+                .thenReturn(List.of(withdrawnEmbedding));
         when(personalityCompatibilityCalculator.calculate(any(), any(), any(), any()))
                 .thenReturn(score((short) 82), score((short) 68));
         when(matchProposalRepository.save(any(MatchProposal.class)))
@@ -247,6 +316,45 @@ class MatchProposalSelectionServiceTest {
         assertThat(result).isEmpty();
         assertThat(source.getStatus()).isEqualTo(MatchRequestStatus.WAITING);
         verify(matchProposalRepository, never()).save(any());
+        verify(personalityCompatibilityCalculator, never()).calculate(any(), any(), any(), any());
+    }
+
+    @Test
+    void ordersEqualScoreCandidatesByDistanceThenWaitingStart() {
+        MatchRequest source = request(1L, user("source"));
+        MatchRequest laterCandidate = request(2L, user("later"));
+        MatchRequest earlierCandidate = request(3L, user("earlier"));
+        Instant earlier = Instant.parse("2026-08-27T09:00:00Z");
+        Instant later = Instant.parse("2026-08-27T09:05:00Z");
+
+        when(candidateSearchService.findCandidates(source.getUser().getId(), source.getId()))
+                .thenReturn(List.of(
+                        new BidirectionalMatchCandidate(
+                                laterCandidate.getId(), laterCandidate.getUser().getId(), 500, later
+                        ),
+                        new BidirectionalMatchCandidate(
+                                earlierCandidate.getId(), earlierCandidate.getUser().getId(), 500, earlier
+                        )
+                ));
+        when(matchRequestRepository.findDetailedById(source.getId())).thenReturn(Optional.of(source));
+        when(matchRequestRepository.findDetailedById(laterCandidate.getId()))
+                .thenReturn(Optional.of(laterCandidate));
+        when(matchRequestRepository.findDetailedById(earlierCandidate.getId()))
+                .thenReturn(Optional.of(earlierCandidate));
+        when(personalityProfileRepository.findAllByUserIdIn(anyList())).thenReturn(List.of());
+        when(personalityEmbeddingRepository.findAllByUserIdIn(anyList())).thenReturn(List.of());
+        when(personalityCompatibilityCalculator.calculate(any(), any(), any(), any()))
+                .thenReturn(score((short) 70), score((short) 70), score((short) 70), score((short) 70));
+        when(matchRequestRepository.findAllByIdInForUpdate(List.of(source.getId(), earlierCandidate.getId())))
+                .thenReturn(List.of(source, earlierCandidate));
+        when(candidateSearchService.isMutuallyEligible(source, earlierCandidate)).thenReturn(true);
+        when(matchProposalRepository.save(any(MatchProposal.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        MatchProposal proposal = service.selectAndCreate(source.getUser().getId(), source.getId()).orElseThrow();
+
+        assertThat(proposal.getOtherRequest(source.getId()).getId()).isEqualTo(earlierCandidate.getId());
+        assertThat(laterCandidate.getStatus()).isEqualTo(MatchRequestStatus.WAITING);
     }
 
     private void prepareCandidate(MatchRequest source, MatchRequest candidate) {
@@ -260,13 +368,17 @@ class MatchProposalSelectionServiceTest {
         when(matchRequestRepository.findAllByIdInForUpdate(List.of(source.getId(), candidate.getId())))
                 .thenReturn(List.of(source, candidate));
         when(candidateSearchService.isMutuallyEligible(source, candidate)).thenReturn(true);
-        when(personalityProfileRepository.findByUserId(any())).thenReturn(Optional.empty());
-        when(personalityEmbeddingRepository.findById(any())).thenReturn(Optional.empty());
+        when(personalityProfileRepository.findAllByUserIdIn(anyList())).thenReturn(List.of());
+        when(personalityEmbeddingRepository.findAllByUserIdIn(anyList())).thenReturn(List.of());
     }
 
     private PersonalityCompatibilityScore score(short value) {
+        return score(value, Set.of());
+    }
+
+    private PersonalityCompatibilityScore score(short value, Set<PersonalityTag> matchedTags) {
         return new PersonalityCompatibilityScore(
-                true, value, value, null, Set.of(), "DESIRED_PERSONALITY_MATCH_V1"
+                true, value, value, null, matchedTags, "DESIRED_PERSONALITY_MATCH_V1"
         );
     }
 

@@ -16,6 +16,8 @@ import org.example.project2.domain.matching.repository.MatchProposalRepository;
 import org.example.project2.domain.personality.entity.PersonalityTag;
 import org.example.project2.domain.personality.repository.UserPersonalityProfileRepository;
 import org.example.project2.domain.user.entity.User;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -90,6 +92,12 @@ public class MatchProposalInteractionService {
                     MatchProposalErrorCode.PROPOSAL_STATE_CONFLICT,
                     exception.getMessage()
             );
+        } catch (DataIntegrityViolationException | PessimisticLockingFailureException exception) {
+            // 요청 잠금 경쟁 또는 DB UNIQUE 제약으로 패한 결정은 중복 생성 없이 충돌로 응답합니다.
+            throw new MatchProposalException(
+                    MatchProposalErrorCode.PROPOSAL_STATE_CONFLICT,
+                    "다른 매칭이 먼저 확정되어 현재 제안을 처리할 수 없습니다."
+            );
         }
         return toResponse(updated, viewerRequest);
     }
@@ -117,6 +125,11 @@ public class MatchProposalInteractionService {
         List<String> reasons = snapshot == null
                 ? List.of()
                 : viewerIsRequest1 ? snapshot.sourceToTargetReasons() : snapshot.targetToSourceReasons();
+        List<PersonalityTag> matchedTags = snapshot == null
+                ? List.of()
+                : viewerIsRequest1
+                ? snapshot.sourceToTargetMatchedTags()
+                : snapshot.targetToSourceMatchedTags();
         Short score = snapshot == null ? null : snapshot.pairScore();
 
         return new MatchProposalResponse(
@@ -132,6 +145,7 @@ public class MatchProposalInteractionService {
                         publicTags
                 ),
                 score,
+                matchedTags,
                 reasons
         );
     }

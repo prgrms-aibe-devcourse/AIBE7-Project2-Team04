@@ -13,4 +13,10 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
 
     @Query("SELECT m FROM Match m WHERE m.request1.id = :requestId OR m.request2.id = :requestId")
     Optional<Match> findByRequestId(@Param("requestId") Long requestId);
+
+    @Query("SELECT m FROM Match m WHERE m.request1.id = :request1Id AND m.request2.id = :request2Id")
+    Optional<Match> findByRequestPair(
+            @Param("request1Id") Long request1Id,
+            @Param("request2Id") Long request2Id
+    );
 }

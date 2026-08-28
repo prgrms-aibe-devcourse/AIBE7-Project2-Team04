@@ -38,6 +38,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -94,7 +95,9 @@ class RealtimeMatchRequestServiceTest {
                 .thenReturn(RegionPinValidationResult.MATCHES);
         when(waitingStore.reserve(eq(user.getId()), any(String.class), any(Duration.class)))
                 .thenReturn(true);
-        when(waitingStore.activate(eq(user.getId()), any(String.class), anyLong(), any(Duration.class)))
+        when(waitingStore.activate(
+                eq(user.getId()), any(String.class), anyLong(), anyDouble(), anyDouble(), any(Duration.class)
+        ))
                 .thenReturn(true);
     }
 
@@ -126,7 +129,8 @@ class RealtimeMatchRequestServiceTest {
                 .isEqualTo(PersonalityCompatibilityCalculator.FORMULA_VERSION);
         assertThat(saved.getDesiredPersonalityTags()).hasSize(3);
         verify(waitingStore).activate(
-                eq(user.getId()), any(String.class), eq(saved.getId()), eq(Duration.ofMinutes(5))
+                eq(user.getId()), any(String.class), eq(saved.getId()),
+                eq(saved.getLocation().getX()), eq(saved.getLocation().getY()), eq(Duration.ofMinutes(5))
         );
     }
 
@@ -223,6 +227,25 @@ class RealtimeMatchRequestServiceTest {
         assertThat(matchRequestRepository.findById(created.requestId()).orElseThrow().getStatus())
                 .isEqualTo(MatchRequestStatus.CANCELLED);
         verify(waitingStore).remove(user.getId(), created.requestId());
+    }
+
+    @Test
+    void repairsMissingRedisWaitingEntryBeforeReturningCurrentStatus() {
+        var created = service.create(user.getId(), validRequest(null));
+        when(waitingStore.remainingTtl(created.requestId()))
+                .thenReturn(Optional.empty(), Optional.empty(), Optional.of(Duration.ofMinutes(4)));
+        when(waitingStore.restore(
+                eq(user.getId()), eq(created.requestId()), anyDouble(), anyDouble(), any(Duration.class)
+        )).thenReturn(true);
+
+        var current = service.getCurrent(user.getId());
+
+        assertThat(current.requestId()).isEqualTo(created.requestId());
+        assertThat(current.status()).isEqualTo(MatchRequestStatus.WAITING);
+        assertThat(current.expiresAt()).isNotNull();
+        verify(waitingStore).restore(
+                eq(user.getId()), eq(created.requestId()), eq(127.039), eq(37.501), any(Duration.class)
+        );
     }
 
     @Test

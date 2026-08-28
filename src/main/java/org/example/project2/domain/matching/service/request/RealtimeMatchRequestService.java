@@ -6,14 +6,17 @@ import org.example.project2.domain.matching.dto.request.RealtimeMatchRequestResp
 import org.example.project2.domain.matching.dto.request.RealtimeMatchRequestStatusResponse;
 import org.example.project2.domain.matching.entity.MatchRequest;
 import org.example.project2.domain.matching.entity.MatchRequestStatus;
+import org.example.project2.domain.matching.entity.MatchProposal;
 import org.example.project2.domain.matching.exception.request.AuthenticatedRealtimeMatchUserNotFoundException;
 import org.example.project2.domain.matching.exception.request.RealtimeMatchRequestErrorCode;
 import org.example.project2.domain.matching.exception.request.RealtimeMatchRequestException;
 import org.example.project2.domain.matching.repository.MatchRequestRepository;
+import org.example.project2.domain.matching.repository.MatchProposalRepository;
 import org.example.project2.domain.matching.repository.RealtimeMatchWaitingStore;
 import org.example.project2.domain.matching.service.calculation.PersonalityCompatibilityCalculator;
 import org.example.project2.domain.matching.service.request.embedding.DesiredPersonalityEmbeddingRequestedEvent;
 import org.example.project2.domain.matching.service.proposal.RealtimeMatchRequestWaitingEvent;
+import org.example.project2.domain.matching.service.proposal.MatchProposalLifecycleService;
 import org.example.project2.domain.region.entity.Region;
 import org.example.project2.domain.region.repository.RegionRepository;
 import org.example.project2.domain.region.service.RegionPinValidationResult;
@@ -53,8 +56,11 @@ public class RealtimeMatchRequestService {
     private final RegionRepository regionRepository;
     private final RegionPinValidator regionPinValidator;
     private final MatchRequestRepository matchRequestRepository;
+    private final MatchProposalRepository matchProposalRepository;
+    private final MatchProposalLifecycleService matchProposalLifecycleService;
     private final RealtimeMatchWaitingStore waitingStore;
     private final MatchingProperties matchingProperties;
+    private final RealtimeMatchWaitingReconciliationService waitingReconciliationService;
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
@@ -73,7 +79,10 @@ public class RealtimeMatchRequestService {
 
         Long savedRequestId = null;
         try {
-            if (matchRequestRepository.existsByUserIdAndStatus(userId, MatchRequestStatus.WAITING)) {
+            if (matchRequestRepository.existsByUserIdAndStatusIn(
+                    userId,
+                    List.of(MatchRequestStatus.WAITING, MatchRequestStatus.CONFIRMING)
+            )) {
                 throw new RealtimeMatchRequestException(
                         RealtimeMatchRequestErrorCode.ACTIVE_REQUEST_EXISTS
                 );
@@ -98,7 +107,7 @@ public class RealtimeMatchRequestService {
             );
             MatchRequest saved = matchRequestRepository.saveAndFlush(matchRequest);
             savedRequestId = saved.getId();
-            activateWaitingSlot(userId, reservationToken, saved.getId(), ttl);
+            activateWaitingSlot(userId, reservationToken, saved.getId(), saved.getLocation(), ttl);
             registerRollbackCompensation(userId, saved.getId());
 
             if (saved.getDesiredPersonalityText() != null) {
@@ -130,7 +139,16 @@ public class RealtimeMatchRequestService {
                 .orElseThrow(() -> new RealtimeMatchRequestException(
                         RealtimeMatchRequestErrorCode.REQUEST_NOT_FOUND
                 ));
-        Instant expiresAt = remainingExpiresAt(request.getId()).orElse(null);
+        TtlLookup ttlLookup = remainingTtl(request.getId());
+        if (request.isWaiting() && ttlLookup.redisAvailable() && ttlLookup.remaining().isEmpty()) {
+            RealtimeMatchWaitingReconciliationService.RepairResult result =
+                    waitingReconciliationService.repair(request.getId());
+            if (result == RealtimeMatchWaitingReconciliationService.RepairResult.EXPIRED) {
+                throw new RealtimeMatchRequestException(RealtimeMatchRequestErrorCode.REQUEST_NOT_FOUND);
+            }
+            ttlLookup = remainingTtl(request.getId());
+        }
+        Instant expiresAt = ttlLookup.remaining().map(duration -> Instant.now().plus(duration)).orElse(null);
         return new RealtimeMatchRequestStatusResponse(
                 request.getId(),
                 request.getStatus(),
@@ -144,10 +162,38 @@ public class RealtimeMatchRequestService {
         if (requestId == null) {
             throw new RealtimeMatchRequestException(RealtimeMatchRequestErrorCode.INVALID_INPUT);
         }
-        MatchRequest request = matchRequestRepository.findOwnedByIdForUpdate(requestId, userId)
+        // 제안이 있는 경우 제안 서비스가 제안 행 → 요청 ID 오름차순으로 잠근다.
+        // 여기서 요청을 먼저 잠그면 취소와 수락 경로의 잠금 순서가 달라져 교착될 수 있으므로,
+        // 먼저 소유권만 확인하고 제안이 없을 때에만 요청 행을 잠근다.
+        MatchRequest request = matchRequestRepository.findOwnedById(requestId, userId)
                 .orElseThrow(() -> new RealtimeMatchRequestException(
                         RealtimeMatchRequestErrorCode.REQUEST_NOT_FOUND
                 ));
+        Optional<MatchProposal> pendingProposal = matchProposalRepository.findPendingByRequestId(requestId);
+        if (pendingProposal.isPresent()) {
+            try {
+                matchProposalLifecycleService.cancelForRequest(pendingProposal.get().getId(), requestId);
+            } catch (IllegalStateException exception) {
+                throw new RealtimeMatchRequestException(
+                        RealtimeMatchRequestErrorCode.REQUEST_STATE_CONFLICT,
+                        exception.getMessage()
+                );
+            }
+            return;
+        }
+        request = matchRequestRepository.findOwnedByIdForUpdate(requestId, userId)
+                .orElseThrow(() -> new RealtimeMatchRequestException(
+                        RealtimeMatchRequestErrorCode.REQUEST_NOT_FOUND
+                ));
+        // 최초 조회와 요청 행 잠금 사이에 제안이 생성될 수 있으므로 마지막으로 재확인한다.
+        // 이 시점에 제안이 보이면 요청을 먼저 잠근 채 제안 잠금을 시도하지 않고
+        // 충돌로 종료하여 수락 경로와의 교착 및 고아 CONFIRMING 요청을 방지한다.
+        if (matchProposalRepository.findPendingByRequestId(requestId).isPresent()) {
+            throw new RealtimeMatchRequestException(
+                    RealtimeMatchRequestErrorCode.REQUEST_STATE_CONFLICT,
+                    "매칭 제안이 생성되어 취소할 수 없습니다. 제안 응답을 먼저 처리해 주세요."
+            );
+        }
         try {
             request.cancel();
         } catch (IllegalStateException exception) {
@@ -241,10 +287,18 @@ public class RealtimeMatchRequestService {
             UUID userId,
             String token,
             long requestId,
+            Point location,
             Duration ttl
     ) {
         try {
-            if (!waitingStore.activate(userId, token, requestId, ttl)) {
+            if (!waitingStore.activate(
+                    userId,
+                    token,
+                    requestId,
+                    location.getX(),
+                    location.getY(),
+                    ttl
+            )) {
                 throw new RealtimeMatchRequestException(
                         RealtimeMatchRequestErrorCode.WAITING_STORE_UNAVAILABLE
                 );
@@ -283,12 +337,16 @@ public class RealtimeMatchRequestService {
         }
     }
 
-    private Optional<Instant> remainingExpiresAt(long requestId) {
+    private TtlLookup remainingTtl(long requestId) {
         try {
-            return waitingStore.remainingTtl(requestId)
-                    .map(duration -> Instant.now().plus(duration));
+            Optional<Duration> remaining = Optional.ofNullable(waitingStore.remainingTtl(requestId))
+                    .orElse(Optional.empty());
+            return new TtlLookup(remaining, true);
         } catch (DataAccessException ignored) {
-            return Optional.empty();
+            return new TtlLookup(Optional.empty(), false);
         }
+    }
+
+    private record TtlLookup(Optional<Duration> remaining, boolean redisAvailable) {
     }
 }

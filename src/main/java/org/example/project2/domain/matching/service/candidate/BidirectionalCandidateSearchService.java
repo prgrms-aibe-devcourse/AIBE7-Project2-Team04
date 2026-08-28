@@ -26,8 +26,9 @@ public class BidirectionalCandidateSearchService {
     private final MatchRequestRepository matchRequestRepository;
 
     /**
-     * 요청을 보낸 사용자에게만, 양쪽 요청의 하드 필터를 모두 만족하는 후보를 반환합니다.
-     * 성향 점수 계산과 프로필 제안 생성은 이 단계의 범위에 포함하지 않습니다.
+     * 요청자가 볼 수 있는 양방향 하드 필터 통과 후보만 반환합니다.
+     * PostGIS 반경 1차 조회와 서비스 계층의 반대 방향 검증을 모두 통과한
+     * 결과이며, 성향 계산이나 프로필 데이터 조립은 수행하지 않습니다.
      */
     public List<BidirectionalMatchCandidate> findCandidates(UUID userId, Long requestId) {
         if (userId == null || requestId == null) {
@@ -54,22 +55,25 @@ public class BidirectionalCandidateSearchService {
                 .map(candidate -> new BidirectionalMatchCandidate(
                         candidate.getId(),
                         candidate.getUser().getId(),
-                        Math.toIntExact(Math.round(distanceMeters(sourceRequest.getLocation(), candidate.getLocation())))
+                        Math.toIntExact(Math.round(distanceMeters(sourceRequest.getLocation(), candidate.getLocation()))),
+                        candidate.getCreatedAt()
                 ))
                 .sorted(Comparator.comparingInt(BidirectionalMatchCandidate::distanceMeters))
                 .toList();
     }
 
     public boolean isMutuallyEligible(MatchRequest sourceRequest, MatchRequest candidateRequest) {
-        return candidateRequest.isWaiting()
+        return sourceRequest.isWaiting()
+                && candidateRequest.isWaiting()
                 && !sourceRequest.getUser().getId().equals(candidateRequest.getUser().getId())
                 && satisfiesHardFilters(sourceRequest, candidateRequest)
                 && satisfiesHardFilters(candidateRequest, sourceRequest);
     }
 
     private boolean satisfiesHardFilters(MatchRequest requester, MatchRequest candidate) {
-        return requester.getFoodCategory().equals(candidate.getFoodCategory())
-                && isWithinMealTimeDifference(requester, candidate)
+        // 음식 카테고리는 식사 장소·메뉴를 조율할 수 있는 선호 정보이므로
+        // 후보 탈락 조건으로 사용하지 않습니다. 위치와 시간만 상호 검증합니다.
+        return isWithinMealTimeDifference(requester, candidate)
                 && isWithinRequestersSearchRadius(requester, candidate);
     }
 
