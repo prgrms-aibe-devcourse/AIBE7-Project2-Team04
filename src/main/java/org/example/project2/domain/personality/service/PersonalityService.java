@@ -97,7 +97,12 @@ public class PersonalityService {
         answerRepository.saveAll(answerEntities);
 
         if (request.aiAnalysisConsent() && request.selfDescription() != null) {
-            eventPublisher.publishEvent(new PersonalityEmbeddingRequestedEvent(userId));
+            // 새 프로필이 커밋되기 전까지 이전 벡터가 매칭에 사용되지 않도록 제거합니다.
+            embeddingRepository.deleteById(userId);
+            eventPublisher.publishEvent(new PersonalityEmbeddingRequestedEvent(
+                    userId,
+                    savedProfile.getSelfDescription()
+            ));
         } else {
             embeddingRepository.deleteById(userId);
         }

@@ -170,7 +170,11 @@ class PersonalityServiceTest {
 
         assertThat(response.selfDescription()).isEqualTo("조용한 식사를 좋아해요.");
         assertThat(response.aiAnalysisConsent()).isTrue();
-        verify(eventPublisher).publishEvent(new PersonalityEmbeddingRequestedEvent(user.getId()));
+        var embeddingOrder = inOrder(embeddingRepository, eventPublisher);
+        embeddingOrder.verify(embeddingRepository).deleteById(user.getId());
+        embeddingOrder.verify(eventPublisher).publishEvent(new PersonalityEmbeddingRequestedEvent(
+                user.getId(), "조용한 식사를 좋아해요."
+        ));
     }
 
     @Test

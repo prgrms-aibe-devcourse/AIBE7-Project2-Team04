@@ -45,7 +45,7 @@ class UserPersonalityEmbeddingRepositoryTest {
                 .profile(profile)
                 .build();
         embedding.replace("versioned test document", new float[1536],
-                "test-model", "personality-document-v1:test");
+                "test-model", "PERSONALITY_FREE_TEXT_V2");
 
         embeddingRepository.saveAndFlush(embedding);
 

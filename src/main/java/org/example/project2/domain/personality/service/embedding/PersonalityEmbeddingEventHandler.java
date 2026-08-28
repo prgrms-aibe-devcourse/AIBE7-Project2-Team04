@@ -22,13 +22,16 @@ public class PersonalityEmbeddingEventHandler {
 
     private final UserPersonalityProfileRepository profileRepository;
     private final UserPersonalityEmbeddingRepository embeddingRepository;
-    private final PersonalityEmbeddingDocumentBuilder documentBuilder;
+    private final PersonalityTextEmbeddingDocumentBuilder documentBuilder;
     private final PersonalityAiClient aiClient;
 
     @Async
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void generate(PersonalityEmbeddingRequestedEvent event) {
+        if (event == null || event.userId() == null || event.sourceText() == null) {
+            return;
+        }
         Optional<UserPersonalityProfile> optionalProfile = profileRepository.findByUserId(event.userId());
         if (optionalProfile.isEmpty()) {
             return;
@@ -38,10 +41,21 @@ public class PersonalityEmbeddingEventHandler {
             embeddingRepository.deleteById(event.userId());
             return;
         }
+        if (!event.sourceText().equals(profile.getSelfDescription())) {
+            return;
+        }
 
-        PersonalityEmbeddingDocument document = documentBuilder.build(profile);
+        PersonalityEmbeddingDocument document = documentBuilder.build(event.sourceText());
         Optional<float[]> optionalEmbedding = aiClient.embed(document.sourceText());
         if (optionalEmbedding.isEmpty() || optionalEmbedding.get().length != EMBEDDING_DIMENSIONS) {
+            return;
+        }
+
+        // 외부 AI 호출 중 프로필이 수정·삭제될 수 있으므로 저장 직전에 다시 확인합니다.
+        Optional<UserPersonalityProfile> latestProfile = profileRepository.findByUserId(event.userId());
+        if (latestProfile.isEmpty()
+                || !latestProfile.get().isAiAnalysisConsent()
+                || !event.sourceText().equals(latestProfile.get().getSelfDescription())) {
             return;
         }
 
