@@ -3,7 +3,6 @@ package org.example.project2.global.websocket;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.project2.domain.chat.repository.ChatRoomRepository;
-import org.example.project2.global.security.jwt.JwtProvider;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessagingException;
@@ -35,6 +34,8 @@ public class ChatSubscriptionInterceptor implements ChannelInterceptor {
 
     private static final String SUBSCRIBE_PREFIX = "/topic/chat/";
     private static final String SEND_PREFIX = "/app/chat/";
+    private static final String MATCH_PROPOSAL_DESTINATION = "/user/queue/match-proposal";
+    private static final String MATCH_RESULT_DESTINATION = "/user/queue/match-result";
 
     private final ChatRoomRepository chatRoomRepository;
 
@@ -58,22 +59,27 @@ public class ChatSubscriptionInterceptor implements ChannelInterceptor {
             log.debug("[WS CONNECT] userId={}", userId);
 
         } else if (StompCommand.SUBSCRIBE.equals(command)) {
-            // SUBSCRIBE: /topic/chat/{roomId} 구독 권한 검증
-            Long roomId = extractRoomId(accessor.getDestination(), SUBSCRIBE_PREFIX);
-            if (roomId != null) {
-                UUID userId = getPrincipalId(accessor);
+            UUID userId = getPrincipalId(accessor);
+            String destination = accessor.getDestination();
+            if (isMatchUserDestination(destination)) {
+                log.debug("[WS SUBSCRIBE] 개인 매칭 큐 구독. userId={}, destination={}", userId, destination);
+            } else {
+                Long roomId = extractExactRoomId(destination, SUBSCRIBE_PREFIX, false);
+                if (roomId == null) {
+                    throw new MessagingException("허용되지 않은 WebSocket 구독 경로입니다.");
+                }
                 validateParticipant(roomId, userId);
                 log.debug("[WS SUBSCRIBE] userId={} roomId={}", userId, roomId);
             }
 
         } else if (StompCommand.SEND.equals(command)) {
-            // SEND: /app/chat/{roomId}/send 전송 권한 검증
-            Long roomId = extractRoomId(accessor.getDestination(), SEND_PREFIX);
-            if (roomId != null) {
-                UUID userId = getPrincipalId(accessor);
-                validateParticipant(roomId, userId);
-                log.debug("[WS SEND] userId={} roomId={}", userId, roomId);
+            UUID userId = getPrincipalId(accessor);
+            Long roomId = extractExactRoomId(accessor.getDestination(), SEND_PREFIX, true);
+            if (roomId == null) {
+                throw new MessagingException("허용되지 않은 WebSocket 전송 경로입니다.");
             }
+            validateParticipant(roomId, userId);
+            log.debug("[WS SEND] userId={} roomId={}", userId, roomId);
         }
 
         return message;
@@ -111,16 +117,26 @@ public class ChatSubscriptionInterceptor implements ChannelInterceptor {
      * destination에서 prefix 이후의 첫 번째 path segment를 Long으로 파싱합니다.
      * 예) "/topic/chat/42" → 42L
      */
-    private Long extractRoomId(String destination, String prefix) {
+    private Long extractExactRoomId(String destination, String prefix, boolean sendDestination) {
         if (destination == null || !destination.startsWith(prefix)) {
             return null;
         }
-        String segment = destination.substring(prefix.length()).split("/")[0];
+        String remainder = destination.substring(prefix.length());
+        String[] segments = remainder.split("/", -1);
+        if ((!sendDestination && segments.length != 1)
+                || (sendDestination && (segments.length != 2 || !"send".equals(segments[1])))) {
+            return null;
+        }
         try {
-            return Long.parseLong(segment);
+            return Long.parseLong(segments[0]);
         } catch (NumberFormatException e) {
             return null;
         }
+    }
+
+    private boolean isMatchUserDestination(String destination) {
+        return MATCH_PROPOSAL_DESTINATION.equals(destination)
+                || MATCH_RESULT_DESTINATION.equals(destination);
     }
 
     /** 채팅방 참여자가 아니면 MessagingException을 던집니다. */

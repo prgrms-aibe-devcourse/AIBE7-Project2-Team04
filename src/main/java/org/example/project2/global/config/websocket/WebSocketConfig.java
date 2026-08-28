@@ -4,12 +4,15 @@ import lombok.RequiredArgsConstructor;
 import org.example.project2.global.websocket.ChatOutboundAccessInterceptor;
 import org.example.project2.global.websocket.ChatSubscriptionInterceptor;
 import org.example.project2.global.websocket.WebSocketHandshakeInterceptor;
+import org.example.project2.global.security.AuthProperties;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
+import org.springframework.web.socket.config.annotation.StompWebSocketEndpointRegistration;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+import org.springframework.util.StringUtils;
 
 @Configuration
 @EnableWebSocketMessageBroker
@@ -19,6 +22,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private final ChatSubscriptionInterceptor chatSubscriptionInterceptor;
     private final ChatOutboundAccessInterceptor chatOutboundAccessInterceptor;
     private final WebSocketHandshakeInterceptor webSocketHandshakeInterceptor;
+    private final AuthProperties authProperties;
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
@@ -33,11 +37,14 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         // 핸드셰이크 인터셉터에서 쿠키 기반 JWT 인증 처리
-        // 프론트엔드 포트(3000)와 백엔드 포트(8080) 간 CORS 접속 허용을 위해 setAllowedOriginPatterns 추가
-        registry.addEndpoint("/ws-chat")
-                .setAllowedOriginPatterns("*")
-                .addInterceptors(webSocketHandshakeInterceptor)
-                .withSockJS();
+        StompWebSocketEndpointRegistration endpoint = registry.addEndpoint("/ws-chat")
+                .addInterceptors(webSocketHandshakeInterceptor);
+        String allowedOrigin = authProperties.cors().allowedOrigin();
+        if (StringUtils.hasText(allowedOrigin)) {
+            endpoint.setAllowedOrigins(allowedOrigin);
+        }
+        // Origin을 설정하지 않은 환경은 Spring 기본 정책인 동일 출처만 허용합니다.
+        endpoint.withSockJS();
     }
 
     @Override
