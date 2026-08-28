@@ -1,6 +1,7 @@
 package org.example.project2.domain.auth.service.local;
 
 import lombok.RequiredArgsConstructor;
+import org.example.project2.domain.auth.dto.LoginRequest;
 import org.example.project2.domain.auth.dto.SignUpRequest;
 import org.example.project2.domain.auth.dto.SignUpResponse;
 import org.example.project2.domain.user.entity.AuthProvider;
@@ -26,7 +27,7 @@ public class AuthService {
     private final org.example.project2.global.security.AuthProperties authProperties;
 
     @Transactional
-    public LoginResult login(org.example.project2.domain.auth.dto.LoginRequest request) {
+    public LoginResult login(LoginRequest request) {
         // [보안 규칙] 이메일 대소문자를 구분하지 않고 LOCAL 계정 사용자를 검색합니다.
         User user = userRepository.findByEmailIgnoreCaseAndProvider(request.email(), AuthProvider.LOCAL)
                 .orElseThrow(org.example.project2.domain.auth.exception.LoginFailedException::new);
