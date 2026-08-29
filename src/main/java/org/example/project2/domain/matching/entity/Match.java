@@ -11,7 +11,9 @@ import java.util.UUID;
         @UniqueConstraint(name = "uk_matches_request_pair", columnNames = {"request_1_id", "request_2_id"})
 })
 @Entity
-@Check(constraints = "request_1_id < request_2_id")
+@Check(constraints = "request_1_id < request_2_id " +
+        "AND ((status = 'MATCHED' AND ended_at IS NULL) " +
+        "OR (status IN ('COMPLETED', 'CANCELLED') AND ended_at IS NOT NULL))")
 @Getter
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -33,6 +35,9 @@ public class Match extends BaseEntity {
     @Column(name = "matched_at", nullable = false)
     private Instant matchedAt;
 
+    @Column(name = "ended_at")
+    private Instant endedAt;
+
     public static Match of(MatchRequest a, MatchRequest b, Instant matchedAt) {
         if (a == null || b == null || a.getId() == null || b.getId() == null) {
             throw new IllegalArgumentException("매칭 요청은 null일 수 없으며 ID가 존재해야 합니다.");
@@ -52,6 +57,64 @@ public class Match extends BaseEntity {
                 .status(MatchStatus.MATCHED)
                 .matchedAt(matchedAt)
                 .build();
+    }
+
+    public boolean isActive() {
+        return this.status == MatchStatus.MATCHED;
+    }
+
+    public boolean isCompleted() {
+        return this.status == MatchStatus.COMPLETED;
+    }
+
+    public boolean isCancelled() {
+        return this.status == MatchStatus.CANCELLED;
+    }
+
+    public void complete(Instant endedAt) {
+        transitionTo(MatchStatus.COMPLETED, endedAt);
+    }
+
+    public void cancel(Instant endedAt) {
+        transitionTo(MatchStatus.CANCELLED, endedAt);
+    }
+
+    private void transitionTo(MatchStatus targetStatus, Instant endedAt) {
+        if (this.status == targetStatus) {
+            return;
+        }
+        if (this.status != MatchStatus.MATCHED) {
+            throw new IllegalStateException("MATCHED 상태의 매칭만 종료 상태로 전환할 수 있습니다. 현재 상태: " + this.status);
+        }
+        validateEndedAt(endedAt);
+        this.status = targetStatus;
+        this.endedAt = endedAt;
+    }
+
+    @PrePersist
+    @PreUpdate
+    private void validateStatusState() {
+        if (this.status == null) {
+            throw new IllegalStateException("매칭 상태는 필수입니다.");
+        }
+        if (this.matchedAt == null) {
+            throw new IllegalStateException("매칭 성사 시각은 필수입니다.");
+        }
+        if (this.status == MatchStatus.MATCHED && this.endedAt != null) {
+            throw new IllegalStateException("활성 매칭에는 종료 시각을 설정할 수 없습니다.");
+        }
+        if (this.status != MatchStatus.MATCHED) {
+            validateEndedAt(this.endedAt);
+        }
+    }
+
+    private void validateEndedAt(Instant endedAt) {
+        if (endedAt == null) {
+            throw new IllegalArgumentException("매칭 종료 시각은 필수입니다.");
+        }
+        if (this.matchedAt != null && endedAt.isBefore(this.matchedAt)) {
+            throw new IllegalArgumentException("매칭 종료 시각은 매칭 성사 시각보다 빠를 수 없습니다.");
+        }
     }
 
     private static void validateDifferentOwners(MatchRequest a, MatchRequest b) {

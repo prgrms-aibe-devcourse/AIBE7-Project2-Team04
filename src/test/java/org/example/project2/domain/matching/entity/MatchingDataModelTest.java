@@ -2,6 +2,7 @@ package org.example.project2.domain.matching.entity;
 
 import jakarta.persistence.EntityManager;
 import org.example.project2.domain.chat.entity.ChatRoom;
+import org.example.project2.domain.chat.entity.ChatRoomStatus;
 import org.example.project2.domain.chat.repository.ChatRoomRepository;
 import org.example.project2.domain.matching.dto.scoring.BidirectionalMatchScoreSnapshot;
 import org.example.project2.domain.matching.entity.Match;
@@ -172,6 +173,41 @@ class MatchingDataModelTest {
         request2.cancel();
         assertThatThrownBy(request2::expire)
                 .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void matchCanTransitionOnlyFromMatchedAndRetainsEndTime() {
+        Match completed = Match.of(request1, request2, NOW);
+        Instant completedAt = NOW.plusSeconds(60);
+
+        completed.complete(completedAt);
+
+        assertThat(completed.getStatus()).isEqualTo(MatchStatus.COMPLETED);
+        assertThat(completed.getEndedAt()).isEqualTo(completedAt);
+
+        completed.complete(completedAt.plusSeconds(1));
+        assertThat(completed.getEndedAt()).isEqualTo(completedAt);
+        assertThatThrownBy(() -> completed.cancel(completedAt.plusSeconds(1)))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void chatRoomCanCloseOnlyOnceAndRetainsCloseTime() {
+        ChatRoom chatRoom = ChatRoom.builder()
+                .match(Match.of(request1, request2, NOW))
+                .build();
+        Instant closedAt = NOW.plusSeconds(120);
+
+        assertThatThrownBy(() -> chatRoom.close(null))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        chatRoom.close(closedAt);
+
+        assertThat(chatRoom.getStatus()).isEqualTo(ChatRoomStatus.CLOSED);
+        assertThat(chatRoom.getClosedAt()).isEqualTo(closedAt);
+
+        chatRoom.close(closedAt.plusSeconds(1));
+        assertThat(chatRoom.getClosedAt()).isEqualTo(closedAt);
     }
 
     @Test
