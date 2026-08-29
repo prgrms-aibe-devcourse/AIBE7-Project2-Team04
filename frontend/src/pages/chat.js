@@ -45,6 +45,11 @@ export function renderChatPage(container) {
     </main>
   `
 
+  const roomIdFromQuery = new URLSearchParams(window.location.search).get('roomId')
+  if (/^\d+$/.test(roomIdFromQuery || '')) {
+    document.getElementById('room-id-input').value = roomIdFromQuery
+  }
+
   // ── 상태 변수 ──────────────────────────────────────────────────────────────
   let stompClient  = null
   let subscription = null
@@ -141,7 +146,7 @@ export function renderChatPage(container) {
     stompClient.send(
       `/app/chat/${roomId}/send`,
       {},
-      JSON.stringify({ message })
+      JSON.stringify({ roomId: Number(roomId), message })
     )
     document.getElementById('msg-input').value = ''
   }
@@ -166,4 +171,8 @@ export function renderChatPage(container) {
   document.getElementById('msg-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') sendMessage()
   })
+
+  if (/^\d+$/.test(roomIdFromQuery || '')) {
+    connect()
+  }
 }

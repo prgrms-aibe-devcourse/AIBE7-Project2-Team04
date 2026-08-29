@@ -1,0 +1,142 @@
+.matching-page {
+  min-height: calc(100vh - 88px);
+  background:
+    radial-gradient(circle at 8% 4%, rgba(255, 107, 74, 0.08), transparent 28%),
+    radial-gradient(circle at 94% 78%, rgba(30, 44, 74, 0.07), transparent 30%),
+    #faf7f2;
+}
+
+.matching-page .matching-card {
+  border: 1px solid rgba(225, 191, 184, 0.55);
+  box-shadow: 0 16px 40px rgba(30, 44, 74, 0.06);
+}
+
+.matching-page .matching-control {
+  min-height: 48px;
+  border: 1px solid rgba(225, 191, 184, 0.8);
+  background: #ffffff;
+  color: #0b1c30;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.matching-page .matching-control:focus {
+  outline: none;
+  border-color: #ff6b4a;
+  box-shadow: 0 0 0 3px rgba(255, 107, 74, 0.16);
+}
+
+.matching-page .matching-tag {
+  border: 1px solid #e1bfb8;
+  color: #1e2c4a;
+  background: #ffffff;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.matching-page .matching-tag:hover {
+  border-color: #ff6b4a;
+  transform: translateY(-1px);
+}
+
+.matching-page .matching-tag.is-selected {
+  border-color: #ff6b4a;
+  color: #ffffff;
+  background: #ff6b4a;
+  box-shadow: 0 6px 16px rgba(255, 107, 74, 0.2);
+}
+
+.matching-page .matching-tag:focus-visible,
+.matching-page button:focus-visible,
+.matching-page a:focus-visible,
+.matching-page input:focus-visible,
+.matching-page textarea:focus-visible,
+.matching-page select:focus-visible {
+  outline: 3px solid rgba(255, 107, 74, 0.34);
+  outline-offset: 2px;
+}
+
+.matching-page .matching-status-orbit {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.matching-page .matching-status-orbit::before,
+.matching-page .matching-status-orbit::after {
+  position: absolute;
+  content: "";
+  border: 1px solid rgba(255, 107, 74, 0.3);
+  border-radius: 999px;
+  animation: matching-orbit 2.8s ease-out infinite;
+}
+
+.matching-page .matching-status-orbit::before {
+  inset: -10px;
+}
+
+.matching-page .matching-status-orbit::after {
+  inset: -22px;
+  animation-delay: 900ms;
+}
+
+.matching-page .matching-avatar-fallback {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: #ffffff;
+  background: linear-gradient(135deg, #ff6b4a, #1e2c4a);
+  font-family: "Plus Jakarta Sans", Pretendard, sans-serif;
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+.matching-page .matching-avatar img.is-hidden {
+  display: none;
+}
+
+.matching-page .matching-progress {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eff4ff;
+}
+
+.matching-page .matching-progress > span {
+  display: block;
+  width: 42%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ff6b4a, #ffad98);
+  animation: matching-progress 2.4s ease-in-out infinite;
+}
+
+.matching-page .matching-skeleton {
+  background: linear-gradient(90deg, #eff4ff 25%, #ffffff 50%, #eff4ff 75%);
+  background-size: 200% 100%;
+  animation: matching-skeleton 1.4s ease-in-out infinite;
+}
+
+@keyframes matching-orbit {
+  0% { transform: scale(0.82); opacity: 0.8; }
+  70%, 100% { transform: scale(1.08); opacity: 0; }
+}
+
+@keyframes matching-progress {
+  0% { transform: translateX(-130%); }
+  50% { transform: translateX(110%); }
+  100% { transform: translateX(260%); }
+}
+
+@keyframes matching-skeleton {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .matching-page .matching-status-orbit::before,
+  .matching-page .matching-status-orbit::after,
+  .matching-page .matching-progress > span,
+  .matching-page .matching-skeleton {
+    animation: none;
+  }
+}

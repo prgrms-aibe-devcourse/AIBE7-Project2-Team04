@@ -619,11 +619,21 @@ function initKakaoMap(lat, lng, name, sido, sigungu, detail) {
 
         // Confirm button event
         document.querySelector('#btn-confirm-location')?.addEventListener('click', () => {
-          if (!lastValidRegionCode) {
+          if (!lastValidRegionCode || !lastValidPosition) {
             alert('유효한 지역과 핀 위치를 지정해 주세요.')
             return
           }
-          alert(`[핀 위치 확정 성공]\n\n• 행정코드: ${lastValidRegionCode}\n• 지역: ${lastValidSido} ${lastValidSigungu} ${lastValidDetail}`.trim() + `\n• 위도: ${lastValidPosition.getLat()}\n• 경도: ${lastValidPosition.getLng()}\n\n해당 위치를 기준으로 매칭을 시작합니다.`)
+
+          const query = new URLSearchParams({
+            regionCode: lastValidRegionCode,
+            regionName: `${lastValidSido} ${lastValidSigungu} ${lastValidDetail}`.trim(),
+            lat: String(lastValidPosition.getLat()),
+            lng: String(lastValidPosition.getLng()),
+            sido: lastValidSido,
+            sigungu: lastValidSigungu,
+            name: lastValidDetail || lastValidSigungu,
+          })
+          window.location.assign(`/matching/request?${query.toString()}`)
         })
       })
     }

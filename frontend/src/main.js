@@ -6,6 +6,7 @@ import { renderPreferredRegionPage } from './pages/preferred-region.js'
 import { renderMatchMapPage } from './pages/match-map.js'
 import { renderPersonalitySurvey } from './pages/personality-survey.js'
 import { renderChatPage } from './pages/chat.js'
+import { renderMatchingRequestPage } from './pages/matching-request.js'
 
 const app = document.querySelector('#app')
 
@@ -90,6 +91,12 @@ export function navigateTo(path) {
 
 // 라우터 분기 로직
 const routeApp = async () => {
+  if (typeof window.__matchingRequestCleanup === 'function') {
+    const cleanup = window.__matchingRequestCleanup
+    delete window.__matchingRequestCleanup
+    cleanup()
+  }
+
   const path = window.location.pathname
   const params = new URLSearchParams(window.location.search)
 
@@ -107,6 +114,8 @@ const routeApp = async () => {
     renderPersonalitySurvey(app)
   } else if (path === '/chat') {
     renderChatPage(app)
+  } else if (path === '/matching/request') {
+    await renderMatchingRequestPage(app)
   } else {
     // 기본 메인 랜딩 페이지
     initLandingPage()
