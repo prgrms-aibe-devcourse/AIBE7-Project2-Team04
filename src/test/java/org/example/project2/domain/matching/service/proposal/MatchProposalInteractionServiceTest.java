@@ -2,6 +2,7 @@ package org.example.project2.domain.matching.service.proposal;
 
 import org.example.project2.domain.matching.dto.proposal.MatchProposalDecisionRequest;
 import org.example.project2.domain.matching.dto.proposal.MatchProposalDecisionType;
+import org.example.project2.domain.matching.dto.proposal.MatchProposalPartnerProfileResponse;
 import org.example.project2.domain.matching.dto.proposal.MatchProposalResponse;
 import org.example.project2.domain.matching.dto.scoring.BidirectionalMatchScoreSnapshot;
 import org.example.project2.domain.matching.entity.MatchProposal;
@@ -27,10 +28,12 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -102,6 +105,36 @@ class MatchProposalInteractionServiceTest {
         assertThat(response.partner().styleTags()).containsExactly(PersonalityTag.GOOD_LISTENER);
         assertThat(response.compatibilityScore()).isEqualTo((short) 74);
         assertThat(response.compatibilityReasons()).containsExactly("대화 선호가 잘 맞아요.");
+
+        Set<String> partnerFields = Arrays.stream(MatchProposalPartnerProfileResponse.class.getRecordComponents())
+                .map(component -> component.getName())
+                .collect(Collectors.toSet());
+        assertThat(partnerFields).containsExactlyInAnyOrder(
+                "userId", "nickname", "profileImageUrl", "description", "styleTags"
+        );
+        assertThat(partnerFields).doesNotContain(
+                "email", "authProvider", "providerId", "location", "latitude", "longitude",
+                "desiredPersonalityText", "selfDescription", "embedding"
+        );
+    }
+
+    @Test
+    void doesNotExposeOtherUsersAcceptanceBeforeFinalResult() {
+        proposal.decide(proposal.getRequest1().getId(), MatchProposalDecision.ACCEPTED, NOW);
+        when(matchProposalRepository.findPendingByUserId(targetUser.getId()))
+                .thenReturn(Optional.of(proposal));
+        when(profileRepository.findByUserId(sourceUser.getId())).thenReturn(Optional.empty());
+
+        MatchProposalResponse response = service.getCurrent(targetUser.getId());
+
+        assertThat(response.myDecision()).isEqualTo(MatchProposalDecision.PENDING);
+        Set<String> responseFields = Arrays.stream(MatchProposalResponse.class.getRecordComponents())
+                .map(component -> component.getName())
+                .collect(Collectors.toSet());
+        assertThat(responseFields).doesNotContain(
+                "partnerDecision", "request1Decision", "request2Decision",
+                "partnerDecidedAt", "request1DecidedAt", "request2DecidedAt"
+        );
     }
 
     @Test

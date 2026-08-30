@@ -5,6 +5,7 @@ import org.example.project2.domain.chat.entity.ChatRoomStatus;
 import org.example.project2.domain.chat.repository.ChatRoomRepository;
 import org.example.project2.domain.matching.entity.*;
 import org.example.project2.domain.matching.repository.MatchParticipantRepository;
+import org.example.project2.domain.matching.repository.MatchProposalRepository;
 import org.example.project2.domain.matching.repository.MatchRepository;
 import org.example.project2.domain.matching.repository.MatchRequestRepository;
 import org.example.project2.domain.user.entity.AuthProvider;
@@ -59,6 +60,9 @@ public class ChatWebSocketSecurityTest {
     private MatchRequestRepository matchRequestRepository;
 
     @Autowired
+    private MatchProposalRepository matchProposalRepository;
+
+    @Autowired
     private MatchRepository matchRepository;
 
     @Autowired
@@ -92,6 +96,7 @@ public class ChatWebSocketSecurityTest {
         chatRoomRepository.deleteAllInBatch();
         matchParticipantRepository.deleteAllInBatch();
         matchRepository.deleteAllInBatch();
+        matchProposalRepository.deleteAllInBatch();
         matchRequestRepository.deleteAllInBatch();
         refreshTokenRepository.deleteAllInBatch();
         deleteUserRelatedData();
@@ -160,6 +165,7 @@ public class ChatWebSocketSecurityTest {
         chatRoomRepository.deleteAllInBatch();
         matchParticipantRepository.deleteAllInBatch();
         matchRepository.deleteAllInBatch();
+        matchProposalRepository.deleteAllInBatch();
         matchRequestRepository.deleteAllInBatch();
         refreshTokenRepository.deleteAllInBatch();
         deleteUserRelatedData();
