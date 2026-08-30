@@ -119,7 +119,7 @@
               "section-py": "96px",
             },
             fontFamily: {
-              headline: ["Plus Jakarta Sans", "Pretendard", "sans-serif"],
+              headline: ["GyeonggiMillenniumTitle", "Pretendard", "sans-serif"],
               body: ["Be Vietnam Pro", "Pretendard", "sans-serif"],
             },
             boxShadow: {
@@ -176,12 +176,13 @@
               <span class="material-symbols-outlined text-sm text-primary-container">psychology</span>
               <span>식사 성향</span>
             </a>
-            <button id="btn-revoke-location" class="btn-secondary px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-semibold text-error hover:bg-error/10 hover:text-error border-error/30 flex items-center gap-1">
+            <button id="btn-revoke-location" class="btn-action-revoke px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm" aria-label="위치 이용 동의 철회" title="위치 이용 동의 철회">
               <span class="material-symbols-outlined text-sm">no_accounts</span>
-              <span>위치동의 철회</span>
+              <span class="header-action-label">위치동의 철회</span>
             </button>
-            <button id="btn-logout" class="btn-secondary px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-semibold">
-              로그아웃
+            <button id="btn-logout" class="btn-action-logout px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm" aria-label="로그아웃" title="로그아웃">
+              <span class="material-symbols-outlined text-sm">logout</span>
+              <span class="header-action-label">로그아웃</span>
             </button>
           </div>
         </div>
@@ -200,13 +201,13 @@
               혼밥 말고 <span class="text-primary-container">마주한끼</span>
             </h1>
             <p class="text-base sm:text-lg text-secondary max-w-xl mx-auto lg:mx-0 leading-relaxed">
-              활동 구(District), 식사 속도, 대화 선호도에 맞춰 나와 꼭 맞는 밥친구를 찾아드립니다. 마주 앉아 나누는 따뜻하고 편안한 식사를 시작해 보세요.
+              활동 지역, 식사 속도, 대화 선호도에 맞춰 나와 꼭 맞는 밥친구를 찾아드립니다. 마주 앉아 나누는 따뜻하고 편안한 식사를 시작해 보세요.
             </p>
 
             <!-- Quick Match Box -->
             <div class="bg-surface-container-lowest p-3 sm:p-4 rounded-card shadow-soft flex flex-col sm:flex-row items-center gap-3 max-w-xl mx-auto lg:mx-0 border border-outline-variant/30">
               <!-- 채팅방 가기 버튼: 로그인 시에만 표시 -->
-              <button id="btn-go-chat" class="auth-only-button hidden w-full sm:w-auto btn-secondary py-3 px-5 rounded-full text-sm font-semibold flex items-center justify-center gap-1.5 shrink-0">
+              <button id="btn-go-chat" class="auth-only-button hidden w-full sm:w-auto btn-action-chat py-3 px-5 rounded-full text-sm shrink-0">
                 <span class="material-symbols-outlined text-lg">chat</span>
                 <span>채팅방 가기</span>
               </button>
@@ -214,9 +215,9 @@
                 <span class="material-symbols-outlined text-lg">local_dining</span>
                 <span>마주한끼 찾기</span>
               </button>
-              <button id="btn-register-preferred" class="auth-only-button hidden w-full sm:w-auto btn-secondary py-3 px-5 rounded-full text-sm font-semibold flex items-center justify-center gap-1.5 shrink-0">
+              <button id="btn-register-preferred" class="auth-only-button hidden w-full sm:w-auto btn-action-location py-3 px-5 rounded-full text-sm shrink-0">
                 <span class="material-symbols-outlined text-lg">favorite</span>
-                <span>선호위치 등록</span>
+                <span>선호 위치 등록</span>
               </button>
             </div>
 

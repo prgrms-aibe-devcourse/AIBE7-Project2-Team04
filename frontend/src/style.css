@@ -1,5 +1,33 @@
 @import url("https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap");
 
+@font-face {
+  font-family: "GyeonggiMillenniumTitle";
+  src: url("https://cdn.jsdelivr.net/gh/projectnoonnu/2410-3@1.0/Title_Light.woff") format("woff");
+  font-weight: 300;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "GyeonggiMillenniumTitle";
+  src: url("https://cdn.jsdelivr.net/gh/projectnoonnu/2410-3@1.0/Title_Medium.woff") format("woff");
+  font-weight: 500;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "GyeonggiMillenniumTitle";
+  src: url("https://cdn.jsdelivr.net/gh/projectnoonnu/2410-3@1.0/Title_Bold.woff") format("woff");
+  font-weight: 700;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "GyeonggiMillenniumTitle";
+  src: url("https://cdn.jsdelivr.net/gh/projectnoonnu/2410-3@1.0/TitleV.woff") format("woff");
+  font-weight: 800;
+  font-display: swap;
+}
+
 :root {
   --color-primary: #ae3115;
   --color-primary-container: #ff6b4a; /* Coral Orange */
@@ -60,19 +88,116 @@ select {
   transform: scale(0.98);
 }
 
-/* Secondary Button (Navy Outline) */
+/* Secondary Button (Soft Neutral) */
 .btn-secondary {
-  border: 2px solid #1e2c4a;
+  border: 1px solid rgba(30, 44, 74, 0.16);
   color: #1e2c4a;
-  background: transparent;
+  background: #ffffff;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  box-shadow: 0 3px 10px rgba(30, 44, 74, 0.05);
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .btn-secondary:hover {
-  transform: scale(1.02);
-  background: rgba(30, 44, 74, 0.05);
+  transform: translateY(-1px);
+  border-color: rgba(30, 44, 74, 0.28);
+  background: #f4f6fa;
+  box-shadow: 0 8px 18px rgba(30, 44, 74, 0.08);
+}
+
+/* Semantic action buttons */
+.btn-action-chat,
+.btn-action-location,
+.btn-action-revoke,
+.btn-action-logout {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  border-width: 1px;
+  border-style: solid;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.btn-action-chat {
+  border-color: #1e2c4a;
+  background: #1e2c4a;
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(30, 44, 74, 0.18);
+}
+
+.btn-action-chat:hover {
+  border-color: #2a3d64;
+  background: #2a3d64;
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(30, 44, 74, 0.22);
+}
+
+.btn-action-location {
+  border-color: #ffd2c6;
+  background: #fff2ed;
+  color: #ae3115;
+  box-shadow: 0 5px 14px rgba(255, 107, 74, 0.09);
+}
+
+.btn-action-location:hover {
+  border-color: #ffb8a8;
+  background: #ffe7df;
+  color: #8f2711;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(255, 107, 74, 0.14);
+}
+
+.btn-action-revoke {
+  border-color: #efb8af;
+  background: #fff1f0;
+  color: #b42318;
+}
+
+.btn-action-revoke:hover {
+  border-color: #df8f84;
+  background: #ffe3e0;
+  color: #921d14;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(180, 35, 24, 0.12);
+}
+
+.btn-action-logout {
+  border-color: #dce3ef;
+  background: #f4f6fa;
+  color: #505e7f;
+}
+
+.btn-action-logout:hover {
+  border-color: #c8d2e2;
+  background: #eaf0f8;
+  color: #1e2c4a;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(30, 44, 74, 0.08);
+}
+
+.btn-action-chat:focus-visible,
+.btn-action-location:focus-visible,
+.btn-action-revoke:focus-visible,
+.btn-action-logout:focus-visible {
+  outline: 3px solid rgba(255, 107, 74, 0.34);
+  outline-offset: 2px;
+}
+
+@media (max-width: 640px) {
+  .header-logged-in .btn-action-revoke,
+  .header-logged-in .btn-action-logout {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+  }
+
+  .header-logged-in .header-action-label {
+    display: none;
+  }
 }
 
 /* Social Login Buttons */

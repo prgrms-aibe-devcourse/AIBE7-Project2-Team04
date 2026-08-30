@@ -155,7 +155,7 @@ export async function renderMatchMapPage(container, isCurrentRoute = () => true)
           <p class="text-sm text-secondary">지정한 위치: <span id="text-current-location" class="font-bold text-primary-container">${sido} ${sigungu} ${detail}</span></p>
         </div>
         <div class="flex items-center gap-2">
-          <button id="btn-map-revoke" class="btn-secondary px-4 py-2 rounded-full text-sm font-semibold text-error hover:bg-error/10 hover:text-error border-error/30 flex items-center gap-1">
+          <button id="btn-map-revoke" class="btn-action-revoke px-4 py-2 rounded-full text-sm" aria-label="위치 이용 동의 철회" title="위치 이용 동의 철회">
             <span class="material-symbols-outlined text-lg">no_accounts</span>
             <span>동의 철회</span>
           </button>
