@@ -153,6 +153,28 @@ class PersonalityCompatibilityCalculatorTest {
     }
 
     @Test
+    void normalizesIdenticalOrthogonalAndOppositeVectorsToHundredFiftyAndZero() {
+        PersonalityEmbeddingVector desired = embedding(new float[]{1, 0}, "PERSONALITY_FREE_TEXT_V2");
+
+        PersonalityCompatibilityScore identical = calculator.calculate(
+                Set.of(), Set.of(), desired,
+                embedding(new float[]{1, 0}, "PERSONALITY_FREE_TEXT_V2")
+        );
+        PersonalityCompatibilityScore orthogonal = calculator.calculate(
+                Set.of(), Set.of(), desired,
+                embedding(new float[]{0, 1}, "PERSONALITY_FREE_TEXT_V2")
+        );
+        PersonalityCompatibilityScore opposite = calculator.calculate(
+                Set.of(), Set.of(), desired,
+                embedding(new float[]{-1, 0}, "PERSONALITY_FREE_TEXT_V2")
+        );
+
+        assertThat(identical.embeddingScore()).isEqualTo((short) 100);
+        assertThat(orthogonal.embeddingScore()).isEqualTo((short) 50);
+        assertThat(opposite.embeddingScore()).isEqualTo((short) 0);
+    }
+
+    @Test
     void doesNotIncludeTagSignalInTheEmbeddingScore() {
         PersonalityCompatibilityScore withMatchingTag = calculator.calculate(
                 Set.of(PersonalityTag.GOOD_LISTENER),

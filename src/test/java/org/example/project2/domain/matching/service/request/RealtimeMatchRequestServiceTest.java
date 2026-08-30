@@ -6,6 +6,7 @@ import org.example.project2.domain.matching.entity.MatchRequestStatus;
 import org.example.project2.domain.matching.exception.request.RealtimeMatchRequestErrorCode;
 import org.example.project2.domain.matching.exception.request.RealtimeMatchRequestException;
 import org.example.project2.domain.matching.repository.MatchRequestRepository;
+import org.example.project2.domain.matching.repository.MatchProposalRepository;
 import org.example.project2.domain.matching.repository.RealtimeMatchWaitingStore;
 import org.example.project2.domain.matching.service.calculation.PersonalityCompatibilityCalculator;
 import org.example.project2.domain.personality.entity.PersonalityTag;
@@ -58,6 +59,7 @@ class RealtimeMatchRequestServiceTest {
     @Autowired UserLocationPreferenceRepository locationPreferenceRepository;
     @Autowired RegionRepository regionRepository;
     @Autowired MatchRequestRepository matchRequestRepository;
+    @Autowired MatchProposalRepository matchProposalRepository;
 
     @MockitoBean RealtimeMatchWaitingStore waitingStore;
     @MockitoBean RegionPinValidator regionPinValidator;
@@ -104,6 +106,7 @@ class RealtimeMatchRequestServiceTest {
     @AfterEach
     void tearDown() {
         if (user != null && userRepository.existsById(user.getId())) {
+            matchProposalRepository.deleteAllInBatch();
             matchRequestRepository.deleteAll(matchRequestRepository.findAllByUserId(user.getId()));
             locationPreferenceRepository.deleteById(user.getId());
             userRepository.deleteById(user.getId());
@@ -185,6 +188,25 @@ class RealtimeMatchRequestServiceTest {
                 user.getId(),
                 Set.of(MatchRequestStatus.WAITING).stream().toList()
         )).isEmpty();
+    }
+
+    @Test
+    void compensatesDatabaseAndRedisReservationWhenActivationFails() {
+        when(waitingStore.activate(
+                eq(user.getId()), any(String.class), anyLong(), anyDouble(), anyDouble(), any(Duration.class)
+        )).thenReturn(false);
+
+        assertThatThrownBy(() -> service.create(user.getId(), validRequest(null)))
+                .isInstanceOfSatisfying(RealtimeMatchRequestException.class, exception ->
+                        assertThat(exception.getErrorCode())
+                                .isEqualTo(RealtimeMatchRequestErrorCode.WAITING_STORE_UNAVAILABLE));
+
+        assertThat(matchRequestRepository.findAllByUserIdAndStatusIn(
+                user.getId(),
+                Set.of(MatchRequestStatus.WAITING, MatchRequestStatus.CONFIRMING).stream().toList()
+        )).isEmpty();
+        verify(waitingStore).releaseReservation(eq(user.getId()), any(String.class));
+        verify(waitingStore).remove(eq(user.getId()), anyLong());
     }
 
     @Test

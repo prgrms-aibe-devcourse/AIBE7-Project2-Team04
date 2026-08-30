@@ -13,6 +13,31 @@ class DesiredPersonalityTagMatchScoreTest {
     private final DesiredPersonalityTagScoreCalculator calculator = new DesiredPersonalityTagScoreCalculator();
 
     @Test
+    void returnsOneHundredWhenEveryDesiredTagMatches() {
+        DesiredPersonalityTagMatchScore result = calculator.calculate(
+                Set.of(
+                        PersonalityTag.GOOD_LISTENER,
+                        PersonalityTag.FOOD_TALK,
+                        PersonalityTag.ENJOY_DESSERT
+                ),
+                Set.of(
+                        PersonalityTag.GOOD_LISTENER,
+                        PersonalityTag.FOOD_TALK,
+                        PersonalityTag.ENJOY_DESSERT,
+                        PersonalityTag.DEEP_TALK
+                )
+        );
+
+        assertThat(result.available()).isTrue();
+        assertThat(result.score()).isEqualTo((short) 100);
+        assertThat(result.matchedTags()).containsExactlyInAnyOrder(
+                PersonalityTag.GOOD_LISTENER,
+                PersonalityTag.FOOD_TALK,
+                PersonalityTag.ENJOY_DESSERT
+        );
+    }
+
+    @Test
     void calculatesScoreFromTheMatchedDesiredTags() {
         DesiredPersonalityTagMatchScore result = calculator.calculate(
                 Set.of(
@@ -35,5 +60,17 @@ class DesiredPersonalityTagMatchScoreTest {
                 .isEqualTo(DesiredPersonalityTagMatchScore.unavailable());
         assertThat(calculator.calculate(Set.of(PersonalityTag.GOOD_LISTENER), Set.of()))
                 .isEqualTo(DesiredPersonalityTagMatchScore.unavailable());
+    }
+
+    @Test
+    void returnsZeroWhenNoDesiredTagMatches() {
+        DesiredPersonalityTagMatchScore result = calculator.calculate(
+                Set.of(PersonalityTag.GOOD_LISTENER, PersonalityTag.FOOD_TALK),
+                Set.of(PersonalityTag.DEEP_TALK)
+        );
+
+        assertThat(result.available()).isTrue();
+        assertThat(result.score()).isZero();
+        assertThat(result.matchedTags()).isEmpty();
     }
 }

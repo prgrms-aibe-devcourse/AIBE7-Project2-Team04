@@ -7,7 +7,9 @@ import org.example.project2.domain.user.entity.FoodCategory;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -87,6 +89,19 @@ class RealtimeMatchRequestCreateRequestTest {
         );
 
         assertThat(request.desiredPersonalityText()).isNull();
+    }
+
+    @Test
+    void doesNotCollectDietaryRestrictionFields() {
+        Set<String> fieldNames = Arrays.stream(RealtimeMatchRequestCreateRequest.class.getRecordComponents())
+                .map(component -> component.getName())
+                .collect(Collectors.toSet());
+
+        assertThat(fieldNames).contains("foodCategory");
+        assertThat(fieldNames).doesNotContain(
+                "allergy", "allergies", "dietaryRestriction", "dietaryRestrictions",
+                "vegetarian", "vegan", "religiousRestriction", "healthCondition"
+        );
     }
 
     private RealtimeMatchRequestCreateRequest request(PersonalityTag... tags) {
