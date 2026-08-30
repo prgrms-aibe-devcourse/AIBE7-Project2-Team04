@@ -26,6 +26,7 @@
 }
 
 .matching-page .matching-tag {
+  min-height: 44px;
   border: 1px solid #e1bfb8;
   color: #1e2c4a;
   background: #ffffff;
@@ -42,6 +43,93 @@
   color: #ffffff;
   background: #ff6b4a;
   box-shadow: 0 6px 16px rgba(255, 107, 74, 0.2);
+}
+
+.matching-page .matching-stepper {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.matching-page .matching-stepper-item {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
+  color: #505e7f;
+}
+
+.matching-page .matching-stepper-node {
+  display: inline-grid;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  place-items: center;
+  border: 1px solid rgba(141, 113, 106, 0.45);
+  border-radius: 999px;
+  background: #ffffff;
+  color: #505e7f;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.matching-page .matching-stepper-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.matching-page .matching-stepper-item.is-current {
+  color: #ae3115;
+}
+
+.matching-page .matching-stepper-item.is-current .matching-stepper-node {
+  border-color: #ff6b4a;
+  background: #ff6b4a;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(255, 107, 74, 0.2);
+}
+
+.matching-page .matching-stepper-item.is-complete {
+  color: #1e2c4a;
+}
+
+.matching-page .matching-stepper-item.is-complete .matching-stepper-node {
+  border-color: #ff6b4a;
+  background: #ffe4de;
+  color: #ae3115;
+}
+
+.matching-page .matching-step-progress {
+  height: 0.375rem;
+  margin-top: 0.75rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eff4ff;
+}
+
+.matching-page .matching-step-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ff6b4a, #ffad98);
+  transition: width 240ms ease;
+}
+
+.matching-page .matching-selection-summary {
+  border-bottom: 1px solid rgba(225, 191, 184, 0.35);
+  padding-bottom: 1rem;
+}
+
+.matching-page .matching-summary-chip {
+  max-width: 100%;
+}
+
+.matching-page .matching-form-actions > div:last-child {
+  min-width: 0;
 }
 
 .matching-page .matching-tag:focus-visible,
@@ -136,7 +224,33 @@
   .matching-page .matching-status-orbit::before,
   .matching-page .matching-status-orbit::after,
   .matching-page .matching-progress > span,
-  .matching-page .matching-skeleton {
+  .matching-page .matching-skeleton,
+  .matching-page .matching-step-progress > span {
     animation: none;
+    transition: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .matching-page .matching-stepper {
+    gap: 0.375rem;
+  }
+
+  .matching-page .matching-stepper-item {
+    gap: 0.375rem;
+  }
+
+  .matching-page .matching-stepper-node {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+
+  .matching-page .matching-stepper-label {
+    font-size: 0.6875rem;
+  }
+
+  .matching-page .matching-form-actions > div:last-child,
+  .matching-page .matching-form-actions > div:last-child > button {
+    width: 100%;
   }
 }

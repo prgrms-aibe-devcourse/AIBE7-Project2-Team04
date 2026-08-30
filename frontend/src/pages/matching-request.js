@@ -11,6 +11,7 @@ import {
   getLatestMatchResult,
   getPreferredRegion,
 } from '../matching/matching-api.js'
+import { getPersonalityProfile } from '../personality/personality-api.js'
 
 const TAG_GROUPS = [
   {
@@ -58,9 +59,28 @@ const FOOD_CATEGORIES = [
 
 const FOOD_LABELS = new Map(FOOD_CATEGORIES.map(([code, label]) => [code, label]))
 const MATCHING_POLL_INTERVAL = 3000
+const DEFAULT_SEARCH_RADIUS = 3000
+const EXPANDED_SEARCH_RADIUS = 5000
+const MATCHING_FORM_STEPS = [
+  {
+    label: '언제·어디서',
+    title: '언제, 어디서 만날까요?',
+    description: '약속할 지역과 시간을 먼저 정해 주세요.',
+  },
+  {
+    label: '무엇을 먹을지',
+    title: '무엇을 먹을까요?',
+    description: '함께 먹고 싶은 음식 카테고리를 골라 주세요.',
+  },
+  {
+    label: '어떤 분위기인지',
+    title: '어떤 분위기가 좋을까요?',
+    description: '편안하게 식사할 수 있는 밥친구의 성향을 골라 주세요.',
+  },
+]
 
 /**
- * 지도에서 확정한 핀과 매칭 조건을 한 화면에서 제출하고,
+ * 지도에서 확정한 핀과 매칭 조건을 단계별로 제출하고,
  * REST 복구 조회와 STOMP 개인 큐를 함께 사용하는 실시간 매칭 화면입니다.
  */
 export async function renderMatchingRequestPage(container) {
@@ -89,11 +109,15 @@ export async function renderMatchingRequestPage(container) {
     errorMessage: '',
     noticeMessage: '',
     mode: 'form',
+    formStep: 1,
+    personalityProfileCompleted: false,
+    radiusExpansionOffer: false,
+    radiusExpansionUsed: false,
     location: queryLocation,
     foodCategory: 'KOREAN',
     desiredTimeSlot: getDefaultDateTimeValue(),
     locationName: queryLocation.locationName || '',
-    searchRadius: 3000,
+    searchRadius: DEFAULT_SEARCH_RADIUS,
     selectedTags: new Set(),
     desiredPersonalityText: '',
     currentRequest: null,
@@ -126,7 +150,7 @@ export async function renderMatchingRequestPage(container) {
   render()
 
   try {
-    await loadLocation()
+    await Promise.all([loadLocation(), loadPersonalityProfile()])
     if (disposed) return
     state.initialLoading = false
     render()
@@ -167,6 +191,18 @@ export async function renderMatchingRequestPage(container) {
     state.location = location
   }
 
+  async function loadPersonalityProfile() {
+    try {
+      const profile = await getPersonalityProfile()
+      state.personalityProfileCompleted = profile?.completed === true
+        || profile?.onboardingStatus === 'COMPLETED'
+    } catch (error) {
+      if (isUnauthorized(error)) throw error
+      // 성향 안내 카드는 조회 실패 시에도 기본 노출해 매칭 진입을 막지 않습니다.
+      state.personalityProfileCompleted = false
+    }
+  }
+
   async function refreshFlow({ checkResult = false } = {}) {
     if (disposed || isRefreshing) return
     if (!checkResult && !state.hasSubmittedRequest && !state.currentRequest && !state.currentProposal) return
@@ -188,6 +224,7 @@ export async function renderMatchingRequestPage(container) {
       if (requestFound) {
         state.currentRequest = requestResult.value
         state.hasSubmittedRequest = true
+        state.radiusExpansionOffer = false
       } else if (requestNotFound) {
         state.currentRequest = null
       } else if (isUnauthorized(requestResult.reason)) {
@@ -204,6 +241,7 @@ export async function renderMatchingRequestPage(container) {
           }
           state.currentProposal = proposalResult.value
           state.hasSubmittedRequest = true
+          state.radiusExpansionOffer = false
         } else {
           state.currentProposal = null
         }
@@ -229,9 +267,11 @@ export async function renderMatchingRequestPage(container) {
         }
         if (state.hasSubmittedRequest) {
           state.hasSubmittedRequest = false
-          if (!state.noticeMessage) {
-            state.noticeMessage = '현재 매칭 요청이 종료되었습니다. 조건을 바꿔 다시 탐색해 보세요.'
-          }
+          state.radiusExpansionOffer = !state.radiusExpansionUsed
+            && Number(state.searchRadius) === DEFAULT_SEARCH_RADIUS
+          state.noticeMessage = state.radiusExpansionOffer
+            ? ''
+            : '주변에 후보를 찾지 못했어요. 조건을 바꿔 다시 시작해 보세요.'
         }
       }
 
@@ -340,6 +380,7 @@ export async function renderMatchingRequestPage(container) {
     }
     state.latestResult = null
     state.hasSubmittedRequest = true
+    state.radiusExpansionOffer = false
     state.expiryHandled = false
     state.noticeMessage = ''
     syncMode()
@@ -356,6 +397,7 @@ export async function renderMatchingRequestPage(container) {
     state.currentRequest = null
     state.currentProposal = null
     state.hasSubmittedRequest = false
+    state.radiusExpansionOffer = false
     state.mode = 'matched'
     state.noticeMessage = ''
     render()
@@ -366,15 +408,33 @@ export async function renderMatchingRequestPage(container) {
     if (state.isSubmitting) return
     syncFormState()
 
-    const validationMessage = validateForm()
-    if (validationMessage) {
-      state.errorMessage = validationMessage
-      render()
+    if (state.formStep < MATCHING_FORM_STEPS.length) {
+      handleNextStep()
       return
     }
 
+    const validationMessage = validateForm()
+    if (validationMessage) {
+      const invalidStep = findFirstInvalidStep()
+      if (invalidStep) state.formStep = invalidStep.step
+      state.errorMessage = validationMessage
+      render()
+      focusMatchingStep()
+      return
+    }
+
+    await submitMatchingRequest()
+  }
+
+  async function submitMatchingRequest({
+    noticeMessage = '매칭 요청이 등록되었습니다. 잘 맞는 밥친구를 찾고 있어요.',
+    radiusExpansion = false,
+  } = {}) {
+    if (state.isSubmitting) return
+
     state.isSubmitting = true
     state.errorMessage = ''
+    state.radiusExpansionOffer = false
     render()
 
     try {
@@ -396,7 +456,8 @@ export async function renderMatchingRequestPage(container) {
       state.latestResult = null
       state.hasSubmittedRequest = true
       state.hasRequestDetails = true
-      state.noticeMessage = '매칭 요청이 등록되었습니다. 잘 맞는 밥친구를 찾고 있어요.'
+      state.radiusExpansionUsed = radiusExpansion
+      state.noticeMessage = noticeMessage
       syncMode()
       render()
       await refreshFlow()
@@ -420,6 +481,42 @@ export async function renderMatchingRequestPage(container) {
     }
   }
 
+  async function handleExpandRadius() {
+    if (state.isSubmitting) return
+    syncFormState()
+    state.searchRadius = EXPANDED_SEARCH_RADIUS
+    state.errorMessage = ''
+    state.noticeMessage = '탐색 반경을 5km로 넓혀 다시 찾아볼게요.'
+
+    const validationMessage = validateForm()
+    if (validationMessage) {
+      const invalidStep = findFirstInvalidStep()
+      if (invalidStep) state.formStep = invalidStep.step
+      state.errorMessage = validationMessage
+      render()
+      focusMatchingStep()
+      return
+    }
+
+    await submitMatchingRequest({
+      noticeMessage: '탐색 반경을 5km로 넓혀 다시 찾아볼게요.',
+      radiusExpansion: true,
+    })
+  }
+
+  function handleCancelRadiusExpansion() {
+    if (state.isSubmitting) return
+    state.radiusExpansionOffer = false
+    state.radiusExpansionUsed = false
+    state.searchRadius = DEFAULT_SEARCH_RADIUS
+    state.hasRequestDetails = false
+    state.formStep = 1
+    state.errorMessage = ''
+    state.noticeMessage = '매칭 요청을 취소했습니다. 조건을 바꿔 다시 시작할 수 있어요.'
+    render()
+    focusMatchingStep()
+  }
+
   async function handleCancel() {
     if (state.isCancelling || !state.currentRequest?.requestId) return
     if (!window.confirm('현재 매칭 요청을 취소할까요?')) return
@@ -435,6 +532,10 @@ export async function renderMatchingRequestPage(container) {
       state.hasSubmittedRequest = false
       state.hasRequestDetails = false
       state.mode = 'form'
+      state.formStep = 1
+      state.radiusExpansionOffer = false
+      state.radiusExpansionUsed = false
+      state.searchRadius = DEFAULT_SEARCH_RADIUS
       state.noticeMessage = '매칭 요청을 취소했습니다. 조건을 바꿔 다시 시작할 수 있어요.'
     } catch (error) {
       if (disposed) return
@@ -498,40 +599,89 @@ export async function renderMatchingRequestPage(container) {
 
   function startNewRequest() {
     state.mode = 'form'
+    state.formStep = 1
     state.latestResult = null
     state.currentRequest = null
     state.currentProposal = null
     state.hasSubmittedRequest = false
     state.hasRequestDetails = false
+    state.radiusExpansionOffer = false
+    state.radiusExpansionUsed = false
     state.errorMessage = ''
     state.noticeMessage = ''
     state.desiredTimeSlot = getDefaultDateTimeValue()
+    state.searchRadius = DEFAULT_SEARCH_RADIUS
     render()
   }
 
   function syncFormState() {
     const form = container.querySelector('#matching-request-form')
     if (!form) return
-    state.foodCategory = form.querySelector('[name="foodCategory"]')?.value || state.foodCategory
-    state.desiredTimeSlot = form.querySelector('[name="desiredTimeSlot"]')?.value || state.desiredTimeSlot
-    state.locationName = form.querySelector('[name="locationName"]')?.value || ''
-    state.searchRadius = Number(form.querySelector('[name="searchRadius"]')?.value || state.searchRadius)
-    state.desiredPersonalityText = form.querySelector('[name="desiredPersonalityText"]')?.value || ''
+    const foodCategory = form.querySelector('[name="foodCategory"]')
+    const desiredTimeSlot = form.querySelector('[name="desiredTimeSlot"]')
+    const locationName = form.querySelector('[name="locationName"]')
+    const desiredPersonalityText = form.querySelector('[name="desiredPersonalityText"]')
+    if (foodCategory) state.foodCategory = foodCategory.value || state.foodCategory
+    if (desiredTimeSlot) state.desiredTimeSlot = desiredTimeSlot.value || state.desiredTimeSlot
+    if (locationName) state.locationName = locationName.value || ''
+    if (desiredPersonalityText) state.desiredPersonalityText = desiredPersonalityText.value || ''
   }
 
-  function validateForm() {
-    if (!isCompleteLocation(state.location)) {
-      return '지도에서 약속 위치를 먼저 확정해 주세요.'
+  function handleNextStep() {
+    if (state.formStep >= MATCHING_FORM_STEPS.length) return
+    syncFormState()
+    const validationMessage = validateStep(state.formStep)
+    if (validationMessage) {
+      state.errorMessage = validationMessage
+      render()
+      focusMatchingStep()
+      return
     }
-    if (!FOOD_LABELS.has(state.foodCategory)) {
-      return '식사 카테고리를 선택해 주세요.'
+    state.errorMessage = ''
+    state.formStep += 1
+    render()
+    focusMatchingStep()
+  }
+
+  function handlePreviousStep() {
+    if (state.formStep <= 1) return
+    syncFormState()
+    state.errorMessage = ''
+    state.formStep -= 1
+    render()
+    focusMatchingStep()
+  }
+
+  function focusMatchingStep() {
+    window.setTimeout(() => {
+      const heading = container.querySelector('#matching-step-title')
+      if (!heading) return
+      heading.focus({ preventScroll: true })
+      heading.scrollIntoView({ block: 'start', behavior: 'smooth' })
+    }, 0)
+  }
+
+  function validateStep(step) {
+    if (step === 1) {
+      if (!isCompleteLocation(state.location)) {
+        return '지도에서 약속 위치를 먼저 확정해 주세요.'
+      }
+      if (!state.desiredTimeSlot || Number.isNaN(new Date(state.desiredTimeSlot).getTime())) {
+        return '희망 식사 일시를 입력해 주세요.'
+      }
+      if (new Date(state.desiredTimeSlot).getTime() <= Date.now()) {
+        return '희망 식사 일시는 현재보다 이후로 선택해 주세요.'
+      }
+      if (![DEFAULT_SEARCH_RADIUS, EXPANDED_SEARCH_RADIUS].includes(Number(state.searchRadius))) {
+        return '탐색 반경은 기본 3km 또는 확장 5km만 사용할 수 있어요.'
+      }
+      return ''
     }
-    if (!state.desiredTimeSlot || Number.isNaN(new Date(state.desiredTimeSlot).getTime())) {
-      return '희망 식사 일시를 입력해 주세요.'
+
+    if (step === 2) {
+      return FOOD_LABELS.has(state.foodCategory) ? '' : '식사 카테고리를 선택해 주세요.'
     }
-    if (new Date(state.desiredTimeSlot).getTime() <= Date.now()) {
-      return '희망 식사 일시는 현재보다 이후로 선택해 주세요.'
-    }
+
     if (state.selectedTags.size < 3 || state.selectedTags.size > 5) {
       return '희망 상대 성향 태그를 3개 이상 5개 이하로 선택해 주세요.'
     }
@@ -541,10 +691,19 @@ export async function renderMatchingRequestPage(container) {
     if (state.desiredPersonalityText.length > 300) {
       return '희망 상대 설명은 300자 이하로 입력해 주세요.'
     }
-    if (!Number.isInteger(Number(state.searchRadius)) || Number(state.searchRadius) < 100 || Number(state.searchRadius) > 10000) {
-      return '탐색 반경은 100m 이상 10km 이하로 선택해 주세요.'
-    }
     return ''
+  }
+
+  function findFirstInvalidStep() {
+    for (let step = 1; step <= MATCHING_FORM_STEPS.length; step += 1) {
+      const message = validateStep(step)
+      if (message) return { step, message }
+    }
+    return null
+  }
+
+  function validateForm() {
+    return findFirstInvalidStep()?.message || ''
   }
 
   function render() {
@@ -574,7 +733,7 @@ export async function renderMatchingRequestPage(container) {
                 홈으로
               </a>
               <h1 class="font-headline text-3xl font-extrabold tracking-tight text-brand-navy sm:text-4xl">오늘의 밥친구를 찾아볼까요?</h1>
-              <p class="mt-2 max-w-2xl text-sm leading-6 text-secondary sm:text-base">위치와 식사 취향을 한 번에 알려주면, 서로 편안하게 마주 앉을 수 있는 상대를 찾아드려요.</p>
+              <p class="mt-2 max-w-2xl text-sm leading-6 text-secondary sm:text-base">몇 가지 조건을 차례로 알려주면, 서로 편안하게 마주 앉을 수 있는 상대를 찾아드려요.</p>
             </div>
             <div id="matching-realtime-state" class="inline-flex w-fit items-center gap-2 rounded-full border border-outline-variant/50 bg-white/70 px-3 py-2 text-xs font-semibold text-secondary shadow-sm" aria-live="polite">
               <span class="h-2 w-2 rounded-full ${state.realtimeConnected ? 'bg-success' : 'bg-slate-300'}"></span>
@@ -639,125 +798,217 @@ export async function renderMatchingRequestPage(container) {
   }
 
   function renderRequestForm() {
+    const step = state.formStep
+    const stepMeta = MATCHING_FORM_STEPS[step - 1]
+    const progress = Math.round((step / MATCHING_FORM_STEPS.length) * 100)
+    const stepContent = step === 1
+      ? renderScheduleStep()
+      : step === 2
+        ? renderFoodStep()
+        : renderPersonalityStep()
+
     return `
-      <div class="grid gap-5 lg:grid-cols-[0.88fr_1.12fr]">
-        <aside class="space-y-5">
-          <section class="matching-card rounded-[28px] bg-white p-5 sm:p-6" aria-labelledby="matching-location-title">
-            <div class="mb-4 flex items-start justify-between gap-3">
-              <div>
-                <p class="text-xs font-extrabold tracking-[0.12em] text-primary-container">STEP 1</p>
-                <h2 id="matching-location-title" class="mt-1 font-headline text-xl font-extrabold text-brand-navy">약속 위치</h2>
-              </div>
-              <span class="material-symbols-outlined rounded-full bg-primary-container/10 p-2 text-primary-container">location_on</span>
-            </div>
-            <div class="rounded-2xl bg-surface-container-low p-4">
-              <p class="text-xs font-semibold text-secondary">선택한 행정구역</p>
-              <p class="mt-1 text-base font-extrabold text-brand-navy">${escapeHtml(state.location.regionName)}</p>
-            </div>
-            <a href="${escapeHtml(buildMapHref(state.location))}" class="mt-4 inline-flex items-center gap-1 text-xs font-bold text-primary-container hover:underline">
-              <span class="material-symbols-outlined text-base">map</span>
-              지도에서 위치 다시 선택
-            </a>
-          </section>
-
-          <section class="rounded-[28px] border border-brand-navy/10 bg-brand-navy p-5 text-white shadow-soft sm:p-6">
+      <section class="matching-card matching-form-card mx-auto max-w-3xl rounded-[28px] bg-white p-5 sm:p-8" aria-labelledby="matching-form-title">
+        ${state.radiusExpansionOffer ? `
+          <div class="matching-radius-offer mb-7 rounded-2xl border border-primary-container/30 bg-primary-container/10 p-4 text-left sm:p-5" role="status" aria-live="polite">
             <div class="flex items-start gap-3">
-              <span class="material-symbols-outlined text-primary-container">auto_awesome</span>
-              <div>
-                <h2 class="font-headline text-base font-extrabold">성향 정보가 없어도 괜찮아요</h2>
-                <p class="mt-2 text-xs leading-5 text-white/75">성향을 설정하지 않은 상대와도 위치·시간·음식 조건을 기준으로 기본 매칭을 진행할 수 있어요.</p>
+              <span class="material-symbols-outlined shrink-0 rounded-full bg-white p-2 text-primary-container shadow-sm">search</span>
+              <div class="min-w-0">
+                <p class="text-sm font-extrabold text-brand-navy">주변에 후보가 없어요.</p>
+                <p class="mt-1 text-sm leading-6 text-secondary">탐색 반경을 넓혀볼까요?</p>
               </div>
             </div>
-            <a href="/personality/survey" class="mt-4 inline-flex items-center gap-1 text-xs font-bold text-primary-container hover:underline">
-              성향 설정 둘러보기
-              <span class="material-symbols-outlined text-sm">arrow_forward</span>
-            </a>
-          </section>
-        </aside>
-
-        <section class="matching-card rounded-[28px] bg-white p-5 sm:p-7" aria-labelledby="matching-form-title">
-          <div class="mb-6 flex items-end justify-between gap-4">
-            <div>
-              <p class="text-xs font-extrabold tracking-[0.12em] text-primary-container">STEP 2</p>
-              <h2 id="matching-form-title" class="mt-1 font-headline text-xl font-extrabold text-brand-navy sm:text-2xl">식사 조건과 밥친구 취향</h2>
+            <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <button id="btn-expand-radius" type="button" ${state.isSubmitting ? 'disabled' : ''} class="btn-primary inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-sm font-extrabold shadow-md disabled:cursor-not-allowed disabled:opacity-60">
+                <span class="material-symbols-outlined text-lg">north_east</span>
+                네
+              </button>
+              <button id="btn-cancel-radius-expansion" type="button" ${state.isSubmitting ? 'disabled' : ''} class="btn-secondary inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-60">
+                <span class="material-symbols-outlined text-lg">close</span>
+                매칭 취소
+              </button>
             </div>
-            <span class="hidden text-xs font-semibold text-secondary sm:inline">한 번만 제출하면 탐색을 시작해요</span>
+          </div>
+        ` : ''}
+        <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="inline-flex items-center rounded-md bg-primary-container/15 px-2.5 py-1 text-xs font-extrabold tracking-wide text-primary">STEP ${step} / ${MATCHING_FORM_STEPS.length}</span>
+              <span class="hidden text-xs font-semibold text-secondary sm:inline">매칭 조건 설정</span>
+            </div>
+            <h2 id="matching-form-title" class="sr-only">매칭 조건 설정</h2>
+          </div>
+          <span class="text-xs font-semibold text-secondary">${step === MATCHING_FORM_STEPS.length ? '마지막 단계예요' : '다음 단계에서 이어서 설정해요'}</span>
+        </div>
+
+        <div class="matching-stepper" aria-label="매칭 조건 진행 단계">
+          ${MATCHING_FORM_STEPS.map((item, index) => {
+            const stepNumber = index + 1
+            const isCurrent = stepNumber === step
+            const isComplete = stepNumber < step
+            return `
+              <div class="matching-stepper-item ${isCurrent ? 'is-current' : ''} ${isComplete ? 'is-complete' : ''}" ${isCurrent ? 'aria-current="step"' : ''}>
+                <span class="matching-stepper-node">${isComplete ? '<span class="material-symbols-outlined text-sm">check</span>' : stepNumber}</span>
+                <span class="matching-stepper-label">${item.label}</span>
+              </div>
+            `
+          }).join('')}
+        </div>
+        <div class="matching-step-progress" role="progressbar" aria-label="매칭 조건 진행률" aria-valuemin="1" aria-valuemax="${MATCHING_FORM_STEPS.length}" aria-valuenow="${step}" aria-valuetext="${step}단계: ${stepMeta.label}">
+          <span style="width: ${progress}%"></span>
+        </div>
+
+        <div class="mb-7 mt-6 scroll-mt-28" aria-live="polite">
+          <p class="text-xs font-extrabold tracking-[0.12em] text-primary-container">${stepMeta.label}</p>
+          <h3 id="matching-step-title" tabindex="-1" class="mt-1 font-headline text-2xl font-extrabold tracking-tight text-brand-navy sm:text-3xl">${stepMeta.title}</h3>
+          <p class="mt-2 text-sm leading-6 text-secondary">${stepMeta.description}</p>
+        </div>
+
+        ${state.errorMessage ? `
+          <div class="mb-6 flex items-start gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700" role="alert">
+            <span class="material-symbols-outlined mt-0.5 text-lg">error</span>
+            <p>${escapeHtml(state.errorMessage)}</p>
+          </div>
+        ` : ''}
+
+        ${step > 1 ? `
+          <div class="matching-selection-summary mb-6 flex flex-wrap gap-2" aria-label="앞서 선택한 조건">
+            ${renderSummaryChip('location_on', state.location.regionName)}
+            ${renderSummaryChip('schedule', formatDateTime(state.desiredTimeSlot))}
+            ${step > 2 ? renderSummaryChip('restaurant', FOOD_LABELS.get(state.foodCategory) || '음식 선택') : ''}
+          </div>
+        ` : ''}
+
+        <form id="matching-request-form" class="space-y-7">
+          ${stepContent}
+
+          <div class="matching-form-actions mt-8 flex flex-col-reverse gap-3 border-t border-outline-variant/30 pt-6 sm:flex-row sm:items-center sm:justify-between">
+            ${step > 1
+              ? '<button id="btn-matching-prev" type="button" class="btn-secondary inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-5 text-sm font-bold"><span class="material-symbols-outlined text-lg">arrow_back</span>이전</button>'
+              : '<span class="hidden text-xs font-semibold text-secondary sm:block">선택한 조건은 다음 단계에서도 유지돼요.</span>'}
+            <div class="flex flex-col-reverse gap-3 sm:flex-row sm:items-center">
+              <span class="hidden text-xs font-semibold text-secondary sm:block">${step === 1 ? '지역과 시간을 먼저 확인해요.' : step === 2 ? '다음은 밥친구의 분위기예요.' : '3~5개의 태그를 선택해 주세요.'}</span>
+              ${step < MATCHING_FORM_STEPS.length
+                ? '<button id="btn-matching-next" type="button" class="btn-primary inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 text-sm font-extrabold shadow-md"><span>다음 단계</span><span class="material-symbols-outlined text-lg">arrow_forward</span></button>'
+                : `<button id="btn-submit-matching-request" type="submit" ${state.isSubmitting ? 'disabled' : ''} class="btn-primary inline-flex min-h-14 items-center justify-center gap-2 rounded-full px-6 text-sm font-extrabold shadow-glow-primary disabled:cursor-not-allowed disabled:opacity-60">
+                    ${state.isSubmitting ? '<span class="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></span><span>매칭을 준비하고 있어요…</span>' : '<span class="material-symbols-outlined">local_dining</span><span>이 조건으로 매칭 시작하기</span>'}
+                  </button>`}
+            </div>
+          </div>
+        </form>
+      </section>
+    `
+
+    function renderScheduleStep() {
+      return `
+        <div class="space-y-6">
+          <section class="matching-location-summary rounded-2xl border border-outline-variant/40 bg-surface-container-low p-4 sm:p-5" aria-labelledby="matching-location-title">
+            <div class="flex items-start justify-between gap-4">
+              <div class="flex min-w-0 items-start gap-3">
+                <span class="material-symbols-outlined rounded-full bg-white p-2 text-primary-container shadow-sm">location_on</span>
+                <div class="min-w-0">
+                  <p class="text-xs font-semibold text-secondary">선택한 약속 지역</p>
+                  <p id="matching-location-title" class="mt-1 truncate text-base font-extrabold text-brand-navy">${escapeHtml(state.location.regionName)}</p>
+                  <p class="mt-1 text-xs leading-5 text-secondary">정밀 위치는 공개하지 않고, 선택한 지역을 기준으로 매칭해요.</p>
+                </div>
+              </div>
+              <a href="${escapeHtml(buildMapHref(state.location))}" class="inline-flex shrink-0 items-center gap-1 rounded-full bg-white px-3 py-2 text-xs font-bold text-primary-container shadow-sm hover:bg-primary-container/10" aria-label="지도에서 약속 지역 다시 선택">
+                <span class="material-symbols-outlined text-base">map</span>
+                수정
+              </a>
+            </div>
+          </section>
+
+          <div class="grid gap-5">
+            <label class="block">
+              <span class="mb-2 block text-sm font-bold text-brand-navy">희망 식사 일시 <span class="text-primary-container">*</span></span>
+              <input class="matching-control w-full rounded-xl px-3.5 text-sm" type="datetime-local" name="desiredTimeSlot" min="${escapeHtml(getMinimumDateTimeValue())}" value="${escapeHtml(state.desiredTimeSlot)}" required aria-describedby="matching-time-help" />
+              <span id="matching-time-help" class="mt-1.5 block text-xs leading-5 text-secondary">현재 시각 이후로 선택해 주세요.</span>
+            </label>
+          </div>
+        </div>
+      `
+    }
+
+    function renderFoodStep() {
+      return `
+        <div class="space-y-6">
+          <div class="matching-step-illustration rounded-3xl bg-surface-container-low p-5 sm:p-7">
+            <div class="flex items-start gap-4">
+              <span class="material-symbols-outlined grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white text-2xl text-primary-container shadow-sm">restaurant</span>
+              <div>
+                <p class="text-sm font-extrabold text-brand-navy">오늘은 어떤 메뉴가 끌리나요?</p>
+                <p class="mt-1 text-sm leading-6 text-secondary">정밀한 메뉴가 아니라 함께 고를 음식의 큰 방향만 알려주면 돼요.</p>
+              </div>
+            </div>
           </div>
 
-          ${state.errorMessage ? `
-            <div class="mb-5 flex items-start gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700" role="alert">
-              <span class="material-symbols-outlined mt-0.5 text-lg">error</span>
-              <p>${escapeHtml(state.errorMessage)}</p>
-            </div>
-          ` : ''}
+          <label class="block">
+            <span class="mb-2 block text-sm font-bold text-brand-navy">음식 카테고리 <span class="text-primary-container">*</span></span>
+            <select class="matching-control w-full rounded-xl px-3.5 text-sm" name="foodCategory" required aria-describedby="matching-food-help">
+              ${FOOD_CATEGORIES.map(([code, label, emoji]) => `<option value="${code}" ${state.foodCategory === code ? 'selected' : ''}>${emoji} ${label}</option>`).join('')}
+            </select>
+            <span id="matching-food-help" class="mt-1.5 block text-xs leading-5 text-secondary">알레르기나 식단 제한은 매칭 후 서로 직접 확인해 주세요.</span>
+          </label>
+        </div>
+      `
+    }
 
-          <form id="matching-request-form" class="space-y-7">
-            <div class="grid gap-4 sm:grid-cols-2">
-              <label class="block">
-                <span class="mb-2 block text-sm font-bold text-brand-navy">희망 식사 일시 <span class="text-primary-container">*</span></span>
-                <input class="matching-control w-full rounded-xl px-3.5 text-sm" type="datetime-local" name="desiredTimeSlot" min="${escapeHtml(getMinimumDateTimeValue())}" value="${escapeHtml(state.desiredTimeSlot)}" required />
-                <span class="mt-1.5 block text-xs text-secondary">현재 시각 이후로 선택해 주세요.</span>
-              </label>
-              <label class="block">
-                <span class="mb-2 block text-sm font-bold text-brand-navy">음식 카테고리 <span class="text-primary-container">*</span></span>
-                <select class="matching-control w-full rounded-xl px-3.5 text-sm" name="foodCategory" required>
-                  ${FOOD_CATEGORIES.map(([code, label, emoji]) => `<option value="${code}" ${state.foodCategory === code ? 'selected' : ''}>${emoji} ${label}</option>`).join('')}
-                </select>
-                <span class="mt-1.5 block text-xs text-secondary">일반적인 메뉴 선호를 알려주세요.</span>
-              </label>
-            </div>
-
-            <div class="grid gap-4 sm:grid-cols-2">
-              <label class="block">
-                <span class="mb-2 block text-sm font-bold text-brand-navy">탐색 반경</span>
-                <select class="matching-control w-full rounded-xl px-3.5 text-sm" name="searchRadius">
-                  ${[[1000, '1km'], [3000, '3km'], [5000, '5km'], [10000, '10km']].map(([value, label]) => `<option value="${value}" ${Number(state.searchRadius) === value ? 'selected' : ''}>${label}</option>`).join('')}
-                </select>
-                <span class="mt-1.5 block text-xs text-secondary">기본 탐색 반경은 3km예요.</span>
-              </label>
-            </div>
-
-            <fieldset>
-              <div class="mb-3 flex flex-wrap items-end justify-between gap-2">
-                <div>
-                  <legend class="text-sm font-bold text-brand-navy">원하는 상대의 성향 태그 <span class="text-primary-container">*</span></legend>
-                  <p class="mt-1 text-xs text-secondary">서로의 식사 분위기를 맞출 수 있도록 3~5개를 선택해 주세요.</p>
-                </div>
-                <span class="rounded-full bg-primary-container/10 px-3 py-1.5 text-xs font-extrabold text-primary">${state.selectedTags.size} / 5 선택 · 최소 3개</span>
+    function renderPersonalityStep() {
+      return `
+        <div class="space-y-7">
+          <fieldset>
+            <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <legend class="text-sm font-bold text-brand-navy">원하는 상대의 성향 태그 <span class="text-primary-container">*</span></legend>
+                <p id="matching-tags-help" class="mt-1 text-xs leading-5 text-secondary">서로의 식사 분위기를 맞출 수 있도록 3~5개를 선택해 주세요.</p>
               </div>
-              <div class="space-y-4">
-                ${TAG_GROUPS.map((group) => `
-                  <div>
-                    <p class="mb-2 text-xs font-bold tracking-wide text-secondary">${group.name}</p>
-                    <div class="flex flex-wrap gap-2">
-                      ${group.tags.map(([code, label]) => `
-                        <button type="button" data-matching-tag="${code}" aria-pressed="${state.selectedTags.has(code)}" class="matching-tag inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold ${state.selectedTags.has(code) ? 'is-selected' : ''}">
-                          ${escapeHtml(label)}
-                          ${state.selectedTags.has(code) ? '<span class="material-symbols-outlined text-sm">check</span>' : ''}
-                        </button>
-                      `).join('')}
-                    </div>
+              <span class="inline-flex items-center rounded-full bg-primary-container/10 px-3 py-1.5 text-xs font-extrabold text-primary" aria-live="polite">${state.selectedTags.size} / 5 선택</span>
+            </div>
+            <div class="space-y-4" aria-describedby="matching-tags-help">
+              ${TAG_GROUPS.map((group, groupIndex) => `
+                <section class="matching-tag-group rounded-2xl border border-outline-variant/40 p-4" aria-labelledby="matching-tag-group-${groupIndex + 1}">
+                  <h4 id="matching-tag-group-${groupIndex + 1}" class="mb-3 text-xs font-extrabold tracking-wide text-secondary">${group.name}</h4>
+                  <div class="flex flex-wrap gap-2.5">
+                    ${group.tags.map(([code, label]) => `
+                      <button type="button" data-matching-tag="${code}" aria-pressed="${state.selectedTags.has(code)}" class="matching-tag inline-flex min-h-11 items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold ${state.selectedTags.has(code) ? 'is-selected' : ''}">
+                        ${escapeHtml(label)}
+                        ${state.selectedTags.has(code) ? '<span class="material-symbols-outlined text-sm">check</span>' : ''}
+                      </button>
+                    `).join('')}
                   </div>
-                `).join('')}
-              </div>
-            </fieldset>
+                </section>
+              `).join('')}
+            </div>
+          </fieldset>
 
-            <label class="block">
-              <div class="flex items-end justify-between gap-3">
-                <span class="text-sm font-bold text-brand-navy">희망 상대에게 바라는 점 <span class="font-normal text-slate-400">(선택)</span></span>
-                <span id="desired-personality-count" class="text-xs font-semibold text-secondary">${state.desiredPersonalityText.length} / 300</span>
-              </div>
-              <textarea class="matching-control mt-2 min-h-28 w-full resize-y rounded-xl px-3.5 py-3 text-sm leading-6" name="desiredPersonalityText" maxlength="300" placeholder="예: 대화를 편하게 이어가되 식사 속도가 비슷한 분이면 좋아요.">${escapeHtml(state.desiredPersonalityText)}</textarea>
-              <span class="mt-1.5 block text-xs text-secondary">입력한 내용은 매칭 기준으로만 사용하며, 상대에게 원문이 공개되지 않아요.</span>
-            </label>
+          <label class="block">
+            <div class="flex items-end justify-between gap-3">
+              <span class="text-sm font-bold text-brand-navy">희망 상대에게 바라는 점 <span class="font-normal text-slate-400">(선택)</span></span>
+              <span id="desired-personality-count" class="text-xs font-semibold text-secondary">${state.desiredPersonalityText.length} / 300</span>
+            </div>
+            <textarea class="matching-control mt-2 min-h-32 w-full resize-y rounded-xl px-3.5 py-3 text-sm leading-6" name="desiredPersonalityText" maxlength="300" aria-describedby="matching-personality-help" placeholder="예: 대화를 편하게 이어가되 식사 속도가 비슷한 분이면 좋아요.">${escapeHtml(state.desiredPersonalityText)}</textarea>
+            <span id="matching-personality-help" class="mt-1.5 block text-xs leading-5 text-secondary">입력한 내용은 매칭 기준으로만 사용하며, 상대에게 원문이 공개되지 않아요.</span>
+          </label>
 
-            <button id="btn-submit-matching-request" type="submit" ${state.isSubmitting ? 'disabled' : ''} class="btn-primary flex min-h-14 w-full items-center justify-center gap-2 rounded-full text-sm font-extrabold shadow-glow-primary disabled:cursor-not-allowed disabled:opacity-60">
-              ${state.isSubmitting ? '<span class="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></span><span>매칭을 준비하고 있어요…</span>' : '<span class="material-symbols-outlined">local_dining</span><span>이 조건으로 매칭 시작하기</span>'}
-            </button>
-          </form>
-        </section>
-      </div>
-    `
+          ${!state.personalityProfileCompleted ? `
+            <aside class="rounded-2xl border border-brand-navy/10 bg-brand-navy p-4 text-white sm:p-5">
+              <div class="flex items-start gap-3">
+                <span class="material-symbols-outlined text-primary-container">auto_awesome</span>
+                <div>
+                  <h3 class="text-sm font-extrabold">성향 정보가 없어도 괜찮아요</h3>
+                  <p class="mt-1.5 text-xs leading-5 text-white/75">성향을 설정하지 않은 상대와도 위치·시간·음식 조건을 기준으로 기본 매칭을 진행할 수 있어요.</p>
+                  <a href="/personality/survey" class="mt-3 inline-flex items-center gap-1 text-xs font-bold text-primary-container hover:underline">
+                    성향 설정 둘러보기
+                    <span class="material-symbols-outlined text-sm">arrow_forward</span>
+                  </a>
+                </div>
+              </div>
+            </aside>
+          ` : ''}
+        </div>
+      `
+    }
   }
 
   function renderWaiting() {
@@ -944,6 +1195,8 @@ export async function renderMatchingRequestPage(container) {
 
   function bindEvents() {
     container.querySelector('#matching-request-form')?.addEventListener('submit', handleSubmit)
+    container.querySelector('#btn-matching-next')?.addEventListener('click', handleNextStep)
+    container.querySelector('#btn-matching-prev')?.addEventListener('click', handlePreviousStep)
     container.querySelector('[name="foodCategory"]')?.addEventListener('change', (event) => {
       state.foodCategory = event.target.value
     })
@@ -952,9 +1205,6 @@ export async function renderMatchingRequestPage(container) {
     })
     container.querySelector('[name="locationName"]')?.addEventListener('input', (event) => {
       state.locationName = event.target.value
-    })
-    container.querySelector('[name="searchRadius"]')?.addEventListener('change', (event) => {
-      state.searchRadius = Number(event.target.value)
     })
     container.querySelector('[name="desiredPersonalityText"]')?.addEventListener('input', (event) => {
       state.desiredPersonalityText = event.target.value.slice(0, 300)
@@ -981,6 +1231,8 @@ export async function renderMatchingRequestPage(container) {
     })
 
     container.querySelector('#btn-cancel-matching')?.addEventListener('click', handleCancel)
+    container.querySelector('#btn-expand-radius')?.addEventListener('click', handleExpandRadius)
+    container.querySelector('#btn-cancel-radius-expansion')?.addEventListener('click', handleCancelRadiusExpansion)
     container.querySelector('#btn-accept-proposal')?.addEventListener('click', () => handleDecision('ACCEPT'))
     container.querySelector('#btn-reject-proposal')?.addEventListener('click', () => handleDecision('REJECT'))
     container.querySelector('#btn-new-matching-request')?.addEventListener('click', startNewRequest)
@@ -1175,6 +1427,15 @@ function renderSummaryItem(icon, label, value) {
         <p class="mt-1 truncate text-xs font-extrabold text-brand-navy">${escapeHtml(value || '-')}</p>
       </div>
     </div>
+  `
+}
+
+function renderSummaryChip(icon, value) {
+  return `
+    <span class="matching-summary-chip inline-flex min-w-0 items-center gap-1.5 rounded-full bg-surface-container-low px-3 py-1.5 text-xs font-bold text-brand-navy">
+      <span class="material-symbols-outlined text-sm text-primary-container">${icon}</span>
+      <span class="truncate">${escapeHtml(value || '-')}</span>
+    </span>
   `
 }
 
