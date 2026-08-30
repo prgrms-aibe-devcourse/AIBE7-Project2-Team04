@@ -1,0 +1,18 @@
+global:
+  # 개발 환경에서 애플리케이션 메트릭을 15초마다 수집한다.
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: project2
+    metrics_path: /actuator/prometheus
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    static_configs:
+      # Spring Boot는 호스트에서 실행하고 Prometheus는 Docker에서 실행하는 구성이다.
+      # Docker Desktop의 host.docker.internal이 호스트의 8080 포트를 가리킨다.
+      - targets:
+          - host.docker.internal:8080
+        labels:
+          application: project2
+          environment: dev

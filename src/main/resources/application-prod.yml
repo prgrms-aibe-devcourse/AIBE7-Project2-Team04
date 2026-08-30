@@ -1,0 +1,7 @@
+management:
+  endpoints:
+    web:
+      # 운영에서는 메트릭 엔드포인트를 외부에 노출하지 않는다.
+      # 운영용 수집이 필요해지면 내부 관리망 또는 별도 인증 포트로 분리한다.
+      exposure:
+        include: health

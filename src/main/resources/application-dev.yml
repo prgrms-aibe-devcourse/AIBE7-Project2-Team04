@@ -11,3 +11,9 @@ springdoc:
       enabled: true
       cookie-name: XSRF-TOKEN
       header-name: X-XSRF-TOKEN
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus

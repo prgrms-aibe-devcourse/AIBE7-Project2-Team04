@@ -5,3 +5,43 @@ services:
     ports:
       - "6379:6379"
     restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v3.14.0
+    container_name: prometheus-local
+    ports:
+      - "127.0.0.1:9090:9090"
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+    volumes:
+      - "./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro"
+      - "prometheus-data:/prometheus"
+
+  grafana:
+    image: grafana/grafana:13.2.0
+    container_name: grafana-local
+    depends_on:
+      - prometheus
+    ports:
+      # 프론트엔드 Vite 개발 서버가 호스트 3000 포트를 사용하므로 Grafana는 3001로 노출한다.
+      - "127.0.0.1:3001:3000"
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD 환경변수를 설정해야 합니다}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - "grafana-data:/var/lib/grafana"
+      - "./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro"
+      - "./monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro"
+      - "./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro"
+
+volumes:
+  prometheus-data:
+    name: project2-prometheus-data
+  grafana-data:
+    name: project2-grafana-data

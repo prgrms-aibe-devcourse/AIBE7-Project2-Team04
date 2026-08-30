@@ -14,6 +14,7 @@ import org.example.project2.global.security.oauth.OAuthProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -142,8 +143,30 @@ public class SecurityConfig {
         return http.build();
     }
 
+    /**
+     * Prometheus는 로컬 개발 환경에서만 수집할 수 있도록 별도 체인으로 허용한다.
+     *
+     * <p>운영 프로필에서는 이 체인이 생성되지 않으므로, 실수로
+     * {@code prometheus} 엔드포인트를 노출하더라도 기본 API 체인의 인증 정책을
+     * 통과해야 한다. 운영용 메트릭 수집이 필요해지면 내부 관리망 또는 별도
+     * 인증을 갖춘 관리 포트로 분리한다.</p>
+     */
     @Bean
     @Order(2)
+    @Profile("dev")
+    public SecurityFilterChain devActuatorSecurityFilterChain(HttpSecurity http) throws Exception {
+        http
+                .securityMatcher("/actuator/prometheus")
+                .csrf(AbstractHttpConfigurer::disable)
+                .httpBasic(AbstractHttpConfigurer::disable)
+                .formLogin(AbstractHttpConfigurer::disable)
+                .logout(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+        return http.build();
+    }
+
+    @Bean
+    @Order(3)
     public SecurityFilterChain apiSecurityFilterChain(
             HttpSecurity http,
             CorsConfigurationSource corsConfigurationSource,

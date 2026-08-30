@@ -3,10 +3,14 @@ spring:
     name: project2
 
   profiles:
-    active: dev
+    active: ${SPRING_PROFILES_ACTIVE:dev}
 
     group:
       dev:
+        - ai
+        - auth
+        - db
+      prod:
         - ai
         - auth
         - db
