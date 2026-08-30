@@ -406,6 +406,65 @@
       ],
       "title": "매칭 처리 시간 (p95)",
       "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "project2-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 0,
+        "y": 30
+      },
+      "id": 9,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "13.2.0",
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "sum(increase(matching_completed_total[$__range]))",
+          "instant": true,
+          "legendFormat": "완료 수",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "선택 기간 최종 매칭 완료 수",
+      "type": "stat"
     }
   ],
   "refresh": "15s",

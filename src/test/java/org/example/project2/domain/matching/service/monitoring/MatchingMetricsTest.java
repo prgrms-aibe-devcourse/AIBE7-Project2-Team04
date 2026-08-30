@@ -42,4 +42,17 @@ class MatchingMetricsTest {
         assertThat(registry.find(MatchingMetrics.DURATION_METRIC_NAME).timers())
                 .hasSize(MatchProposalSelectionAttemptService.AttemptResult.values().length);
     }
+
+    @Test
+    void recordsCompletedMatchWithoutResultTags() {
+        SimpleMeterRegistry registry = new SimpleMeterRegistry();
+        MatchingMetrics metrics = new MatchingMetrics(registry);
+
+        metrics.recordCompleted();
+        metrics.recordCompleted();
+
+        assertThat(registry.get(MatchingMetrics.COMPLETED_METRIC_NAME)
+                .counter()
+                .count()).isEqualTo(2.0);
+    }
 }

@@ -19,16 +19,21 @@ import java.util.Map;
 public class MatchingMetrics {
     public static final String REQUESTS_METRIC_NAME = "matching.requests";
     public static final String DURATION_METRIC_NAME = "matching.duration";
+    public static final String COMPLETED_METRIC_NAME = "matching.completed";
     public static final String RESULT_TAG = "result";
 
     private final MeterRegistry meterRegistry;
     private final Map<MatchProposalSelectionAttemptService.AttemptResult, Counter> requestCounters;
     private final Map<MatchProposalSelectionAttemptService.AttemptResult, Timer> durationTimers;
+    private final Counter completedCounter;
 
     public MatchingMetrics(MeterRegistry meterRegistry) {
         this.meterRegistry = meterRegistry;
         this.requestCounters = new EnumMap<>(MatchProposalSelectionAttemptService.AttemptResult.class);
         this.durationTimers = new EnumMap<>(MatchProposalSelectionAttemptService.AttemptResult.class);
+        this.completedCounter = Counter.builder(COMPLETED_METRIC_NAME)
+                .description("양쪽 사용자의 수락 후 커밋된 최종 매칭 수")
+                .register(meterRegistry);
         registerMeters();
     }
 
@@ -47,6 +52,10 @@ public class MatchingMetrics {
         if (sample != null) {
             sample.stop(durationTimers.get(result));
         }
+    }
+
+    public void recordCompleted() {
+        completedCounter.increment();
     }
 
     private void registerMeters() {
