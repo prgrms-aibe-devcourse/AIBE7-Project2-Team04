@@ -590,7 +590,7 @@ function initKakaoMap(lat, lng, name, sido, sigungu, detail) {
 
                 const statusMsg = document.querySelector('#map-status-msg')
                 if (statusMsg) {
-                  statusMsg.innerHTML = `핀 위치: <strong>${searchSido} ${rawSigungu}</strong> (위도: ${position.getLat().toFixed(4)}, 경도: ${position.getLng().toFixed(4)})`
+                  statusMsg.innerHTML = `약속 위치: <strong>${searchSido} ${rawSigungu}</strong> `
                 }
               } else {
                 // Unsupported region: toast warning and revert pin position

@@ -573,7 +573,6 @@ export async function renderMatchingRequestPage(container) {
                 <span class="material-symbols-outlined text-base">arrow_back</span>
                 홈으로
               </a>
-              <p class="mb-1 text-xs font-extrabold tracking-[0.16em] text-primary-container">MATCH YOUR TABLE</p>
               <h1 class="font-headline text-3xl font-extrabold tracking-tight text-brand-navy sm:text-4xl">오늘의 밥친구를 찾아볼까요?</h1>
               <p class="mt-2 max-w-2xl text-sm leading-6 text-secondary sm:text-base">위치와 식사 취향을 한 번에 알려주면, 서로 편안하게 마주 앉을 수 있는 상대를 찾아드려요.</p>
             </div>
@@ -654,7 +653,6 @@ export async function renderMatchingRequestPage(container) {
             <div class="rounded-2xl bg-surface-container-low p-4">
               <p class="text-xs font-semibold text-secondary">선택한 행정구역</p>
               <p class="mt-1 text-base font-extrabold text-brand-navy">${escapeHtml(state.location.regionName)}</p>
-              <p class="mt-2 text-xs leading-5 text-secondary">핀 위치 ${formatCoordinate(state.location.latitude)}, ${formatCoordinate(state.location.longitude)}</p>
             </div>
             <a href="${escapeHtml(buildMapHref(state.location))}" class="mt-4 inline-flex items-center gap-1 text-xs font-bold text-primary-container hover:underline">
               <span class="material-symbols-outlined text-base">map</span>
@@ -711,11 +709,6 @@ export async function renderMatchingRequestPage(container) {
 
             <div class="grid gap-4 sm:grid-cols-2">
               <label class="block">
-                <span class="mb-2 block text-sm font-bold text-brand-navy">장소명 <span class="font-normal text-slate-400">(선택)</span></span>
-                <input class="matching-control w-full rounded-xl px-3.5 text-sm" type="text" name="locationName" maxlength="255" value="${escapeHtml(state.locationName)}" placeholder="예: 강남역 11번 출구" />
-                <span class="mt-1.5 block text-xs text-secondary">상대에게 공개되는 정밀 좌표는 아니에요.</span>
-              </label>
-              <label class="block">
                 <span class="mb-2 block text-sm font-bold text-brand-navy">탐색 반경</span>
                 <select class="matching-control w-full rounded-xl px-3.5 text-sm" name="searchRadius">
                   ${[[1000, '1km'], [3000, '3km'], [5000, '5km'], [10000, '10km']].map(([value, label]) => `<option value="${value}" ${Number(state.searchRadius) === value ? 'selected' : ''}>${label}</option>`).join('')}
@@ -757,11 +750,6 @@ export async function renderMatchingRequestPage(container) {
               <textarea class="matching-control mt-2 min-h-28 w-full resize-y rounded-xl px-3.5 py-3 text-sm leading-6" name="desiredPersonalityText" maxlength="300" placeholder="예: 대화를 편하게 이어가되 식사 속도가 비슷한 분이면 좋아요.">${escapeHtml(state.desiredPersonalityText)}</textarea>
               <span class="mt-1.5 block text-xs text-secondary">입력한 내용은 매칭 기준으로만 사용하며, 상대에게 원문이 공개되지 않아요.</span>
             </label>
-
-            <div class="flex items-start gap-2.5 rounded-2xl border border-outline-variant/50 bg-surface-container-low px-4 py-3 text-xs leading-5 text-secondary">
-              <span class="material-symbols-outlined mt-0.5 text-base text-primary-container">verified_user</span>
-              <p>제출 시 위치 이용 동의 쿠키와 CSRF 토큰을 함께 확인합니다. 매칭 요청은 한 번만 등록되며, 대기 중에는 이 화면에서 취소할 수 있어요.</p>
-            </div>
 
             <button id="btn-submit-matching-request" type="submit" ${state.isSubmitting ? 'disabled' : ''} class="btn-primary flex min-h-14 w-full items-center justify-center gap-2 rounded-full text-sm font-extrabold shadow-glow-primary disabled:cursor-not-allowed disabled:opacity-60">
               ${state.isSubmitting ? '<span class="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></span><span>매칭을 준비하고 있어요…</span>' : '<span class="material-symbols-outlined">local_dining</span><span>이 조건으로 매칭 시작하기</span>'}
