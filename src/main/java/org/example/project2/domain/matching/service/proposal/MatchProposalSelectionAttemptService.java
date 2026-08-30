@@ -1,9 +1,11 @@
 package org.example.project2.domain.matching.service.proposal;
 
+import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.project2.domain.matching.exception.request.RealtimeMatchRequestErrorCode;
 import org.example.project2.domain.matching.exception.request.RealtimeMatchRequestException;
+import org.example.project2.domain.matching.service.monitoring.MatchingMetrics;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 
@@ -15,17 +17,30 @@ import java.util.UUID;
 public class MatchProposalSelectionAttemptService {
 
     public enum AttemptResult {
-        CREATED,
-        NO_CANDIDATE,
-        SKIPPED,
-        RETRY_LATER
+        CREATED("created"),
+        NO_CANDIDATE("no_candidate"),
+        SKIPPED("skipped"),
+        RETRY_LATER("retry_later");
+
+        private final String metricTag;
+
+        AttemptResult(String metricTag) {
+            this.metricTag = metricTag;
+        }
+
+        public String metricTag() {
+            return metricTag;
+        }
     }
 
     private final MatchProposalSelectionService selectionService;
+    private final MatchingMetrics matchingMetrics;
 
     public AttemptResult attempt(UUID userId, Long requestId) {
+        Timer.Sample timerSample = matchingMetrics.startTimer();
+        AttemptResult result;
         try {
-            return selectionService.selectAndCreate(userId, requestId).isPresent()
+            result = selectionService.selectAndCreate(userId, requestId).isPresent()
                     ? AttemptResult.CREATED
                     : AttemptResult.NO_CANDIDATE;
         } catch (RealtimeMatchRequestException exception) {
@@ -35,17 +50,21 @@ public class MatchProposalSelectionAttemptService {
                         requestId,
                         exception.getErrorCode().getCode()
                 );
-                return AttemptResult.SKIPPED;
+                result = AttemptResult.SKIPPED;
+            } else {
+                logRetryableFailure(requestId, exception);
+                result = AttemptResult.RETRY_LATER;
             }
-            logRetryableFailure(requestId, exception);
-            return AttemptResult.RETRY_LATER;
         } catch (DataAccessException exception) {
             logRetryableFailure(requestId, exception);
-            return AttemptResult.RETRY_LATER;
+
+            result = AttemptResult.RETRY_LATER;
         } catch (RuntimeException exception) {
             logRetryableFailure(requestId, exception);
-            return AttemptResult.RETRY_LATER;
+            result = AttemptResult.RETRY_LATER;
         }
+        matchingMetrics.record(result, timerSample);
+        return result;
     }
 
     private boolean isTerminalState(RealtimeMatchRequestErrorCode errorCode) {

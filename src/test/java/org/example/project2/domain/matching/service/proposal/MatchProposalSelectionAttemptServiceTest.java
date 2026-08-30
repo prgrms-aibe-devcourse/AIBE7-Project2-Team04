@@ -3,6 +3,7 @@ package org.example.project2.domain.matching.service.proposal;
 import org.example.project2.domain.matching.entity.MatchProposal;
 import org.example.project2.domain.matching.exception.request.RealtimeMatchRequestErrorCode;
 import org.example.project2.domain.matching.exception.request.RealtimeMatchRequestException;
+import org.example.project2.domain.matching.service.monitoring.MatchingMetrics;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -21,6 +22,7 @@ import static org.mockito.Mockito.when;
 class MatchProposalSelectionAttemptServiceTest {
 
     @Mock MatchProposalSelectionService selectionService;
+    @Mock MatchingMetrics matchingMetrics;
     @InjectMocks MatchProposalSelectionAttemptService attemptService;
 
     @Test
