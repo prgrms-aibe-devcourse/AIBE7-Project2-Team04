@@ -30,7 +30,19 @@ spring:
 #      ssl:
 #        enabled: false
 
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
+
 app:
+  storage:
+    bucket: ${SUPABASE_S3_BUCKET:${SUPABASE_STORAGE_BUCKET:user-profiles}}
+    endpoint: ${SUPABASE_S3_ENDPOINT:}
+    region: ${SUPABASE_S3_REGION:ap-northeast-2}
+    access-key: ${SUPABASE_S3_ACCESS_KEY:}
+    secret-key: ${SUPABASE_S3_SECRET_KEY:}
+    public-base-url: ${SUPABASE_STORAGE_PUBLIC_BASE_URL:}
   kakao:
     rest-api-key: ${KAKAO_REST_API_KEY:}
   matching:
