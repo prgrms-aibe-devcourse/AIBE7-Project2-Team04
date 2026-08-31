@@ -6,5 +6,6 @@ public record MyProfileResponse(
         UUID userId,
         String email,
         String nickname,
-        String profileImageUrl
+        String profileImageUrl,
+        String role
 ) {}

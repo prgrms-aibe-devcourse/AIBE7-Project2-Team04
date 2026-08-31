@@ -248,7 +248,7 @@ OAuth 신규 가입 후 토큰 교환 응답의 추가 필드 예시:
 { "nickname": "새닉네임" }
 ```
 
-프로필 이미지는 `POST /users/me/profile-image`로 `multipart/form-data`의 `file` 파트에 업로드한다. 백엔드가 Supabase Storage(S3 호환 API)에 저장하고, object key를 `users.profile_image_key`에 기록한다. 응답 URL은 key로 조합한다. 허용 형식은 JPG/PNG, 최대 크기는 5MB이다.
+프로필 이미지는 `POST /users/me/profile-image`로 `multipart/form-data`의 `file` 파트에 업로드한다. 백엔드가 Supabase Storage(S3 호환 API)에 저장하고, 완성된 퍼블릭 URL을 `users.profile_image_url`에 기록하여 반환한다. 허용 형식은 JPG/PNG, 최대 크기는 5MB이다.
 
 
 **PUT /users/me/preferred-region**

@@ -11,7 +11,6 @@ import org.example.project2.domain.matching.entity.MatchRequest;
 import org.example.project2.domain.personality.entity.PersonalityTag;
 import org.example.project2.domain.personality.entity.UserPersonalityProfile;
 import org.example.project2.domain.personality.repository.UserPersonalityProfileRepository;
-import org.example.project2.domain.user.service.ProfileImageUrlResolver;
 import org.springframework.stereotype.Component;
 
 import java.util.LinkedHashMap;
@@ -24,7 +23,6 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class MatchResultResponseAssembler {
     private final UserPersonalityProfileRepository personalityProfileRepository;
-    private final ProfileImageUrlResolver profileImageUrlResolver;
 
     public MatchResultViews assemble(MatchProposal proposal, Match match, ChatRoom chatRoom) {
         MatchRequest request1 = proposal.getRequest1();
@@ -60,7 +58,7 @@ public class MatchResultResponseAssembler {
                 new MatchProposalPartnerProfileResponse(
                         partner.getId(),
                         partner.getNickname(),
-                        profileImageUrlResolver.resolve(partner),
+                        partner.getProfileImageUrl(),
                         partner.getDescription(),
                         styleTags
                 )

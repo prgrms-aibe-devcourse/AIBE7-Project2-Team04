@@ -16,7 +16,6 @@ import org.example.project2.domain.matching.repository.MatchProposalRepository;
 import org.example.project2.domain.personality.entity.PersonalityTag;
 import org.example.project2.domain.personality.repository.UserPersonalityProfileRepository;
 import org.example.project2.domain.user.entity.User;
-import org.example.project2.domain.user.service.ProfileImageUrlResolver;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.stereotype.Service;
@@ -36,7 +35,6 @@ public class MatchProposalInteractionService {
     private final MatchProposalLifecycleService matchProposalLifecycleService;
     private final UserPersonalityProfileRepository personalityProfileRepository;
     private final Clock clock;
-    private final ProfileImageUrlResolver profileImageUrlResolver;
 
     public MatchProposalResponse getCurrent(UUID userId) {
         requireUser(userId);
@@ -142,7 +140,7 @@ public class MatchProposalInteractionService {
                 new MatchProposalPartnerProfileResponse(
                         partner.getId(),
                         partner.getNickname(),
-                        profileImageUrlResolver.resolve(partner),
+                        partner.getProfileImageUrl(),
                         partner.getDescription(),
                         publicTags
                 ),

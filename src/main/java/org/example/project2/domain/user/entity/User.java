@@ -57,8 +57,6 @@ public class User {
     @Column(name = "profile_image_url", columnDefinition = "text")
     private String profileImageUrl;
 
-    @Column(name = "profile_image_key", columnDefinition = "text")
-    private String profileImageKey;
 
     @Column(columnDefinition = "text")
     private String description;
@@ -103,6 +101,10 @@ public class User {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Builder.Default
+    @Column(name = "warning_count", nullable = false)
+    private int warningCount = 0;
+
     public void skipPersonalityOnboarding() {
         personalityOnboardingStatus = PersonalityOnboardingStatus.SKIPPED;
     }
@@ -129,10 +131,6 @@ public class User {
         }
     }
 
-    public void updateProfileImageKey(String profileImageKey) {
-        this.profileImageKey = profileImageKey;
-    }
-
     public void withdraw() {
         this.status = UserStatus.WITHDRAWN;
         String uuid = java.util.UUID.randomUUID().toString();
@@ -142,6 +140,16 @@ public class User {
         }
         this.nickname = "탈퇴회원_" + uuid.substring(0, 8);
         this.profileImageUrl = null;
-        this.profileImageKey = null;
+    }
+
+    public void warn() {
+        this.warningCount++;
+        if (this.warningCount >= 3) {
+            this.status = UserStatus.BANNED;
+        }
+    }
+
+    public void ban() {
+        this.status = UserStatus.BANNED;
     }
 }

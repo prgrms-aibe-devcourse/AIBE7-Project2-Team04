@@ -9,7 +9,6 @@ import org.example.project2.domain.user.dto.MyProfileResponse;
 import org.example.project2.domain.user.dto.UpdateProfileRequest;
 import org.example.project2.domain.user.entity.User;
 import org.example.project2.domain.user.repository.UserRepository;
-import org.example.project2.domain.user.service.ProfileImageUrlResolver;
 import org.example.project2.global.common.CommonResponse;
 import org.example.project2.global.security.jwt.AuthCookieUtil;
 import org.springframework.http.HttpHeaders;
@@ -33,7 +32,6 @@ import java.util.UUID;
 public class UserController {
 
     private final UserRepository userRepository;
-    private final ProfileImageUrlResolver profileImageUrlResolver;
     private final MatchRequestRepository matchRequestRepository;
     private final AuthCookieUtil authCookieUtil;
     private final RefreshTokenService refreshTokenService;
@@ -50,7 +48,8 @@ public class UserController {
                 user.getId(),
                 user.getEmail(),
                 user.getNickname(),
-                profileImageUrlResolver.resolve(user)
+                user.getProfileImageUrl(),
+                user.getRole().name()
         );
 
         return ResponseEntity.ok(CommonResponse.success(response));
@@ -79,7 +78,8 @@ public class UserController {
                 user.getId(),
                 user.getEmail(),
                 user.getNickname(),
-                profileImageUrlResolver.resolve(user)
+                user.getProfileImageUrl(),
+                user.getRole().name()
         );
 
         return ResponseEntity.ok(CommonResponse.success(response));

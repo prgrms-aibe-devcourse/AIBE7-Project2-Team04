@@ -20,7 +20,6 @@ import org.example.project2.domain.personality.entity.UserPersonalityEmbedding;
 import org.example.project2.domain.personality.entity.UserPersonalityProfile;
 import org.example.project2.domain.personality.repository.UserPersonalityEmbeddingRepository;
 import org.example.project2.domain.personality.repository.UserPersonalityProfileRepository;
-import org.example.project2.domain.user.service.ProfileImageUrlResolver;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,7 +39,6 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class MatchProposalSelectionService {
-    private final ProfileImageUrlResolver profileImageUrlResolver;
     public static final String FORMULA_VERSION = "DESIRED_PERSONALITY_MATCH_V1_BIDIRECTIONAL_MIN_V1";
 
     private static final short BASE_CONDITION_SCORE = 50;
@@ -305,7 +303,7 @@ public class MatchProposalSelectionService {
                 new MatchProposalPartnerProfileResponse(
                         partner.getId(),
                         partner.getNickname(),
-                        profileImageUrlResolver.resolve(partner),
+                        partner.getProfileImageUrl(),
                         partner.getDescription(),
                         publicTags
                 ),

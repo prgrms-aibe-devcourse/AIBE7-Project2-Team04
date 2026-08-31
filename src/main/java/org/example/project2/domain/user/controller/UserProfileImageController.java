@@ -7,7 +7,6 @@ import org.example.project2.domain.user.dto.MyProfileResponse;
 import org.example.project2.domain.user.entity.User;
 import org.example.project2.domain.user.repository.UserRepository;
 import org.example.project2.domain.user.service.UserProfileImageService;
-import org.example.project2.domain.user.service.ProfileImageUrlResolver;
 import org.example.project2.global.common.CommonResponse;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -24,7 +23,6 @@ import org.springframework.web.multipart.MultipartFile;
 public class UserProfileImageController {
     private final UserProfileImageService profileImageService;
     private final UserRepository userRepository;
-    private final ProfileImageUrlResolver profileImageUrlResolver;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<CommonResponse<MyProfileResponse>> upload(
@@ -35,6 +33,6 @@ public class UserProfileImageController {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
         return ResponseEntity.ok(CommonResponse.success(new MyProfileResponse(
-                user.getId(), user.getEmail(), user.getNickname(), profileImageUrlResolver.resolve(user))));
+                user.getId(), user.getEmail(), user.getNickname(), user.getProfileImageUrl(), user.getRole().name())));
     }
 }
