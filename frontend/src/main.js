@@ -306,36 +306,6 @@ function initLandingPage() {
 
   btnHeroMatch?.addEventListener('click', handleMatchStart)
 
-  // 채팅방 가기 버튼: project2.isLoggedIn === 'true' 이며 매칭이 완료된 경우에만 활성화
-  const btnGoChat = document.querySelector('#btn-go-chat')
-  if (sessionStorage.getItem('project2.isLoggedIn') === 'true' && btnGoChat) {
-    const cachedMatchResult = readCachedMatchResult()
-
-    // 새로고침 직후에는 직전에 저장한 매칭 결과를 먼저 사용하여 버튼 깜빡임을 방지합니다.
-    if (cachedMatchResult) {
-      enableChatButton(btnGoChat, cachedMatchResult.chatRoomId)
-    }
-
-    import('./matching/matching-api.js').then(({ getLatestMatchResult }) => {
-      getLatestMatchResult()
-        .then((result) => {
-          if (result && result.chatRoomId) {
-            sessionStorage.setItem('project2.latestMatchResult', JSON.stringify(result))
-            enableChatButton(btnGoChat, result.chatRoomId)
-          } else {
-            // 매칭되지 않은 사용자는 채팅방 버튼을 표시하지 않음
-            sessionStorage.removeItem('project2.latestMatchResult')
-            btnGoChat.disabled = true
-            btnGoChat.classList.add('hidden', 'chat-state-pending')
-          }
-        })
-        .catch(() => {
-          // 매칭 여부를 확인하지 못한 경우에도 안전하게 버튼을 숨김
-          if (!cachedMatchResult) btnGoChat.classList.add('hidden', 'chat-state-pending')
-        })
-    })
-  }
-
   if (sessionStorage.getItem('project2.isLoggedIn') === 'true') {
     btnRegisterPreferred?.classList.remove('hidden')
   }
@@ -357,6 +327,39 @@ function initLandingPage() {
       alert('민지 님의 식사 테이블에 참가 요청을 보냈습니다!')
     }
   })
+
+  // 채팅방 가기 버튼: project2.isLoggedIn === 'true' 이며 매칭이 완료된 경우에만 활성화
+  const btnGoChat = document.querySelector('#btn-go-chat')
+  if (sessionStorage.getItem('project2.isLoggedIn') === 'true' && btnGoChat) {
+    const cachedMatchResult = readCachedMatchResult()
+
+    // 새로고침 혹은 SPA 화면 복원 직후에는 캐시 정보를 우선 활용하여 버튼 깜빡임 최소화
+    if (cachedMatchResult && cachedMatchResult.status === 'MATCHED') {
+      enableChatButton(btnGoChat, cachedMatchResult.chatRoomId)
+    } else {
+      btnGoChat.classList.add('hidden', 'chat-state-pending')
+    }
+
+    import('./matching/matching-api.js').then(({ getLatestMatchResult }) => {
+      getLatestMatchResult()
+        .then((result) => {
+          if (result && result.chatRoomId && result.status === 'MATCHED') {
+            sessionStorage.setItem('project2.latestMatchResult', JSON.stringify(result))
+            enableChatButton(btnGoChat, result.chatRoomId)
+          } else {
+            // 매칭되지 않았거나 이미 종료(COMPLETED/CANCELLED)된 사용자는 채팅방 버튼을 표시하지 않음
+            sessionStorage.removeItem('project2.latestMatchResult')
+            btnGoChat.disabled = true
+            btnGoChat.classList.add('hidden', 'chat-state-pending')
+          }
+        })
+        .catch(() => {
+          if (!cachedMatchResult || cachedMatchResult.status !== 'MATCHED') {
+            btnGoChat.classList.add('hidden', 'chat-state-pending')
+          }
+        })
+    })
+  }
 }
 
 function readCachedMatchResult() {
