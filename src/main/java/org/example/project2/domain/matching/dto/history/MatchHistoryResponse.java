@@ -12,6 +12,7 @@ public record MatchHistoryResponse(
         String partnerProfileImageUrl,
         String regionName,
         String foodCategory,
-        Instant mealAt
+        Instant mealAt,
+        boolean reviewed
 ) {
 }

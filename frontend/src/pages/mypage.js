@@ -163,23 +163,58 @@ export async function renderMyPage(container) {
       }
 
       const statusLabel = { MATCHED: '진행 중', COMPLETED: '만남 완료', CANCELLED: '취소됨' }
-      historyContainer.innerHTML = history.map(item => `
-        <div class="bg-surface rounded-2xl p-4 border border-outline-variant/30 flex items-center gap-3">
-          <div class="w-12 h-12 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center flex-shrink-0">
-            ${item.partnerProfileImageUrl
-              ? `<img src="${escapeHtml(item.partnerProfileImageUrl)}" alt="${escapeHtml(item.partnerNickname || '상대방')} 프로필" class="w-full h-full object-cover" />`
-              : `<span class="font-bold text-brand-navy">${escapeHtml((item.partnerNickname || '밥').trim().charAt(0) || '밥')}</span>`}
-          </div>
-          <div class="min-w-0 flex-grow">
-            <div class="flex items-center gap-2">
-              <span class="font-bold text-brand-navy truncate">${escapeHtml(item.partnerNickname || '상대방')}</span>
-              <span class="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-secondary">${statusLabel[item.status] || item.status}</span>
+      historyContainer.innerHTML = history.map(item => {
+        const isCompleted = item.status === 'COMPLETED';
+        return `
+        <div class="bg-surface rounded-2xl p-4 border border-outline-variant/30 flex flex-col gap-3">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center flex-shrink-0">
+              ${item.partnerProfileImageUrl
+                ? `<img src="${escapeHtml(item.partnerProfileImageUrl)}" alt="${escapeHtml(item.partnerNickname || '상대방')} 프로필" class="w-full h-full object-cover" />`
+                : `<span class="font-bold text-brand-navy">${escapeHtml((item.partnerNickname || '밥').trim().charAt(0) || '밥')}</span>`}
             </div>
-            <p class="text-xs text-secondary mt-1 truncate">${escapeHtml(item.regionName || '')} · ${escapeHtml(item.foodCategory || '')}</p>
+            <div class="min-w-0 flex-grow">
+              <div class="flex items-center gap-2">
+                <span class="font-bold text-brand-navy truncate">${escapeHtml(item.partnerNickname || '상대방')}</span>
+                <span class="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-secondary">${statusLabel[item.status] || item.status}</span>
+              </div>
+              <p class="text-xs text-secondary mt-1 truncate">${escapeHtml(item.regionName || '')} · ${escapeHtml(item.foodCategory || '')}</p>
+            </div>
+            <time class="text-[11px] text-secondary whitespace-nowrap">${formatHistoryDate(item.matchedAt)}</time>
           </div>
-          <time class="text-[11px] text-secondary whitespace-nowrap">${formatHistoryDate(item.matchedAt)}</time>
+          ${isCompleted ? `
+          <div class="flex justify-end gap-2 border-t border-outline-variant/10 pt-2.5">
+            ${item.reviewed ? `
+            <button class="px-3 py-1.5 bg-slate-100 text-slate-400 text-xs font-bold rounded-lg cursor-not-allowed" disabled>
+              후기 작성 완료
+            </button>
+            ` : `
+            <button class="btn-review-write px-3 py-1.5 bg-primary-container text-white text-xs font-bold rounded-lg shadow-sm hover:bg-primary transition-colors" data-match-id="${item.matchId}">
+              후기 작성
+            </button>
+            `}
+            <button class="btn-report-user px-3 py-1.5 bg-red-50 text-red-600 border border-red-100 text-xs font-bold rounded-lg hover:bg-red-100 transition-colors" data-match-id="${item.matchId}">
+              신고하기
+            </button>
+          </div>
+          ` : ''}
         </div>
-      `).join('')
+        `
+      }).join('')
+
+      historyContainer.querySelectorAll('.btn-review-write').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const matchId = e.currentTarget.getAttribute('data-match-id')
+          navigateTo(`/review?matchId=${matchId}`)
+        })
+      })
+
+      historyContainer.querySelectorAll('.btn-report-user').forEach(btn => {
+        btn.addEventListener('click', () => {
+          alert('신고 기능은 추후 구현 예정입니다.')
+        })
+      })
+
     } catch (error) {
       console.error('매칭 이력 조회 실패', error)
       historyContainer.innerHTML = '<p class="text-sm text-secondary text-center py-6">매칭 이력을 불러오지 못했습니다.</p>'

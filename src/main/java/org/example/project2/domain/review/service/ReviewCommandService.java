@@ -1,6 +1,7 @@
 package org.example.project2.domain.review.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.example.project2.domain.matching.exception.InvalidMatchParticipantsException;
 import org.example.project2.domain.matching.exception.MatchNotCompletedException;
 import org.example.project2.domain.matching.exception.MatchNotFoundException;
@@ -26,7 +27,9 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ReviewCommandService {
+    private static final String DUPLICATE_REVIEW_CONSTRAINT = "uk_user_review_match_reviewer_reviewee";
     private static final Duration REVIEW_PERIOD = Duration.ofDays(7);
 
     private final MatchParticipationQueryService matchParticipationQueryService;
@@ -88,10 +91,15 @@ public class ReviewCommandService {
             // saveAndFlush로 경쟁 요청의 DB Unique 충돌을 이 서비스 경계 안에서 변환합니다.
             savedReview = userReviewRepository.saveAndFlush(review);
         } catch (DataIntegrityViolationException exception) {
-            reviewAuditEventPublisher.duplicateRejected(
-                    request.matchId(), reviewerId, participation.reviewee().getId()
-            );
-            throw new ReviewException(ReviewErrorCode.REVIEW_ALREADY_SUBMITTED);
+            if (isDuplicateReviewViolation(exception)) {
+                reviewAuditEventPublisher.duplicateRejected(
+                        request.matchId(), reviewerId, participation.reviewee().getId()
+                );
+                throw new ReviewException(ReviewErrorCode.REVIEW_ALREADY_SUBMITTED);
+            }
+
+            log.error("후기 저장 중 무결성 오류가 발생했습니다. matchId={}", request.matchId(), exception);
+            throw new ReviewException(ReviewErrorCode.DATA_INCONSISTENT);
         }
         if (savedReview == null || savedReview.getId() == null) {
             throw new ReviewException(ReviewErrorCode.DATA_INCONSISTENT);
@@ -104,6 +112,17 @@ public class ReviewCommandService {
                 submittedAt
         );
         return new ReviewCreateResponse(savedReview.getId(), submittedAt);
+    }
+
+    private boolean isDuplicateReviewViolation(DataIntegrityViolationException exception) {
+        Throwable cause = exception;
+        while (cause != null) {
+            if (cause instanceof org.hibernate.exception.ConstraintViolationException constraintViolation) {
+                return DUPLICATE_REVIEW_CONSTRAINT.equals(constraintViolation.getConstraintName());
+            }
+            cause = cause.getCause();
+        }
+        return false;
     }
 
     private MatchParticipationQueryService.MatchParticipation findParticipation(

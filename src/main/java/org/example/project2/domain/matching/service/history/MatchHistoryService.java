@@ -8,6 +8,7 @@ import org.example.project2.domain.matching.dto.history.MatchHistoryResponse;
 import org.example.project2.domain.matching.entity.Match;
 import org.example.project2.domain.matching.entity.MatchRequest;
 import org.example.project2.domain.matching.repository.MatchRepository;
+import org.example.project2.domain.review.repository.UserReviewRepository;
 import org.example.project2.domain.user.service.ProfileImageUrlResolver;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,7 @@ public class MatchHistoryService {
 
     private final MatchRepository matchRepository;
     private final ProfileImageUrlResolver profileImageUrlResolver;
+    private final UserReviewRepository userReviewRepository;
 
     public List<MatchHistoryResponse> findMyHistory(UUID userId) {
         if (userId == null) {
@@ -41,6 +43,12 @@ public class MatchHistoryService {
                 ? match.getRequest2()
                 : match.getRequest1();
 
+        boolean reviewed = userReviewRepository.existsByMatch_IdAndReviewer_IdAndReviewee_Id(
+                match.getId(),
+                userId,
+                partnerRequest.getUser().getId()
+        );
+
         return new MatchHistoryResponse(
                 match.getId(),
                 match.getStatus(),
@@ -49,7 +57,8 @@ public class MatchHistoryService {
                 profileImageUrlResolver.resolve(partnerRequest.getUser()),
                 myRequest.getRegionName(),
                 myRequest.getFoodCategory(),
-                myRequest.getMealAt()
+                myRequest.getMealAt(),
+                reviewed
         );
     }
 }

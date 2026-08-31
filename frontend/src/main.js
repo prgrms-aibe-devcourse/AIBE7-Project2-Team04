@@ -141,6 +141,10 @@ const routeApp = async () => {
       const { renderMyPage } = await import('./pages/mypage.js')
       if (!isCurrentRoute()) return
       await renderMyPage(app)
+    } else if (path === '/review') {
+      const { renderReviewPage } = await import('./pages/review.js')
+      if (!isCurrentRoute()) return
+      await renderReviewPage(app)
     } else {
       // 기본 메인 랜딩 페이지
       initLandingPage()
