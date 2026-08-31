@@ -367,6 +367,7 @@ V1 응답값은 `1`, `3`, `5`만 허용하며 각각 `0`, `50`, `100`점으로 �
 | DELETE | `/matches/realtime/requests/{requestId}` | 매칭 대기 취소 (FR-03-08) | Y |
 | GET | `/matches/realtime/requests/me` | 내 현재 대기 상태 조회 | Y |
 | GET | `/matches/realtime/results/latest` | WebSocket 연결 유실 시 내 최신 매칭 결과 복구 조회 | Y |
+| PATCH | `/matches/{matchId}/end` | 본인이 참여한 매칭 종료 및 채팅방 종료 | Y |
 | WS(STOMP) SUBSCRIBE | `/user/queue/match-proposal` | 후보 프로필 확인 및 15초 응답 제한 이벤트 | Y |
 | WS(STOMP) SUBSCRIBE | `/user/queue/match-result` | 매칭 성사 결과 실시간 수신 (FR-03-07) | Y |
 
@@ -630,13 +631,15 @@ API와 DB에는 안정적인 영문 코드만 사용하고, 한국어 문구는 
 | Method | Endpoint | 설명 | 인증 |
 | --- | --- | --- | --- |
 | GET | `/mypage/profile` | 내 프로필 (FR-09-01) | Y |
-| GET | `/mypage/matches` | 내 매칭 이력 (FR-09-03) | Y |
+| GET | `/matches/history` | 내 매칭 이력 (FR-09-03) | Y |
 | GET | `/mypage/reviews` | 내가 받은 후기/방명록 (FR-09-05) | Y |
 
 <aside>
 📎
 
 회원 정보 수정은 1장의 `PATCH /users/me`를 그대로 재사용하는 것을 권장 (마이페이지 화면 전용 PATCH 엔드포인트를 따로 만들면 로직이 중복됨).
+
+`GET /matches/history`는 인증된 사용자가 참여한 매칭을 최신순 최대 30건 반환하며, 상대 닉네임·공개 프로필 이미지·매칭 상태·성사 시각·지역명·음식 카테고리만 포함한다.
 
 </aside>
 

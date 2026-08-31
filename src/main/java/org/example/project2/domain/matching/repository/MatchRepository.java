@@ -37,4 +37,34 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
             @Param("userId") UUID userId,
             Pageable pageable
     );
+
+    @Query("""
+            SELECT m
+            FROM Match m
+            JOIN FETCH m.request1 r1
+            JOIN FETCH r1.user u1
+            JOIN FETCH m.request2 r2
+            JOIN FETCH r2.user u2
+            WHERE u1.id = :userId OR u2.id = :userId
+            ORDER BY m.matchedAt DESC, m.id DESC
+            """)
+    List<Match> findHistoryByParticipantUserId(
+            @Param("userId") UUID userId,
+            Pageable pageable
+    );
+
+    @Query("""
+            SELECT m
+            FROM Match m
+            JOIN FETCH m.request1 r1
+            JOIN FETCH r1.user
+            JOIN FETCH m.request2 r2
+            JOIN FETCH r2.user
+            WHERE m.id = :matchId
+              AND (r1.user.id = :userId OR r2.user.id = :userId)
+            """)
+    Optional<Match> findByIdAndParticipantUserId(
+            @Param("matchId") Long matchId,
+            @Param("userId") UUID userId
+    );
 }
