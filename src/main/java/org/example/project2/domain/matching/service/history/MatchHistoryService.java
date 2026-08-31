@@ -9,7 +9,6 @@ import org.example.project2.domain.matching.entity.Match;
 import org.example.project2.domain.matching.entity.MatchRequest;
 import org.example.project2.domain.matching.repository.MatchRepository;
 import org.example.project2.domain.review.repository.UserReviewRepository;
-import org.example.project2.domain.user.service.ProfileImageUrlResolver;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,7 +20,6 @@ public class MatchHistoryService {
     private static final int HISTORY_LIMIT = 30;
 
     private final MatchRepository matchRepository;
-    private final ProfileImageUrlResolver profileImageUrlResolver;
     private final UserReviewRepository userReviewRepository;
 
     public List<MatchHistoryResponse> findMyHistory(UUID userId) {
@@ -54,7 +52,7 @@ public class MatchHistoryService {
                 match.getStatus(),
                 match.getMatchedAt(),
                 partnerRequest.getUser().getNickname(),
-                profileImageUrlResolver.resolve(partnerRequest.getUser()),
+                partnerRequest.getUser().getProfileImageUrl(),
                 myRequest.getRegionName(),
                 myRequest.getFoodCategory(),
                 myRequest.getMealAt(),

@@ -210,8 +210,9 @@ export async function renderMyPage(container) {
       })
 
       historyContainer.querySelectorAll('.btn-report-user').forEach(btn => {
-        btn.addEventListener('click', () => {
-          alert('신고 기능은 추후 구현 예정입니다.')
+        btn.addEventListener('click', (e) => {
+          const matchId = e.currentTarget.getAttribute('data-match-id')
+          openReportModal(matchId)
         })
       })
 
@@ -219,6 +220,94 @@ export async function renderMyPage(container) {
       console.error('매칭 이력 조회 실패', error)
       historyContainer.innerHTML = '<p class="text-sm text-secondary text-center py-6">매칭 이력을 불러오지 못했습니다.</p>'
     }
+  }
+
+  const openReportModal = (matchId) => {
+    const existModal = document.querySelector('#report-modal')
+    if (existModal) existModal.remove()
+
+    const modalHtml = `
+      <div id="report-modal" class="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl flex flex-col gap-4">
+          <div>
+            <h3 class="text-lg font-bold text-brand-navy">불량 이용자 신고하기</h3>
+            <p class="text-xs text-secondary mt-1">상대방의 불량한 행동이나 매칭 수칙 위반 사항을 신고해주세요. 관리자가 검토 후 제재 조치를 취합니다.</p>
+          </div>
+          
+          <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold text-slate-700">신고 유형</label>
+            <select id="report-category" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary-container">
+              <option value="NO_SHOW">약속 불이행 및 노쇼 (No-Show)</option>
+              <option value="ABUSE">욕설 및 비방, 부적절한 대화</option>
+              <option value="SPAM">광고 및 스팸 홍보</option>
+              <option value="MISINFORMATION">허위 사실 유포</option>
+            </select>
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold text-slate-700">신고 사유 상세</label>
+            <textarea id="report-reason" rows="4" placeholder="상세한 신고 사유를 입력해주세요. 어드민이 확인을 위해 관련 대화 내역을 검토할 수 있습니다." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-primary-container resize-none"></textarea>
+          </div>
+
+          <div class="flex justify-end gap-2 mt-2">
+            <button id="btn-close-report" class="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-50 transition-colors">취소</button>
+            <button id="btn-submit-report" class="px-4 py-2 bg-red-600 text-white rounded-xl text-xs font-bold hover:bg-red-700 transition-colors shadow-sm">신고 전송</button>
+          </div>
+        </div>
+      </div>
+    `
+    document.body.insertAdjacentHTML('beforeend', modalHtml)
+
+    const modal = document.querySelector('#report-modal')
+    const btnClose = modal.querySelector('#btn-close-report')
+    const btnSubmit = modal.querySelector('#btn-submit-report')
+
+    btnClose.addEventListener('click', () => modal.remove())
+
+    btnSubmit.addEventListener('click', async () => {
+      const category = modal.querySelector('#report-category').value
+      const reason = modal.querySelector('#report-reason').value.trim()
+
+      if (!reason) {
+        alert('신고 사유를 구체적으로 적어주세요.')
+        return
+      }
+
+      try {
+        const csrfResp = await fetch('/auth/csrf', { credentials: 'include' })
+        if (!csrfResp.ok) throw new Error('CSRF 토큰 발급에 실패했습니다.')
+        const readCookie = (name) => {
+          const prefix = `${encodeURIComponent(name)}=`
+          const cookie = document.cookie.split('; ').find(item => item.startsWith(prefix))
+          return cookie ? decodeURIComponent(cookie.slice(prefix.length)) : null
+        }
+        const csrfToken = readCookie('XSRF-TOKEN')
+
+        const resp = await fetch(`${API_BASE_URL}/reports`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-XSRF-TOKEN': csrfToken
+          },
+          body: JSON.stringify({
+            matchId: Number(matchId),
+            category,
+            reason
+          })
+        })
+
+        if (resp.ok) {
+          alert('신고가 성공적으로 접수되었습니다. 소중한 의견 감사합니다.')
+          modal.remove()
+        } else {
+          const body = await resp.json()
+          alert(body?.error?.message || '신고 접수에 실패했습니다.')
+        }
+      } catch (err) {
+        alert('신고 중 오류 발생: ' + err.message)
+      }
+    })
   }
 
   const escapeHtml = (value) => String(value ?? '')
