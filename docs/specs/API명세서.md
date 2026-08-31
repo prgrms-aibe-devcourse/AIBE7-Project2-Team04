@@ -559,15 +559,31 @@ Query: `cursor` (마지막으로 받은 messageId), `size` (기본 30)
 **POST /reviews**
 
 ```json
-{ "matchId": 301, "targetUserId": "8ccaa7af-909f-44e7-84cb-67cdccb56be6", "rating": 5, "content": "시간 약속을 잘 지키셨어요." }
+{ "matchId": 301, "revisitIntention": "DEFINITELY_AGAIN", "impressionTag": "PUNCTUAL" }
 ```
 
 <aside>
 📎
 
-서버는 `match_participants`에서 `writerId`(요청자)와 `targetUserId`가 같은 `matchId`에 실제로 참여했는지 검증 후 통과 시에만 저장 (FR-07-01). 조건 불충족 시 `403 AUTH_002`.
+`reviewerId`와 `revieweeId`는 요청 본문으로 받지 않는다. 서버는 인증 사용자와 `match_participants`에서 `matchId`의 상대 참여자를 결정한 뒤 실제 참여 관계를 검증하고 저장한다 (FR-07-01). 조건 불충족 시 `403 AUTH_002`.
 
 </aside>
+
+후기 입력의 `revisitIntention`은 필수 고정 코드 하나이며 `impressionTag`는 생략할 수 있는 단일 고정 코드다. 별점·자유 서술형 내용·복수 태그 배열은 MVP 입력에 포함하지 않는다. 알 수 없는 코드는 한국어 검증 오류로 거부한다.
+
+### 후기 Enum 코드와 표시 문구
+
+API와 DB에는 안정적인 영문 코드만 사용하고, 한국어 문구는 클라이언트 또는 표시용 DTO에서 매핑한다. Enum 저장 시 JPA `EnumType.STRING`을 사용한다.
+
+| 구분 | 코드 | 한국어 표시 문구 |
+| --- | --- | --- |
+| 재만남 의향 | `DEFINITELY_AGAIN` | 꼭 또 보고 싶어요 |
+| 재만남 의향 | `MAYBE_AGAIN` | 기회가 되면 좋아요 |
+| 재만남 의향 | `ENOUGH_FOR_NOW` | 이번 만남으로 충분해요 |
+| 인상 태그 | `PUNCTUAL` | 시간 약속 |
+| 인상 태그 | `COMFORTABLE_CONVERSATION` | 편안한 대화 |
+| 인상 태그 | `CONSIDERATE` | 배려 |
+| 인상 태그 | `ACTIVE_PARTICIPATION` | 적극적인 참여 |
 
 ---
 
