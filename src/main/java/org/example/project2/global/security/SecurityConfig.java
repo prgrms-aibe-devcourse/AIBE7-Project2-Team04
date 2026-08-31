@@ -212,7 +212,6 @@ public class SecurityConfig {
                                         "/error"
                                 ).permitAll()
                                 .requestMatchers("/ws-chat/**").permitAll() // 웹소켓
-                                .requestMatchers("/chat-test.html").permitAll() // 채팅테스트 페이지
                                 .requestMatchers("/admin/**").hasRole("ADMIN")
                                 .anyRequest()
                                 .authenticated()

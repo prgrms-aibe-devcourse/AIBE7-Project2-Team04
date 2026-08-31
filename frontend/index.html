@@ -186,19 +186,24 @@
             </button>
           </div>
           <!-- Logged in actions -->
-          <div class="header-logged-in flex items-center gap-2 sm:gap-3">
-            <a href="/personality/survey" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-brand-navy text-xs font-bold transition-colors">
-              <span class="material-symbols-outlined text-sm text-primary-container">psychology</span>
-              <span>식사 성향</span>
-            </a>
-            <button id="btn-revoke-location" class="btn-action-revoke px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm" aria-label="위치 이용 동의 철회" title="위치 이용 동의 철회">
-              <span class="material-symbols-outlined text-sm">no_accounts</span>
-              <span class="header-action-label">위치정보 삭제</span>
-            </button>
-            <button id="btn-logout" class="btn-action-logout px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm" aria-label="로그아웃" title="로그아웃">
-              <span class="material-symbols-outlined text-sm">logout</span>
-              <span class="header-action-label">로그아웃</span>
-            </button>
+          <div class="header-logged-in flex items-center gap-3 relative">
+            <span id="header-user-nickname" class="text-sm font-semibold text-brand-navy"></span>
+            <div class="relative inline-block text-left">
+              <button id="btn-profile-menu" class="w-10 h-10 rounded-full border border-outline-variant/30 overflow-hidden shadow-sm focus:outline-none flex items-center justify-center bg-slate-100">
+                <img id="header-user-profile-img" src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png" alt="프로필 이미지" class="w-full h-full object-cover" />
+              </button>
+              <!-- 드롭다운 메뉴 (기본 hidden) -->
+              <div id="profile-dropdown" class="hidden absolute right-0 mt-2 w-44 rounded-xl bg-white border border-outline-variant/20 shadow-floating py-2 z-50">
+                <button id="btn-go-mypage" class="w-full text-left px-4 py-2 text-xs sm:text-sm text-brand-navy hover:bg-slate-100 font-semibold flex items-center gap-2">
+                  <span class="material-symbols-outlined text-sm">person</span>
+                  <span>마이페이지로 가기</span>
+                </button>
+                <button id="btn-dropdown-logout" class="w-full text-left px-4 py-2 text-xs sm:text-sm text-red-600 hover:bg-slate-100 font-semibold flex items-center gap-2">
+                  <span class="material-symbols-outlined text-sm">logout</span>
+                  <span>로그아웃</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -229,10 +234,6 @@
               <button id="btn-hero-match" class="w-full sm:flex-1 btn-primary py-3 px-6 rounded-full text-sm font-bold shadow-md pulse-ring flex items-center justify-center gap-2">
                 <span class="material-symbols-outlined text-lg">local_dining</span>
                 <span>마주한끼 찾기</span>
-              </button>
-              <button id="btn-register-preferred" class="auth-only-button hidden w-full sm:w-auto btn-action-location py-3 px-5 rounded-full text-sm shrink-0">
-                <span class="material-symbols-outlined text-lg">favorite</span>
-                <span>선호 위치 등록</span>
               </button>
             </div>
 

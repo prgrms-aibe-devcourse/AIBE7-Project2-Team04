@@ -544,7 +544,7 @@ export async function renderPersonalitySurvey(container) {
       if (confirm('온보딩을 건너뛰시겠습니까? 마이페이지에서 언제든 다시 설정할 수 있습니다.')) {
         try {
           await skipPersonalityProfile()
-          navigateTo('/')
+          navigateTo('/mypage')
         } catch (err) {
           alert(err.message || '건너뛰기 요청에 실패했습니다.')
         }
@@ -649,7 +649,7 @@ function renderCompletionView(container) {
           선택하신 식사 스타일과 선호 음식을 기반으로 딱 맞는 밥친구를 찾아드립니다.
         </p>
         <div class="mt-6 flex flex-col gap-2.5">
-          <a class="primary-link" href="/">홈으로 이동하기</a>
+          <a class="primary-link" href="/mypage">마이페이지로 이동하기</a>
         </div>
       </section>
     </main>

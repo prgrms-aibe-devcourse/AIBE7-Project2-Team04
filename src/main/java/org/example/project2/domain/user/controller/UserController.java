@@ -34,7 +34,8 @@ public class UserController {
         MyProfileResponse response = new MyProfileResponse(
                 user.getId(),
                 user.getEmail(),
-                user.getNickname()
+                user.getNickname(),
+                user.getProfileImageUrl()
         );
 
         return ResponseEntity.ok(CommonResponse.success(response));

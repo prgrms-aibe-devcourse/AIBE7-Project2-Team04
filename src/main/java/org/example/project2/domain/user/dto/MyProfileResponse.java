@@ -5,5 +5,6 @@ import java.util.UUID;
 public record MyProfileResponse(
         UUID userId,
         String email,
-        String nickname
+        String nickname,
+        String profileImageUrl
 ) {}

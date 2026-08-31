@@ -1,4 +1,4 @@
-import { API_BASE_URL, regionTree } from '../main.js'
+import { API_BASE_URL, regionTree, navigateTo } from '../main.js'
 import { getAccessToken } from '../auth/token-storage.js'
 
 export async function renderPreferredRegionPage(container, isCurrentRoute = () => true) {
@@ -6,7 +6,7 @@ export async function renderPreferredRegionPage(container, isCurrentRoute = () =
   const checkLocationConsent = async () => {
     const token = getAccessToken()
     if (!token) {
-      window.location.assign('/')
+      navigateTo('/mypage')
       return false
     }
 
@@ -61,7 +61,7 @@ export async function renderPreferredRegionPage(container, isCurrentRoute = () =
 
       btnCancel.addEventListener('click', () => {
         overlay.remove()
-        window.location.assign('/')
+        navigateTo('/mypage')
       })
 
       btnSubmit.addEventListener('click', async () => {
@@ -643,7 +643,7 @@ export async function renderPreferredRegionPage(container, isCurrentRoute = () =
 
               if (resp.ok) {
                 alert('선호위치 등록이 성공적으로 완료되었습니다!')
-                window.location.assign('/')
+                navigateTo('/mypage')
               } else {
                 const body = await resp.json()
                 alert(body?.error?.message || '선호위치 등록에 실패했습니다.')

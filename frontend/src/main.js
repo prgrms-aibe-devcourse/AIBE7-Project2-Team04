@@ -137,6 +137,10 @@ const routeApp = async () => {
     } else if (path === '/matching/request') {
       await regionsPromise // 매칭 요청 페이지 진입 시에만 데이터를 기다림
       await renderMatchingRequestPage(app)
+    } else if (path === '/mypage') {
+      const { renderMyPage } = await import('./pages/mypage.js')
+      if (!isCurrentRoute()) return
+      await renderMyPage(app)
     } else {
       // 기본 메인 랜딩 페이지
       initLandingPage()
@@ -387,64 +391,73 @@ function initCommonHeader() {
   const headerAuth = document.querySelector('#header-auth')
   if (!headerAuth) return
 
-  // 위치 동의 철회 버튼 바인딩
-  const btnRevoke = document.querySelector('#btn-revoke-location')
-  if (btnRevoke && !btnRevoke.dataset.bound) {
-    btnRevoke.dataset.bound = 'true'
-    btnRevoke.addEventListener('click', async (e) => {
-      e.preventDefault()
-      e.stopPropagation()
-      if (confirm('위치 정보 이용 동의를 철회하시겠습니까?\n철회 시 등록된 선호위치와 대기 중인 모든 매칭 요청이 파기됩니다.')) {
-        try {
-          const csrfResp = await fetch(`${API_BASE_URL}/auth/csrf`, { credentials: 'include' })
-          if (!csrfResp.ok) throw new Error('CSRF 토큰 발급에 실패했습니다.')
+  const isLoggedIn = sessionStorage.getItem('project2.isLoggedIn') === 'true'
 
-          const readCookie = (name) => {
-            const prefix = `${encodeURIComponent(name)}=`
-            const cookie = document.cookie
-              .split('; ')
-              .find((item) => item.startsWith(prefix))
-            return cookie ? decodeURIComponent(cookie.slice(prefix.length)) : null
-          }
-          const csrfToken = readCookie('XSRF-TOKEN')
-
-          const resp = await fetch(`${API_BASE_URL}/users/me/preferred-region`, {
-            method: 'DELETE',
-            credentials: 'include',
-            headers: {
-              'X-XSRF-TOKEN': csrfToken
+  if (isLoggedIn) {
+    // 사용자 정보 호출
+    const nicknameEl = document.querySelector('#header-user-nickname')
+    const profileImgEl = document.querySelector('#header-user-profile-img')
+    
+    if (nicknameEl && profileImgEl && !nicknameEl.dataset.loaded) {
+      nicknameEl.dataset.loaded = 'true'
+      fetch(`${API_BASE_URL}/users/me`, { credentials: 'include' })
+        .then(res => res.json())
+        .then(body => {
+          if (body.success && body.data) {
+            nicknameEl.textContent = body.data.nickname
+            if (body.data.profileImageUrl) {
+              profileImgEl.src = body.data.profileImageUrl
             }
-          })
-
-          if (resp.ok) {
-            alert('위치 정보 이용 동의가 철회되고 데이터가 영구 파기되었습니다.')
-            navigateTo('/')
-          } else {
-            alert('동의 철회 처리에 실패했습니다.')
           }
-        } catch (err) {
-          alert('오류가 발생했습니다: ' + err.message)
-        }
-      }
-    })
-  }
+        })
+        .catch(err => console.error('사용자 정보를 가져오는데 실패했습니다.', err))
+    }
 
-  // 로그아웃 버튼 바인딩
-  const btnLogout = document.querySelector('#btn-logout')
-  if (btnLogout && !btnLogout.dataset.bound) {
-    btnLogout.dataset.bound = 'true'
-    btnLogout.addEventListener('click', async (e) => {
-      e.preventDefault()
-      e.stopPropagation()
-      try {
-        await logout()
-      } catch (error) {
-        console.warn('로그아웃 요청 실패 (로컬 세션은 정리합니다):', error)
-      } finally {
-        clearAccessToken()
-        navigateTo('/')
-      }
-    })
+    // 프로필 드롭다운 메뉴 제어
+    const btnProfileMenu = document.querySelector('#btn-profile-menu')
+    const profileDropdown = document.querySelector('#profile-dropdown')
+    if (btnProfileMenu && profileDropdown && !btnProfileMenu.dataset.bound) {
+      btnProfileMenu.dataset.bound = 'true'
+      btnProfileMenu.addEventListener('click', (e) => {
+        e.stopPropagation()
+        profileDropdown.classList.toggle('hidden')
+      })
+
+      document.addEventListener('click', (e) => {
+        if (!btnProfileMenu.contains(e.target) && !profileDropdown.contains(e.target)) {
+          profileDropdown.classList.add('hidden')
+        }
+      })
+    }
+
+    // 마이페이지 이동 버튼 바인딩
+    const btnGoMypage = document.querySelector('#btn-go-mypage')
+    if (btnGoMypage && !btnGoMypage.dataset.bound) {
+      btnGoMypage.dataset.bound = 'true'
+      btnGoMypage.addEventListener('click', (e) => {
+        e.preventDefault()
+        profileDropdown?.classList.add('hidden')
+        navigateTo('/mypage')
+      })
+    }
+
+    // 로그아웃 버튼 바인딩
+    const btnDropdownLogout = document.querySelector('#btn-dropdown-logout')
+    if (btnDropdownLogout && !btnDropdownLogout.dataset.bound) {
+      btnDropdownLogout.dataset.bound = 'true'
+      btnDropdownLogout.addEventListener('click', async (e) => {
+        e.preventDefault()
+        profileDropdown?.classList.add('hidden')
+        try {
+          await logout()
+        } catch (error) {
+          console.warn('로그아웃 요청 실패 (로컬 세션은 정리합니다):', error)
+        } finally {
+          clearAccessToken()
+          navigateTo('/')
+        }
+      })
+    }
   }
 
   // 로그인/시작하기 모달 버튼 리스너 바인딩
