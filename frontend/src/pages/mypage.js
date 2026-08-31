@@ -83,6 +83,20 @@ export async function renderMyPage(container) {
           </div>
         </div>
 
+        <!-- 매칭 히스토리 -->
+        <div class="mt-8 border-t border-outline-variant/20 pt-6">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="font-headline text-lg font-bold text-brand-navy">매칭 히스토리</h2>
+              <p class="text-xs text-secondary mt-1">그동안 성사된 매칭을 확인할 수 있습니다.</p>
+            </div>
+            <span class="material-symbols-outlined text-primary-container">history</span>
+          </div>
+          <div id="mypage-match-history" class="space-y-3">
+            <p class="text-sm text-secondary text-center py-6">매칭 이력을 불러오는 중...</p>
+          </div>
+        </div>
+
         <!-- 민감 영역 (위치 동의 철회) -->
         <div class="mt-8 border-t border-outline-variant/20 pt-6">
           <h2 class="font-headline text-lg font-bold text-red-600 mb-2">개인정보 파기</h2>
@@ -92,6 +106,18 @@ export async function renderMyPage(container) {
           <button id="btn-mypage-revoke" class="px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-full text-xs sm:text-sm font-bold transition-colors flex items-center gap-1.5 w-full sm:w-auto justify-center">
             <span class="material-symbols-outlined text-sm">no_accounts</span>
             <span>위치동의 철회</span>
+          </button>
+        </div>
+
+        <!-- 계정 탈퇴 -->
+        <div class="mt-8 border-t border-outline-variant/20 pt-6">
+          <h2 class="font-headline text-lg font-bold text-red-600 mb-2">계정 탈퇴</h2>
+          <p class="text-xs text-secondary leading-relaxed mb-4">
+            탈퇴 시 회원 정보 및 서비스 이용 기록이 모두 파기되며, 이 작업은 되돌릴 수 없습니다.
+          </p>
+          <button id="btn-mypage-withdraw" class="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-full text-xs sm:text-sm font-bold transition-colors flex items-center gap-1.5 w-full sm:w-auto justify-center">
+            <span class="material-symbols-outlined text-sm">delete_forever</span>
+            <span>계정 탈퇴하기</span>
           </button>
         </div>
       </div>
@@ -122,6 +148,58 @@ export async function renderMyPage(container) {
   }
 
   await loadProfile()
+
+  const loadMatchHistory = async () => {
+    const historyContainer = document.querySelector('#mypage-match-history')
+    if (!historyContainer) return
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/matches/history`, { credentials: 'include' })
+      const body = await response.json()
+      const history = body.success && Array.isArray(body.data) ? body.data : []
+      if (history.length === 0) {
+        historyContainer.innerHTML = '<p class="text-sm text-secondary text-center py-6">아직 매칭 이력이 없습니다.</p>'
+        return
+      }
+
+      const statusLabel = { MATCHED: '진행 중', COMPLETED: '만남 완료', CANCELLED: '취소됨' }
+      historyContainer.innerHTML = history.map(item => `
+        <div class="bg-surface rounded-2xl p-4 border border-outline-variant/30 flex items-center gap-3">
+          <div class="w-12 h-12 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center flex-shrink-0">
+            ${item.partnerProfileImageUrl
+              ? `<img src="${escapeHtml(item.partnerProfileImageUrl)}" alt="${escapeHtml(item.partnerNickname || '상대방')} 프로필" class="w-full h-full object-cover" />`
+              : `<span class="font-bold text-brand-navy">${escapeHtml((item.partnerNickname || '밥').trim().charAt(0) || '밥')}</span>`}
+          </div>
+          <div class="min-w-0 flex-grow">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-brand-navy truncate">${escapeHtml(item.partnerNickname || '상대방')}</span>
+              <span class="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-secondary">${statusLabel[item.status] || item.status}</span>
+            </div>
+            <p class="text-xs text-secondary mt-1 truncate">${escapeHtml(item.regionName || '')} · ${escapeHtml(item.foodCategory || '')}</p>
+          </div>
+          <time class="text-[11px] text-secondary whitespace-nowrap">${formatHistoryDate(item.matchedAt)}</time>
+        </div>
+      `).join('')
+    } catch (error) {
+      console.error('매칭 이력 조회 실패', error)
+      historyContainer.innerHTML = '<p class="text-sm text-secondary text-center py-6">매칭 이력을 불러오지 못했습니다.</p>'
+    }
+  }
+
+  const escapeHtml = (value) => String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+
+  const formatHistoryDate = (value) => {
+    if (!value) return '-'
+    const date = new Date(value)
+    return Number.isNaN(date.getTime()) ? '-' : date.toLocaleDateString('ko-KR')
+  }
+
+  await loadMatchHistory()
 
   // 닉네임 수정 모드 전환 제어
   const btnEditNickname = document.querySelector('#btn-edit-nickname')
@@ -299,6 +377,45 @@ export async function renderMyPage(container) {
           navigateTo('/mypage')
         } else {
           alert('동의 철회 처리에 실패했습니다.')
+        }
+      } catch (err) {
+        alert('오류가 발생했습니다: ' + err.message)
+      }
+    }
+  })
+
+  // 계정 탈퇴 바인딩
+  document.querySelector('#btn-mypage-withdraw')?.addEventListener('click', async () => {
+    if (confirm('정말로 마주한끼를 탈퇴하시겠습니까?\n탈퇴 시 모든 데이터가 파기되며 되돌릴 수 없습니다.')) {
+      try {
+        const csrfResp = await fetch(`${API_BASE_URL}/auth/csrf`, { credentials: 'include' })
+        if (!csrfResp.ok) throw new Error('CSRF 토큰 발급에 실패했습니다.')
+
+        const readCookie = (name) => {
+          const prefix = `${encodeURIComponent(name)}=`
+          const cookie = document.cookie
+            .split('; ')
+            .find((item) => item.startsWith(prefix))
+          return cookie ? decodeURIComponent(cookie.slice(prefix.length)) : null
+        }
+        const csrfToken = readCookie('XSRF-TOKEN')
+
+        const resp = await fetch(`${API_BASE_URL}/users/me`, {
+          method: 'DELETE',
+          credentials: 'include',
+          headers: {
+            'X-XSRF-TOKEN': csrfToken
+          }
+        })
+
+        if (resp.ok) {
+          alert('계정이 성공적으로 탈퇴 처리되었습니다. 그동안 서비스를 이용해 주셔서 감사합니다.')
+          sessionStorage.removeItem('project2.isLoggedIn')
+          sessionStorage.removeItem('project2.latestMatchResult')
+          navigateTo('/')
+          window.location.reload()
+        } else {
+          alert('계정 탈퇴 처리에 실패했습니다.')
         }
       } catch (err) {
         alert('오류가 발생했습니다: ' + err.message)

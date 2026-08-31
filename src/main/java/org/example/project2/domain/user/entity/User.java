@@ -132,4 +132,16 @@ public class User {
     public void updateProfileImageKey(String profileImageKey) {
         this.profileImageKey = profileImageKey;
     }
+
+    public void withdraw() {
+        this.status = UserStatus.WITHDRAWN;
+        String uuid = java.util.UUID.randomUUID().toString();
+        this.email = "withdrawn_" + uuid + "@withdrawn.com";
+        if (this.providerId != null) {
+            this.providerId = "withdrawn_" + uuid;
+        }
+        this.nickname = "탈퇴회원_" + uuid.substring(0, 8);
+        this.profileImageUrl = null;
+        this.profileImageKey = null;
+    }
 }
