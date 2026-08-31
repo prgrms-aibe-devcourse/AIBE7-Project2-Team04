@@ -11,8 +11,8 @@ import java.util.stream.Collectors;
 /**
  * 매칭 상대방에 대해 선택하는 인상 태그입니다.
  *
- * <p>The API accepts at most one scalar tag. The nullable field on the review
- * request represents the no-tag case; an array is not a valid representation.</p>
+ * <p>API에서는 단일 태그 값만 허용합니다. 리뷰 요청의 nullable 필드는 태그를
+ * 선택하지 않은 경우를 나타내며, 배열 형식은 유효하지 않습니다.</p>
  */
 public enum ImpressionTag {
     PUNCTUAL("PUNCTUAL", "시간 약속"),
@@ -32,7 +32,7 @@ public enum ImpressionTag {
     }
 
     /**
-     * Stable value used in JSON and the future {@code user_reviews} column.
+     * JSON과 향후 {@code user_reviews} 컬럼에 사용하는 고정 값입니다.
      */
     @JsonValue
     public String getCode() {
@@ -40,7 +40,7 @@ public enum ImpressionTag {
     }
 
     /**
-     * Korean display text for a client-side label mapping or DTO adapter.
+     * 클라이언트의 라벨 매핑이나 DTO 어댑터에서 사용하는 한글 표시 문구입니다.
      */
     public String getLabel() {
         return label;

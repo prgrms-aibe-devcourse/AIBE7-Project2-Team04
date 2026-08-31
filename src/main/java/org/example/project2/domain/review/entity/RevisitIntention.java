@@ -11,9 +11,8 @@ import java.util.stream.Collectors;
 /**
  * 매칭 상대방에 대한 재만남 의향입니다.
  *
- * <p>{@link #code} is the stable API/DB value. The Korean label is kept
- * separately so clients do not have to depend on enum declaration names for
- * display text.</p>
+ * <p>{@link #code}는 API와 DB에서 사용하는 고정 값입니다. 한글 라벨은 별도로
+ * 관리하여 클라이언트가 화면 표시를 위해 enum 선언 이름에 의존하지 않도록 합니다.</p>
  */
 public enum RevisitIntention {
     DEFINITELY_AGAIN("DEFINITELY_AGAIN", "꼭 또 보고 싶어요"),
@@ -32,7 +31,7 @@ public enum RevisitIntention {
     }
 
     /**
-     * Stable value used in JSON and the future {@code user_reviews} column.
+     * JSON과 향후 {@code user_reviews} 컬럼에 사용하는 고정 값입니다.
      */
     @JsonValue
     public String getCode() {
@@ -40,7 +39,7 @@ public enum RevisitIntention {
     }
 
     /**
-     * Korean display text for a client-side label mapping or DTO adapter.
+     * 클라이언트의 라벨 매핑이나 DTO 어댑터에서 사용하는 한글 표시 문구입니다.
      */
     public String getLabel() {
         return label;

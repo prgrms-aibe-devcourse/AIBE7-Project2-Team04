@@ -30,6 +30,17 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
             JOIN FETCH r1.user
             JOIN FETCH m.request2 r2
             JOIN FETCH r2.user
+            WHERE m.id = :matchId
+            """)
+    Optional<Match> findByIdWithRequestsAndUsers(@Param("matchId") Long matchId);
+
+    @Query("""
+            SELECT m
+            FROM Match m
+            JOIN FETCH m.request1 r1
+            JOIN FETCH r1.user
+            JOIN FETCH m.request2 r2
+            JOIN FETCH r2.user
             WHERE r1.user.id = :userId OR r2.user.id = :userId
             ORDER BY m.matchedAt DESC, m.id DESC
             """)

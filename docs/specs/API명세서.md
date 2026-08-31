@@ -59,6 +59,10 @@
 | `MATCHING_011` | 403 | 후보 제안 당사자가 아님 |
 | `MATCHING_012` | 409 | 만료·종료된 후보 제안의 결정 변경 |
 | `MATCHING_013` | 404 | 현재 확인할 수 있는 매칭 결과가 없음 |
+| `REVIEW_NOT_AVAILABLE` | 409 | 아직 완료되지 않았거나 취소된 매칭이라 후기 작성 불가 |
+| `REVIEW_ALREADY_SUBMITTED` | 409 | 동일 매칭·상대에 대한 후기 중복 제출 |
+| `REVIEW_PERIOD_EXPIRED` | 410 | 매칭 종료 시점부터 7일이 지나 후기 작성 기간 만료 |
+| `REVIEW_DATA_INVALID` | 500 | 매칭 참여자 정합성 오류로 후기 처리를 진행할 수 없음 |
 
 ### 페이지네이션 (목록 조회 공통 파라미터)
 
@@ -552,7 +556,7 @@ Query: `cursor` (마지막으로 받은 messageId), `size` (기본 30)
 | Method | Endpoint | 설명 | 인증 |
 | --- | --- | --- | --- |
 | POST | `/reviews` | 후기 작성 (FR-07-01, FR-07-03) | Y |
-| GET | `/users/{userId}/reviews` | 특정 사용자의 공개 후기 조회 (FR-07-02) | Y |
+| GET | `/users/{userId}/reviews` | 특정 사용자의 공개 후기 집계 조회 (FR-07-02) | Y |
 | PATCH | `/reviews/{reviewId}/visibility` | 공개/비공개 전환 (FR-07-05) | Y |
 | POST | `/reviews/{reviewId}/report` | 후기 신고 (FR-07-04) | Y |
 
@@ -565,11 +569,45 @@ Query: `cursor` (마지막으로 받은 messageId), `size` (기본 30)
 <aside>
 📎
 
-`reviewerId`와 `revieweeId`는 요청 본문으로 받지 않는다. 서버는 인증 사용자와 `match_participants`에서 `matchId`의 상대 참여자를 결정한 뒤 실제 참여 관계를 검증하고 저장한다 (FR-07-01). 조건 불충족 시 `403 AUTH_002`.
+`reviewerId`와 `revieweeId`는 요청 본문으로 받지 않는다. 서버는 인증 사용자와 `match_participants`에서 `matchId`의 상대 참여자를 결정한 뒤 실제 참여 관계를 검증하고 저장한다 (FR-07-01). 존재하지 않는 `matchId`와 인증 사용자가 참여하지 않은 `matchId`는 모두 `404 COMMON_001`로 일반화해 ID 추측으로 매칭 존재 여부나 상대 정보를 확인할 수 없게 한다.
 
 </aside>
 
 후기 입력의 `revisitIntention`은 필수 고정 코드 하나이며 `impressionTag`는 생략할 수 있는 단일 고정 코드다. 별점·자유 서술형 내용·복수 태그 배열은 MVP 입력에 포함하지 않는다. 알 수 없는 코드는 한국어 검증 오류로 거부한다.
+
+요청 DTO는 `matchId`, `revisitIntention`, `impressionTag`만 받으며, `reviewerId`와 `revieweeId`는 인증 정보와 매칭 참여 관계로 서버가 결정한다. `impressionTag` 배열은 허용하지 않는다.
+
+후기는 `matches.status = COMPLETED`인 매칭에서만 작성할 수 있다. 작성 가능 범위는 서버가 기록한 `matches.ended_at <= now < ended_at + 7일`이며, `ended_at`은 매칭 완료 처리 시각으로 사용한다. `MATCHED`·`CANCELLED` 상태는 `409 REVIEW_NOT_AVAILABLE`, 기한 경과는 `410 REVIEW_PERIOD_EXPIRED`로 반환한다.
+
+후기 제출·중복 거부·작성 기간 만료·신고 처리 결과는 내부 `ReviewAuditEvent`로 감사한다. 감사 이벤트에는 후기 원문, JWT·Refresh Token, OAuth Provider ID, 이메일, 정밀 위치, IP·User-Agent·디바이스 정보를 포함하지 않으며, 계정·매칭·후기 식별자는 키 버전이 포함된 HMAC 가명 키로만 기록한다. 이 내부 이벤트는 외부 API 응답에 포함하지 않는다. 운영 정책과 보존·접근·파기 기준은 [`후기_감사_운영_정책.md`](../guide/후기_감사_운영_정책.md)를 따른다.
+
+**성공 응답 (201 Created)**
+
+```json
+{
+  "success": true,
+  "data": {
+    "reviewId": 901,
+    "submittedAt": "2026-08-31T12:00:00Z"
+  },
+  "error": null
+}
+```
+
+**작성 오류 계약**
+
+| 상태 | 코드 | 설명 |
+| --- | --- | --- |
+| 400 | `COMMON_002` | `matchId` 또는 필수 `revisitIntention` 누락, 잘못된 코드·복수 태그 입력 |
+| 401 | `AUTH_001` | 인증 정보 없음 또는 만료 |
+| 403 | `AUTH_002` | 작성자·평가 대상이 비활성 상태이거나 자기 자신을 평가 대상으로 가리키는 비정상 참여자 데이터 |
+| 404 | `COMMON_001` | 매칭이 없거나 인증 사용자가 참여하지 않아 존재 여부를 노출하지 않는 경우 |
+| 409 | `REVIEW_NOT_AVAILABLE` | 매칭이 아직 완료되지 않음 |
+| 409 | `REVIEW_ALREADY_SUBMITTED` | 동일 매칭·상대에 대한 후기를 이미 제출함 |
+| 410 | `REVIEW_PERIOD_EXPIRED` | 매칭 완료 시점부터 7일이 지나 작성 기간 만료 |
+| 500 | `REVIEW_DATA_INVALID` | 매칭 참여자 정합성 오류로 후기 처리를 진행할 수 없음 |
+
+이 API는 쿠키 기반 인증을 사용하는 POST이므로 `GET /auth/csrf`로 발급받은 `XSRF-TOKEN` 쿠키 값을 `X-XSRF-TOKEN` 요청 헤더로 전달해야 한다. 네트워크 재시도 시 서비스 사전 조회와 DB Unique 제약을 함께 적용하고 중복이면 `409 REVIEW_ALREADY_SUBMITTED`를 반환한다. 별도 `Idempotency-Key`는 사용하지 않는다.
 
 ### 후기 Enum 코드와 표시 문구
 
@@ -628,7 +666,7 @@ API와 DB에는 안정적인 영문 코드만 사용하고, 한국어 문구는 
 | --- | --- | --- | --- |
 | GET | `/mypage/profile` | 내 프로필 (FR-09-01) | Y |
 | GET | `/mypage/matches` | 내 매칭 이력 (FR-09-03) | Y |
-| GET | `/mypage/reviews` | 내가 받은 후기/방명록 (FR-09-05) | Y |
+| GET | `/mypage/reviews` | 내가 받은 후기 및 다시한끼 지수 집계 (FR-09-05) | Y |
 
 <aside>
 📎
@@ -636,6 +674,46 @@ API와 DB에는 안정적인 영문 코드만 사용하고, 한국어 문구는 
 회원 정보 수정은 1장의 `PATCH /users/me`를 그대로 재사용하는 것을 권장 (마이페이지 화면 전용 PATCH 엔드포인트를 따로 만들면 로직이 중복됨).
 
 </aside>
+
+**GET /mypage/reviews**
+
+인증 사용자의 `reviewee_id`를 기준으로 유효한 공개 후기 집계를 조회한다. MVP에서는 개별 후기, 원본 재만남 의향, 작성자 정보, 인상 태그 통계와 최근 후기 목록을 반환하지 않는다. `dasiHankkiScore`는 유효 후기 3건 이상일 때만 노출하며, 그 미만이면 상태 코드로 안내한다.
+
+```json
+{
+  "success": true,
+  "data": {
+    "scoreStatus": "AVAILABLE",
+    "dasiHankkiScore": 84.0,
+    "validReviewCount": 8
+  },
+  "error": null
+}
+```
+
+후기가 없거나 공개 표본이 부족한 경우에도 `200 OK`로 반환한다.
+
+```json
+{
+  "success": true,
+  "data": {
+    "scoreStatus": "NO_REVIEWS",
+    "dasiHankkiScore": null,
+    "validReviewCount": 0
+  },
+  "error": null
+}
+```
+
+`scoreStatus`는 `NO_REVIEWS`, `INSUFFICIENT_REVIEWS`, `AVAILABLE` 고정 코드만 전달한다. 클라이언트는 각각 `아직 후기가 없어요`, `후기가 더 모이면 다시한끼 지수가 공개돼요`, 점수 표시 상태로 매핑한다. 점수는 `ReviewScorePolicy`의 버전별 산식으로 서버에서 재계산하며 현재 버전은 `DASI_HANKKI_V1`이다. 산식 버전은 외부 응답에 노출하지 않고, 지수는 안전성·신뢰성을 보증하는 절대 척도가 아닌 참고 지표로 표시한다.
+
+**GET /users/{userId}/reviews**
+
+공개 프로필용 `PublicReviewSummaryResponse`로 동일한 집계 필드(`scoreStatus`, nullable `dasiHankkiScore`, `validReviewCount`)만 반환한다. 본인 마이페이지 응답과 DTO·조회 메서드를 분리하며, 존재하지 않거나 탈퇴한 사용자는 `404 COMMON_001`로 처리해 집계 노출을 차단한다. 사용자가 존재하고 후기가 없어도 `200 OK`와 `NO_REVIEWS`를 반환한다.
+
+태그 통계는 MVP 외부 응답에서 제외하고 내부 집계 또는 향후 공개 시에만 사용한다. 향후 공개할 경우 네 가지 태그를 고정 순서로 반환하고 0건 태그도 포함한다. 개별 후기 목록은 MVP에 포함하지 않으므로 페이지 파라미터를 받지 않으며, 향후 목록을 열 때는 `createdAt DESC, id DESC` 정렬과 `size` 최대 20을 적용한다.
+
+두 조회 API 모두 작성자 UUID·이메일·OAuth Provider 식별자, 매칭 위치·성향 내부 데이터와 개별 재만남 의향을 응답에 포함하지 않는다. 지수 산식 버전과 마지막 계산 시각은 MVP에서 외부에 노출하지 않고 서버 내부 재계산·감사 정보로만 관리한다.
 
 ---
 

@@ -42,3 +42,7 @@ app:
     proposal-search-initial-delay: 30s
     proposal-reconcile-delay: 1s
     proposal-reconcile-initial-delay: 30s
+  review:
+    audit:
+      pseudonym-key: ${REVIEW_AUDIT_PSEUDONYM_KEY:}
+      pseudonym-key-version: ${REVIEW_AUDIT_PSEUDONYM_KEY_VERSION:dev-ephemeral}

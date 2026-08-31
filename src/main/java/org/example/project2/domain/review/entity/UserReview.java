@@ -16,7 +16,11 @@ import org.hibernate.annotations.Check;
         columnNames = {"match_id", "reviewer_id", "reviewee_id"}
 ))
 @Entity
-@Check(constraints = "rating BETWEEN 1 AND 5 AND reviewer_id <> reviewee_id")
+@Check(constraints = "reviewer_id <> reviewee_id "
+        + "AND revisit_intention IN ('DEFINITELY_AGAIN', 'MAYBE_AGAIN', 'ENOUGH_FOR_NOW') "
+        + "AND (impression_tag IS NULL OR impression_tag IN "
+        + "('PUNCTUAL', 'COMFORTABLE_CONVERSATION', 'CONSIDERATE', 'ACTIVE_PARTICIPATION')) "
+        + "AND visibility IN ('PUBLIC', 'PRIVATE')")
 @Getter
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -34,11 +38,13 @@ public class UserReview extends CreatedEntity {
     @JoinColumn(name = "reviewee_id", nullable = false)
     private User reviewee;
 
-    @Column(nullable = false)
-    private int rating;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "revisit_intention", nullable = false, length = 30)
+    private RevisitIntention revisitIntention;
 
-    @Column(columnDefinition = "text")
-    private String content;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "impression_tag", length = 30)
+    private ImpressionTag impressionTag;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)

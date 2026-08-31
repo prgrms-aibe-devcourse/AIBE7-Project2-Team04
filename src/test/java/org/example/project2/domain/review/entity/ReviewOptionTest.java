@@ -1,6 +1,7 @@
 package org.example.project2.domain.review.entity;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.hibernate.annotations.Check;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -57,5 +58,15 @@ class ReviewOptionTest {
                 .isEqualTo("\"DEFINITELY_AGAIN\"");
         assertThat(objectMapper.writeValueAsString(ImpressionTag.PUNCTUAL))
                 .isEqualTo("\"PUNCTUAL\"");
+    }
+
+    @Test
+    void declaresDatabaseGuardsForSelfReviewAndVisibilityValues() {
+        Check check = UserReview.class.getAnnotation(Check.class);
+
+        assertThat(check).isNotNull();
+        assertThat(check.constraints())
+                .contains("reviewer_id <> reviewee_id")
+                .contains("visibility IN ('PUBLIC', 'PRIVATE')");
     }
 }
