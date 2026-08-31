@@ -59,6 +59,12 @@
       .logged-in.has-cached-chat #btn-go-chat.chat-state-pending {
         display: flex !important;
       }
+      .logged-in.has-cached-chat #btn-go-chat {
+        flex: 1 1 0% !important;
+      }
+      .logged-in.has-cached-chat #btn-hero-match {
+        display: none !important;
+      }
       .route-loading .default-landing-content {
         display: none !important;
       }
@@ -187,6 +193,7 @@
           </div>
           <!-- Logged in actions -->
           <div class="header-logged-in flex items-center gap-3 relative">
+            <span id="header-match-status" class="hidden items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold" aria-live="polite"></span>
             <span id="header-user-nickname" class="text-sm font-semibold text-brand-navy"></span>
             <div class="relative inline-block text-left">
               <button id="btn-profile-menu" class="w-10 h-10 rounded-full border border-outline-variant/30 overflow-hidden shadow-sm focus:outline-none flex items-center justify-center bg-slate-100">

@@ -24,7 +24,7 @@ export function renderChatPage(container) {
           <p class="text-xs text-secondary mt-1">상태: <span id="disp-status" class="font-bold text-slate-500">미연결</span></p>
         </div>
         <div class="flex items-center gap-2">
-          <button id="btn-end-match" disabled class="px-4 py-2 rounded-full text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 disabled:opacity-50">매칭 종료</button>
+          <button id="btn-end-match" class="px-4 py-2 rounded-full text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100">매칭 종료</button>
           <button id="btn-back" class="btn-secondary px-4 py-2 rounded-full text-xs font-bold flex items-center gap-1">
             <span class="material-symbols-outlined text-sm">arrow_back</span>
             뒤로가기
@@ -169,6 +169,25 @@ export function renderChatPage(container) {
       // 2. SUBSCRIBE (실시간 메시지 구독)
       subscription = stompClient.subscribe(`/topic/chat/${roomId}`, function (msg) {
         const body   = JSON.parse(msg.body)
+
+        if (body.message === '[SYSTEM] MATCH_CLOSED') {
+          const senderIdStr = String(body.sender || '').toLowerCase().trim();
+          const myUserIdStr = String(myUserId || '').toLowerCase().trim();
+
+          console.log('[DEBUG] MATCH_CLOSED event:', { senderIdStr, myUserIdStr });
+
+          if (senderIdStr !== myUserIdStr) {
+            alert('상대방이 매칭을 종료하여 대화가 종료되었습니다.')
+            sessionStorage.removeItem('project2.latestMatchResult')
+            document.documentElement.classList.remove('has-cached-chat')
+            navigateTo('/')
+          } else {
+            // 당사자 리다이렉트 동기화
+            navigateTo('/')
+          }
+          return
+        }
+
         const isMine = body.sender === myUserId
         const nickname = isMine ? '나' : (body.sender === partnerUserId ? partnerNickname : '상대방')
         appendChatMessage(body.sender, nickname, body.message, isMine)
@@ -212,7 +231,7 @@ export function renderChatPage(container) {
   function resetUI() {
     document.getElementById('disp-status').textContent  = '미연결'
     const btnEndMatch = document.getElementById('btn-end-match')
-    if (btnEndMatch) btnEndMatch.disabled = true
+    if (btnEndMatch) btnEndMatch.disabled = false
     document.getElementById('msg-input').disabled       = true
     document.getElementById('btn-send').disabled        = true
     stompClient  = null
@@ -262,6 +281,7 @@ export function renderChatPage(container) {
 
       if (resp.ok) {
         sessionStorage.removeItem('project2.latestMatchResult')
+        document.documentElement.classList.remove('has-cached-chat')
         alert('매칭이 성공적으로 종료되었습니다.')
         navigateTo('/')
       } else {

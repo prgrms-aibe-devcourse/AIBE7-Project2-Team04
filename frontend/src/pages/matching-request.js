@@ -261,7 +261,7 @@ export async function renderMatchingRequestPage(container) {
 
       if (requestNotFound && proposalClosed && (checkResult || state.hasSubmittedRequest)) {
         const latestResult = await getLatestResultSafely()
-        if (latestResult) {
+        if (latestResult && latestResult.status === 'MATCHED') {
           applyMatchResult(latestResult)
           return
         }
@@ -395,6 +395,9 @@ export async function renderMatchingRequestPage(container) {
   function applyMatchResult(payload) {
     state.latestResult = payload
     sessionStorage.setItem('project2.latestMatchResult', JSON.stringify(payload))
+    window.dispatchEvent(new CustomEvent('project2:match-updated', {
+      detail: { isMatching: true },
+    }))
     state.currentRequest = null
     state.currentProposal = null
     state.hasSubmittedRequest = false
@@ -599,6 +602,11 @@ export async function renderMatchingRequestPage(container) {
   }
 
   function startNewRequest() {
+    sessionStorage.removeItem('project2.latestMatchResult')
+    document.documentElement.classList.remove('has-cached-chat')
+    window.dispatchEvent(new CustomEvent('project2:match-updated', {
+      detail: { isMatching: false },
+    }))
     state.mode = 'form'
     state.formStep = 1
     state.latestResult = null

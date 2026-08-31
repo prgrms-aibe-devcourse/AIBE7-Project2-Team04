@@ -13,6 +13,20 @@ const initialLandingPageHtml = app?.innerHTML ?? ''
 
 export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080').replace(/\/$/, '')
 
+window.addEventListener('project2:match-updated', (event) => {
+  const statusElement = document.querySelector('#header-match-status')
+  if (!statusElement || typeof event.detail?.isMatching !== 'boolean') return
+
+  if (event.detail.isMatching === false) {
+    statusElement.className = 'flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold bg-slate-100 text-slate-500 border border-slate-200'
+    statusElement.innerHTML = '<span class="h-1.5 w-1.5 rounded-full bg-slate-400"></span><span>\uB9E4\uCE6D \uC5C6\uC74C</span>'
+    return
+  }
+
+  statusElement.className = 'flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200'
+  statusElement.innerHTML = '<span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span><span>\uD604\uC7AC \uB9E4\uCE6D\uC911</span>'
+})
+
 // 행정구역 트리 (pages/ 모듈과 공유)
 export let regionTree = {}
 
@@ -141,6 +155,10 @@ const routeApp = async () => {
       const { renderMyPage } = await import('./pages/mypage.js')
       if (!isCurrentRoute()) return
       await renderMyPage(app)
+    } else if (path === '/admin') {
+      const { renderAdminPage } = await import('./pages/admin.js')
+      if (!isCurrentRoute()) return
+      await renderAdminPage(app)
     } else if (path === '/review') {
       const { renderReviewPage } = await import('./pages/review.js')
       if (!isCurrentRoute()) return
@@ -340,8 +358,12 @@ function initLandingPage() {
     // 새로고침 혹은 SPA 화면 복원 직후에는 캐시 정보를 우선 활용하여 버튼 깜빡임 최소화
     if (cachedMatchResult && cachedMatchResult.status === 'MATCHED') {
       enableChatButton(btnGoChat, cachedMatchResult.chatRoomId)
+      setLandingMatchState(btnHeroMatch, btnGoChat, true)
+      document.documentElement.classList.add('has-cached-chat')
     } else {
       btnGoChat.classList.add('hidden', 'chat-state-pending')
+      setLandingMatchState(btnHeroMatch, btnGoChat, false)
+      document.documentElement.classList.remove('has-cached-chat')
     }
 
     import('./matching/matching-api.js').then(({ getLatestMatchResult }) => {
@@ -350,16 +372,21 @@ function initLandingPage() {
           if (result && result.chatRoomId && result.status === 'MATCHED') {
             sessionStorage.setItem('project2.latestMatchResult', JSON.stringify(result))
             enableChatButton(btnGoChat, result.chatRoomId)
+            setLandingMatchState(btnHeroMatch, btnGoChat, true)
+            document.documentElement.classList.add('has-cached-chat')
           } else {
             // 매칭되지 않았거나 이미 종료(COMPLETED/CANCELLED)된 사용자는 채팅방 버튼을 표시하지 않음
             sessionStorage.removeItem('project2.latestMatchResult')
             btnGoChat.disabled = true
             btnGoChat.classList.add('hidden', 'chat-state-pending')
+            setLandingMatchState(btnHeroMatch, btnGoChat, false)
+            document.documentElement.classList.remove('has-cached-chat')
           }
         })
         .catch(() => {
           if (!cachedMatchResult || cachedMatchResult.status !== 'MATCHED') {
             btnGoChat.classList.add('hidden', 'chat-state-pending')
+            document.documentElement.classList.remove('has-cached-chat')
           }
         })
     })
@@ -414,6 +441,35 @@ function initCommonHeader() {
             nicknameEl.textContent = body.data.nickname
             if (body.data.profileImageUrl) {
               profileImgEl.src = body.data.profileImageUrl
+            }
+
+            const btnGoMypage = document.querySelector('#btn-go-mypage')
+            const matchStatusEl = document.querySelector('#header-match-status')
+            if (btnGoMypage) {
+              if (body.data.role === 'ADMIN') {
+                matchStatusEl?.classList.add('hidden')
+                matchStatusEl?.classList.remove('flex')
+                btnGoMypage.innerHTML = `
+                  <span class="material-symbols-outlined text-sm">admin_panel_settings</span>
+                  <span>관리자페이지로 가기</span>
+                `
+                btnGoMypage.onclick = (e) => {
+                  e.preventDefault()
+                  document.querySelector('#profile-dropdown')?.classList.add('hidden')
+                  navigateTo('/admin')
+                }
+              } else {
+                loadHeaderMatchStatus(matchStatusEl)
+                btnGoMypage.innerHTML = `
+                  <span class="material-symbols-outlined text-sm">person</span>
+                  <span>마이페이지로 가기</span>
+                `
+                btnGoMypage.onclick = (e) => {
+                  e.preventDefault()
+                  document.querySelector('#profile-dropdown')?.classList.add('hidden')
+                  navigateTo('/mypage')
+                }
+              }
             }
           }
         })
@@ -505,6 +561,41 @@ function initCommonHeader() {
   if (btnHeaderStart && !btnHeaderStart.dataset.bound) {
     btnHeaderStart.dataset.bound = 'true'
     btnHeaderStart.addEventListener('click', () => openAuthModal(false))
+  }
+}
+
+function setLandingMatchState(matchButton, chatButton, isMatching) {
+  if (!matchButton || !chatButton) return
+
+  if (isMatching) {
+    matchButton.classList.add('hidden')
+    chatButton.classList.add('flex-1')
+  } else {
+    matchButton.classList.remove('hidden')
+    chatButton.classList.remove('flex-1')
+  }
+}
+
+async function loadHeaderMatchStatus(statusElement) {
+  if (!statusElement) return
+
+  try {
+    const { getLatestMatchResult } = await import('./matching/matching-api.js')
+    const result = await getLatestMatchResult()
+    const isMatching = result?.status === 'MATCHED'
+
+    statusElement.className = `flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold ${
+      isMatching
+        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+        : 'bg-slate-100 text-slate-500 border border-slate-200'
+    }`
+    statusElement.innerHTML = `
+      <span class="h-1.5 w-1.5 rounded-full ${isMatching ? 'bg-emerald-500' : 'bg-slate-400'}"></span>
+      <span>${isMatching ? '현재 매칭중' : '매칭 없음'}</span>
+    `
+  } catch (error) {
+    statusElement.className = 'flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold bg-slate-100 text-slate-500 border border-slate-200'
+    statusElement.innerHTML = '<span class="h-1.5 w-1.5 rounded-full bg-slate-400"></span><span>매칭 없음</span>'
   }
 }
 

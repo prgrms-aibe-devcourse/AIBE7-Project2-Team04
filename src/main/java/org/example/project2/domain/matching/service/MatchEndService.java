@@ -6,8 +6,10 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.example.project2.domain.chat.entity.ChatRoom;
 import org.example.project2.domain.chat.repository.ChatRoomRepository;
+import org.example.project2.domain.chat.dto.ChatMessageDTO;
 import org.example.project2.domain.matching.entity.Match;
 import org.example.project2.domain.matching.repository.MatchRepository;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class MatchEndService {
     private final MatchRepository matchRepository;
     private final ChatRoomRepository chatRoomRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @Transactional
     public void end(UUID userId, Long matchId) {
@@ -26,6 +29,10 @@ public class MatchEndService {
         ChatRoom chatRoom = chatRoomRepository.findByMatchId(matchId)
                 .orElseThrow(() -> new IllegalArgumentException("매칭 채팅방을 찾을 수 없습니다."));
         chatRoom.close(Instant.now());
+
+        // 상대방에게 웹소켓으로 매칭 종료 브로드캐스트 (요청한 유저 ID를 sender로 전달)
+        messagingTemplate.convertAndSend("/topic/chat/" + chatRoom.getId(),
+                new ChatMessageDTO(chatRoom.getId(), userId, "[SYSTEM] MATCH_CLOSED"));
     }
 
     @Transactional
@@ -43,5 +50,9 @@ public class MatchEndService {
 
         validMatch.complete(Instant.now());
         chatRoom.close(Instant.now());
+
+        // 상대방에게 웹소켓으로 매칭 종료 브로드캐스트 (요청한 유저 ID를 sender로 전달)
+        messagingTemplate.convertAndSend("/topic/chat/" + chatRoom.getId(),
+                new ChatMessageDTO(chatRoom.getId(), userId, "[SYSTEM] MATCH_CLOSED"));
     }
 }

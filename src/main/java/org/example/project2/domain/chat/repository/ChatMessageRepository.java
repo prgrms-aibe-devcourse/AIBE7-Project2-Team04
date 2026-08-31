@@ -13,4 +13,6 @@ import java.util.List;
 public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> {
     @Query("SELECT cm FROM ChatMessage cm JOIN FETCH cm.sender WHERE cm.chatRoom.id = :roomId AND (:cursor IS NULL OR cm.id < :cursor) ORDER BY cm.id DESC")
     List<ChatMessage> findMessagesWithCursor(@Param("roomId") Long roomId, @Param("cursor") Long cursor, Pageable pageable);
+
+    List<ChatMessage> findByChatRoom_IdOrderByIdAsc(Long chatRoomId);
 }
