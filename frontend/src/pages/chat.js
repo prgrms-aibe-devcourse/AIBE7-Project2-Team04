@@ -16,35 +16,24 @@ export function renderChatPage(container) {
   }
 
   container.innerHTML = `
-    <main class="max-w-2xl mx-auto my-6 px-4 flex flex-col min-h-[600px]">
+    <main class="w-full max-w-6xl mx-auto my-6 px-4 flex flex-col min-h-[600px]">
       <!-- Header -->
       <div class="flex items-center justify-between border-b border-slate-200 pb-4 mb-4">
         <div>
           <h2 class="text-2xl font-extrabold text-brand-navy">1:1 실시간 채팅</h2>
           <p class="text-xs text-secondary mt-1">상태: <span id="disp-status" class="font-bold text-slate-500">미연결</span></p>
         </div>
-        <button id="btn-back" class="btn-secondary px-4 py-2 rounded-full text-xs font-bold flex items-center gap-1">
-          <span class="material-symbols-outlined text-sm">arrow_back</span>
-          뒤로가기
-        </button>
-      </div>
-
-      <!-- Room Info & Controls -->
-      <div class="bg-surface-container-low rounded-2xl p-4 mb-4 border border-outline-variant/30 flex flex-wrap gap-4 items-center justify-between shadow-soft">
-        <div class="text-xs space-y-1 text-secondary">
-          <div><b>나의 ID:</b> <span id="disp-user-id" class="font-mono text-slate-600">불러오는 중...</span></div>
-          <div><b>상대방 닉네임:</b> <span id="disp-partner-nickname" class="font-bold text-brand-navy">상대방</span></div>
-          <div><b>채팅방 ID:</b> <span id="disp-room-id" class="font-bold text-brand-navy">-</span></div>
-        </div>
-        <div class="flex gap-2">
-          <input type="number" id="room-id-input" value="1" min="1" class="w-16 bg-white border border-outline-variant/40 rounded-xl px-2 py-1 text-sm focus:ring-2 focus:ring-primary-container outline-none" />
-          <button id="btn-connect" class="btn-primary px-4 py-1.5 rounded-full text-xs font-bold shadow-sm">채팅방 입장</button>
-          <button id="btn-disconnect" disabled class="btn-secondary px-4 py-1.5 rounded-full text-xs font-bold disabled:opacity-50">연결 끊기</button>
+        <div class="flex items-center gap-2">
+          <button id="btn-end-match" disabled class="px-4 py-2 rounded-full text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 disabled:opacity-50">매칭 종료</button>
+          <button id="btn-back" class="btn-secondary px-4 py-2 rounded-full text-xs font-bold flex items-center gap-1">
+            <span class="material-symbols-outlined text-sm">arrow_back</span>
+            뒤로가기
+          </button>
         </div>
       </div>
 
       <!-- KakaoTalk Style Chat Window -->
-      <div class="flex flex-col h-[550px] border border-outline-variant/30 rounded-card overflow-hidden shadow-floating bg-[#BACEE0]">
+      <div class="w-full flex flex-col h-[550px] border border-outline-variant/30 rounded-card overflow-hidden shadow-floating bg-[#BACEE0]">
         <!-- Messages Area -->
         <div id="chat-box" class="flex-grow overflow-y-auto p-4 space-y-4">
           <div class="text-center my-2 text-xs text-slate-600 bg-white/40 rounded-full px-4 py-1 w-fit mx-auto shadow-sm">
@@ -61,20 +50,16 @@ export function renderChatPage(container) {
     </main>
   `
 
-  const roomIdFromQuery = new URLSearchParams(window.location.search).get('roomId')
-  if (/^\d+$/.test(roomIdFromQuery || '')) {
-    document.getElementById('room-id-input').value = roomIdFromQuery
-  }
-
+  let roomIdFromQuery = new URLSearchParams(window.location.search).get('roomId')
   // ── 상태 변수 ──────────────────────────────────────────────────────────────
   let stompClient  = null
   let subscription = null
+  let connectedRoomId = null
   let myUserId     = null
   let partnerNickname = '상대방'
   let partnerUserId = null
   let partnerProfileImg = null
-
-  // ── 정보 초기화는 하단에서 Promise.all로 진행합니다. ──────────────────────────
+  let matchId      = null
 
   // ── 카카오톡 스타일 말풍선 렌더링 ──────────────────────────────────────────────
   function appendChatMessage(senderId, nickname, message, isMine, customTime = null) {
@@ -89,7 +74,7 @@ export function renderChatPage(container) {
       row.className = 'flex justify-end items-end gap-1.5 mb-1.5 w-full'
       row.innerHTML = `
         <span class="text-[9px] text-slate-600/80 mb-0.5 select-none">${timeStr}</span>
-        <div class="bg-[#FEE500] text-black text-sm p-2.5 rounded-l-2xl rounded-br-2xl max-w-[70%] shadow-sm whitespace-pre-wrap break-words border border-[#E4CE00]/30">${escapeHtml(message)}</div>
+        <div class="bg-[#FEE500] text-black text-sm p-2.5 rounded-l-2xl rounded-br-2xl max-w-[85%] shadow-sm whitespace-pre-wrap break-words border border-[#E4CE00]/30">${escapeHtml(message)}</div>
       `
     } else {
       row.className = 'flex items-start gap-2.5 mb-1.5 w-full'
@@ -104,7 +89,7 @@ export function renderChatPage(container) {
         <div class="flex flex-col">
           <span class="text-[11px] text-slate-700 mb-0.5 font-semibold select-none">${escapeHtml(nickname || '상대방')}</span>
           <div class="flex items-end gap-1.5">
-            <div class="bg-white text-black text-sm p-2.5 rounded-r-2xl rounded-bl-2xl max-w-[70%] shadow-sm whitespace-pre-wrap break-words border border-slate-200">${escapeHtml(message)}</div>
+            <div class="bg-white text-black text-sm p-2.5 rounded-r-2xl rounded-bl-2xl max-w-[85%] shadow-sm whitespace-pre-wrap break-words border border-slate-200">${escapeHtml(message)}</div>
             <span class="text-[9px] text-slate-600/80 mb-0.5 select-none">${timeStr}</span>
           </div>
         </div>
@@ -137,8 +122,9 @@ export function renderChatPage(container) {
 
   // ── CONNECT + SUBSCRIBE ────────────────────────────────────────────────────
   function connect() {
-    const roomId = document.getElementById('room-id-input').value
-    document.getElementById('disp-room-id').textContent = roomId
+    const roomId = roomIdFromQuery
+    if (!/^\d+$/.test(roomId || '')) return
+    connectedRoomId = roomId
     document.getElementById('disp-status').textContent  = '연결 중...'
 
     const SockJS = window.SockJS
@@ -156,8 +142,9 @@ export function renderChatPage(container) {
     stompClient.connect({}, function () {
       appendSystemMessage('채팅방 연결 성공!', 'green-700')
       document.getElementById('disp-status').textContent = '연결됨'
-      document.getElementById('btn-connect').disabled    = true
-      document.getElementById('btn-disconnect').disabled = false
+      
+      const btnEndMatch = document.getElementById('btn-end-match')
+      if (btnEndMatch) btnEndMatch.disabled = false
 
       // 1. 이전 대화 내역 불러오기
       fetch(`/chatrooms/${roomId}/messages?size=50`, { credentials: 'include' })
@@ -209,7 +196,7 @@ export function renderChatPage(container) {
 
   // ── SEND ───────────────────────────────────────────────────────────────────
   function sendMessage() {
-    const roomId  = document.getElementById('room-id-input').value
+    const roomId  = roomIdFromQuery
     const message = document.getElementById('msg-input').value.trim()
     if (!message || !stompClient) return
 
@@ -224,9 +211,8 @@ export function renderChatPage(container) {
   // ── UI 초기화 ──────────────────────────────────────────────────────────────
   function resetUI() {
     document.getElementById('disp-status').textContent  = '미연결'
-    document.getElementById('disp-room-id').textContent = '-'
-    document.getElementById('btn-connect').disabled     = false
-    document.getElementById('btn-disconnect').disabled  = true
+    const btnEndMatch = document.getElementById('btn-end-match')
+    if (btnEndMatch) btnEndMatch.disabled = true
     document.getElementById('msg-input').disabled       = true
     document.getElementById('btn-send').disabled        = true
     stompClient  = null
@@ -235,11 +221,56 @@ export function renderChatPage(container) {
 
   // ── 이벤트 바인딩 ──────────────────────────────────────────────────────────
   document.getElementById('btn-back').addEventListener('click', () => navigateTo('/'))
-  document.getElementById('btn-connect').addEventListener('click', connect)
-  document.getElementById('btn-disconnect').addEventListener('click', disconnect)
   document.getElementById('btn-send').addEventListener('click', sendMessage)
   document.getElementById('msg-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') sendMessage()
+  })
+
+  // 매칭 종료 이벤트 바인딩
+  document.getElementById('btn-end-match')?.addEventListener('click', async () => {
+    const targetRoomId = roomIdFromQuery
+    if (!matchId && !targetRoomId) {
+      alert('매칭 정보 또는 채팅방 정보를 식별할 수 없습니다.')
+      return
+    }
+    if (!confirm('정말로 매칭을 종료하시겠습니까?\n종료 시 상대방과의 채팅방도 함께 폐쇄됩니다.')) return
+
+    try {
+      const csrfResp = await fetch('/auth/csrf', { credentials: 'include' })
+      if (!csrfResp.ok) throw new Error('CSRF 토큰 발급에 실패했습니다.')
+      
+      const readCookie = (name) => {
+        const prefix = `${encodeURIComponent(name)}=`
+        const cookie = document.cookie
+          .split('; ')
+          .find((item) => item.startsWith(prefix))
+        return cookie ? decodeURIComponent(cookie.slice(prefix.length)) : null
+      }
+      const csrfToken = readCookie('XSRF-TOKEN')
+
+      const url = matchId 
+        ? `/matches/${matchId}/end` 
+        : `/matches/chatroom/${targetRoomId}/end`
+
+      const resp = await fetch(url, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: {
+          'X-XSRF-TOKEN': csrfToken
+        }
+      })
+
+      if (resp.ok) {
+        sessionStorage.removeItem('project2.latestMatchResult')
+        alert('매칭이 성공적으로 종료되었습니다.')
+        navigateTo('/')
+      } else {
+        const body = await resp.json()
+        alert(body?.error?.message || '매칭 종료 처리에 실패했습니다.')
+      }
+    } catch (err) {
+      alert('오류가 발생했습니다: ' + err.message)
+    }
   })
 
   // ── 사용자 정보 및 매칭 파트너 정보 먼저 가져오기 ──────────────────────────
@@ -252,19 +283,13 @@ export function renderChatPage(container) {
   ]).then(([userBody, matchResult]) => {
     if (userBody && userBody.success && userBody.data) {
       myUserId = userBody.data.userId
-      document.getElementById('disp-user-id').textContent = myUserId
-    } else {
-      document.getElementById('disp-user-id').textContent = '(조회 실패)'
     }
 
     if (matchResult && matchResult.partner) {
+      matchId = matchResult.matchId
       partnerNickname = matchResult.partner.nickname || '상대방'
       partnerUserId = matchResult.partner.userId
       partnerProfileImg = matchResult.partner.profileImageUrl
-      const partnerNameEl = document.getElementById('disp-partner-nickname')
-      if (partnerNameEl) {
-        partnerNameEl.textContent = partnerNickname
-      }
     }
 
     // 정보를 다 확보한 상태에서 자동으로 입장 처리 진행
