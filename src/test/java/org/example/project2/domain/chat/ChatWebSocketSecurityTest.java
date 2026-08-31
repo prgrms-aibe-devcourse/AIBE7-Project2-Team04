@@ -5,7 +5,6 @@ import org.example.project2.domain.chat.entity.ChatRoomStatus;
 import org.example.project2.domain.chat.repository.ChatRoomRepository;
 import org.example.project2.domain.matching.entity.*;
 import org.example.project2.domain.matching.repository.MatchParticipantRepository;
-import org.example.project2.domain.matching.repository.MatchProposalRepository;
 import org.example.project2.domain.matching.repository.MatchRepository;
 import org.example.project2.domain.matching.repository.MatchRequestRepository;
 import org.example.project2.domain.user.entity.AuthProvider;
@@ -37,8 +36,11 @@ import org.springframework.web.socket.sockjs.client.WebSocketTransport;
 
 import java.lang.reflect.Type;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.*;
 
@@ -54,13 +56,7 @@ public class ChatWebSocketSecurityTest {
     private UserRepository userRepository;
 
     @Autowired
-    private org.example.project2.domain.auth.repository.RefreshTokenRepository refreshTokenRepository;
-
-    @Autowired
     private MatchRequestRepository matchRequestRepository;
-
-    @Autowired
-    private MatchProposalRepository matchProposalRepository;
 
     @Autowired
     private MatchRepository matchRepository;
@@ -72,13 +68,14 @@ public class ChatWebSocketSecurityTest {
     private ChatRoomRepository chatRoomRepository;
 
     @Autowired
-    private org.example.project2.domain.chat.repository.ChatMessageRepository chatMessageRepository;
-
-    @Autowired
     private JwtProvider jwtProvider;
 
     private User participantUser;
     private User intruderUser;
+    private final Set<UUID> createdUserIds = new HashSet<>();
+    private MatchRequest participantRequest;
+    private MatchRequest partnerRequest;
+    private Match match;
     private ChatRoom activeChatRoom;
 
     private WebSocketStompClient stompClient;
@@ -91,17 +88,6 @@ public class ChatWebSocketSecurityTest {
 
     @BeforeEach
     void setUp() {
-        // 외래 키 의존 관계에 따라 하위 테이블부터 안전하게 정리
-        chatMessageRepository.deleteAllInBatch();
-        chatRoomRepository.deleteAllInBatch();
-        matchParticipantRepository.deleteAllInBatch();
-        matchRepository.deleteAllInBatch();
-        matchProposalRepository.deleteAllInBatch();
-        matchRequestRepository.deleteAllInBatch();
-        refreshTokenRepository.deleteAllInBatch();
-        deleteUserRelatedData();
-        userRepository.deleteAllInBatch();
-
         String randomSuffix = UUID.randomUUID().toString().substring(0, 8);
 
         // 1. 테스트 유저 생성 (고유한 email/nickname 적용으로 충돌 방지)
@@ -113,6 +99,7 @@ public class ChatWebSocketSecurityTest {
                 .role(UserRole.USER)
                 .status(UserStatus.ACTIVE)
                 .build());
+        createdUserIds.add(participantUser.getId());
 
         intruderUser = userRepository.save(User.builder()
                 .email("intruder_" + randomSuffix + "@test.com")
@@ -122,6 +109,7 @@ public class ChatWebSocketSecurityTest {
                 .role(UserRole.USER)
                 .status(UserStatus.ACTIVE)
                 .build());
+        createdUserIds.add(intruderUser.getId());
 
         // 더미 유저 생성 (1:1 매칭 구성용)
         User partnerUser = userRepository.save(User.builder()
@@ -132,16 +120,17 @@ public class ChatWebSocketSecurityTest {
                 .role(UserRole.USER)
                 .status(UserStatus.ACTIVE)
                 .build());
+        createdUserIds.add(partnerUser.getId());
 
         // 2. 매칭 요청 생성 및 매칭 등록
         Point point = gf.createPoint(new Coordinate(127.0, 37.0));
-        MatchRequest req1 = matchRequestRepository.save(MatchRequest.builder()
+        participantRequest = matchRequestRepository.save(MatchRequest.builder()
                 .user(participantUser).foodCategory("KOREAN").mealAt(Instant.now()).regionCode("11680").regionName("강남구").location(point).status(MatchRequestStatus.MATCHED).build());
-        MatchRequest req2 = matchRequestRepository.save(MatchRequest.builder()
+        partnerRequest = matchRequestRepository.save(MatchRequest.builder()
                 .user(partnerUser).foodCategory("KOREAN").mealAt(Instant.now()).regionCode("11680").regionName("강남구").location(point).status(MatchRequestStatus.MATCHED).build());
 
-        Match match = matchRepository.save(Match.builder()
-                .request1(req1).request2(req2).status(MatchStatus.MATCHED).matchedAt(Instant.now()).build());
+        match = matchRepository.save(Match.builder()
+                .request1(participantRequest).request2(partnerRequest).status(MatchStatus.MATCHED).matchedAt(Instant.now()).build());
 
         // DB 테이블 제약조건인 PARTICIPANT 상수로 통일
         matchParticipantRepository.save(MatchParticipant.builder()
@@ -161,25 +150,35 @@ public class ChatWebSocketSecurityTest {
 
     @AfterEach
     void tearDown() {
-        chatMessageRepository.deleteAllInBatch();
-        chatRoomRepository.deleteAllInBatch();
-        matchParticipantRepository.deleteAllInBatch();
-        matchRepository.deleteAllInBatch();
-        matchProposalRepository.deleteAllInBatch();
-        matchRequestRepository.deleteAllInBatch();
-        refreshTokenRepository.deleteAllInBatch();
-        deleteUserRelatedData();
-        userRepository.deleteAllInBatch();
-        stompClient.stop();
-    }
+        if (stompClient != null) {
+            stompClient.stop();
+        }
 
-    private void deleteUserRelatedData() {
-        jdbcTemplate.update("delete from user_personality_tags");
-        jdbcTemplate.update("delete from user_personality_answers");
-        jdbcTemplate.update("delete from user_personality_embeddings");
-        jdbcTemplate.update("delete from user_personality_profiles");
-        jdbcTemplate.update("delete from user_location_preferences");
-        jdbcTemplate.update("delete from user_food_preferences");
+        Long roomId = activeChatRoom == null ? null : activeChatRoom.getId();
+        if (roomId != null) {
+            jdbcTemplate.update("delete from chat_messages where chat_room_id = ?", roomId);
+            chatRoomRepository.deleteById(roomId);
+        }
+
+        Long matchId = match == null ? null : match.getId();
+        if (matchId != null) {
+            matchParticipantRepository.deleteAll(matchParticipantRepository.findAllByMatchId(matchId));
+            matchRepository.deleteById(matchId);
+        }
+
+        List<Long> requestIds = new ArrayList<>();
+        if (participantRequest != null && participantRequest.getId() != null) {
+            requestIds.add(participantRequest.getId());
+        }
+        if (partnerRequest != null && partnerRequest.getId() != null) {
+            requestIds.add(partnerRequest.getId());
+        }
+        matchRequestRepository.deleteAllById(requestIds);
+
+        if (!createdUserIds.isEmpty()) {
+            userRepository.deleteAllById(new ArrayList<>(createdUserIds));
+            createdUserIds.clear();
+        }
     }
 
     @Test
