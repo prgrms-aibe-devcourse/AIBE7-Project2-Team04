@@ -57,6 +57,9 @@ public class User {
     @Column(name = "profile_image_url", columnDefinition = "text")
     private String profileImageUrl;
 
+    @Column(name = "profile_image_key", columnDefinition = "text")
+    private String profileImageKey;
+
     @Column(columnDefinition = "text")
     private String description;
 
@@ -115,5 +118,18 @@ public class User {
     public void replaceFoodPreferences(Set<FoodCategory> foodPreferences) {
         this.foodPreferences.clear();
         this.foodPreferences.addAll(foodPreferences);
+    }
+
+    public void updateProfile(String nickname, String profileImageUrl) {
+        if (nickname != null && !nickname.isBlank()) {
+            this.nickname = nickname;
+        }
+        if (profileImageUrl != null) {
+            this.profileImageUrl = profileImageUrl.isBlank() ? null : profileImageUrl;
+        }
+    }
+
+    public void updateProfileImageKey(String profileImageKey) {
+        this.profileImageKey = profileImageKey;
     }
 }

@@ -23,6 +23,9 @@ ext {
 }
 
 dependencies {
+    implementation platform('software.amazon.awssdk:bom:2.31.74')
+    implementation 'software.amazon.awssdk:s3'
+
     // --- jwt (jjwt)
     // Source: https://mvnrepository.com/artifact/io.jsonwebtoken/jjwt-api
     implementation 'io.jsonwebtoken:jjwt-api:0.13.0'
