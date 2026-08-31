@@ -25,9 +25,9 @@ public class RestAuthenticationEntryPoint implements AuthenticationEntryPoint {
             HttpServletResponse response,
             AuthenticationException authenticationException
     ) throws IOException {
-        log.error("[RestAuthenticationEntryPoint] 인증 요구 실패 - URI: {}, 사유: {}",
-                request.getRequestURI(), authenticationException.getMessage(), authenticationException);
-        writeResponse(response, SecurityErrorCode.AUTHENTICATION_REQUIRED);
+        SecurityErrorCode errorCode = SecurityErrorCode.AUTHENTICATION_REQUIRED;
+        log.error("[RestAuthenticationEntryPoint] 인증 요구 실패. errorCode={}", errorCode.getCode());
+        writeResponse(response, errorCode);
     }
 
     private void writeResponse(HttpServletResponse response, SecurityErrorCode errorCode) throws IOException {

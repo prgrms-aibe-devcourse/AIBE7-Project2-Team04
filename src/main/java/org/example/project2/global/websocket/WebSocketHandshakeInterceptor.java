@@ -72,10 +72,10 @@ public class WebSocketHandshakeInterceptor implements HandshakeInterceptor {
             String subject = jwtProvider.parseToken(token).getSubject();
             UUID userId = UUID.fromString(subject);
             attributes.put(ATTR_USER_ID, userId);
-            log.debug("[WS Handshake] 인증 성공. userId={}", userId);
+            log.debug("[WS Handshake] 인증 성공");
             return true;
-        } catch (Exception e) {
-            log.warn("[WS Handshake] JWT 검증 실패: {}", e.getMessage());
+        } catch (Exception ignored) {
+            log.warn("[WS Handshake] JWT 검증 실패. errorCode=WS_AUTHENTICATION_FAILED");
             return false;
         }
     }

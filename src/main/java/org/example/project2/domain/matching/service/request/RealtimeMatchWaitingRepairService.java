@@ -45,13 +45,9 @@ public class RealtimeMatchWaitingRepairService {
         try {
             redisTtl = Optional.ofNullable(waitingStore.remainingTtl(requestId))
                     .orElse(Optional.empty());
-        } catch (DataAccessException exception) {
+        } catch (DataAccessException ignored) {
             // Redis 장애 중에는 DB 상태를 임의로 만료시키지 않습니다.
-            log.debug(
-                    "Redis 대기 상태를 확인하지 못해 DB 변경을 보류합니다. requestId={}, errorType={}",
-                    requestId,
-                    exception.getClass().getSimpleName()
-            );
+            log.debug("Redis 대기 상태를 확인하지 못해 DB 변경을 보류합니다. errorCode=MATCHING_REDIS_UNAVAILABLE");
             return RealtimeMatchWaitingReconciliationService.RepairResult.REDIS_UNAVAILABLE;
         }
         if (redisTtl.isPresent()) {

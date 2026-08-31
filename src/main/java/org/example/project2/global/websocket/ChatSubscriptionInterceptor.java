@@ -1,7 +1,6 @@
 package org.example.project2.global.websocket;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.example.project2.domain.chat.repository.ChatRoomRepository;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
@@ -27,7 +26,6 @@ import java.util.UUID;
  *
  * <p>JWT 파싱은 핸드셰이크 단계에서 이미 완료되었으므로 이 인터셉터에서는 토큰을 다시 검증하지 않습니다.</p>
  */
-@Slf4j
 @Component
 @RequiredArgsConstructor
 public class ChatSubscriptionInterceptor implements ChannelInterceptor {
@@ -56,20 +54,16 @@ public class ChatSubscriptionInterceptor implements ChannelInterceptor {
             UsernamePasswordAuthenticationToken auth =
                     new UsernamePasswordAuthenticationToken(userId, null);
             accessor.setUser(auth);
-            log.debug("[WS CONNECT] userId={}", userId);
 
         } else if (StompCommand.SUBSCRIBE.equals(command)) {
             UUID userId = getPrincipalId(accessor);
             String destination = accessor.getDestination();
-            if (isMatchUserDestination(destination)) {
-                log.debug("[WS SUBSCRIBE] 개인 매칭 큐 구독. userId={}, destination={}", userId, destination);
-            } else {
+            if (!isMatchUserDestination(destination)) {
                 Long roomId = extractExactRoomId(destination, SUBSCRIBE_PREFIX, false);
                 if (roomId == null) {
                     throw new MessagingException("허용되지 않은 WebSocket 구독 경로입니다.");
                 }
                 validateParticipant(roomId, userId);
-                log.debug("[WS SUBSCRIBE] userId={} roomId={}", userId, roomId);
             }
 
         } else if (StompCommand.SEND.equals(command)) {
@@ -79,7 +73,6 @@ public class ChatSubscriptionInterceptor implements ChannelInterceptor {
                 throw new MessagingException("허용되지 않은 WebSocket 전송 경로입니다.");
             }
             validateParticipant(roomId, userId);
-            log.debug("[WS SEND] userId={} roomId={}", userId, roomId);
         }
 
         return message;

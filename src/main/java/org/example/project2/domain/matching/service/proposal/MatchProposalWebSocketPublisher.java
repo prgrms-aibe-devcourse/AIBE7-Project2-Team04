@@ -31,10 +31,9 @@ public class MatchProposalWebSocketPublisher {
                     DESTINATION,
                     payload
             );
-        } catch (RuntimeException exception) {
+        } catch (RuntimeException ignored) {
             // 한쪽 세션이 끊겨도 다른 사용자에게 전달을 시도하고, 민감한 프로필 내용은 로그에 남기지 않습니다.
-            log.warn("매칭 제안 WebSocket 알림 전송에 실패했습니다. proposalId={}, userId={}",
-                    payload.proposalId(), userId, exception);
+            log.warn("매칭 제안 WebSocket 알림 전송에 실패했습니다. errorCode=MATCHING_NOTIFICATION_FAILED");
         }
     }
 }

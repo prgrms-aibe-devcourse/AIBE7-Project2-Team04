@@ -101,7 +101,7 @@ public class RefreshTokenService {
     public int purgeTokensExpiredBefore(Instant cutoff) {
         refreshTokenRepository.clearReplacedByTokenForExpiredBefore(cutoff);
         int deletedCount = refreshTokenRepository.deleteExpiredBefore(cutoff);
-        log.info("만료된 Refresh Token 정리 완료: cutoff={}, count={}", cutoff, deletedCount);
+        log.info("만료된 Refresh Token 정리 완료. count={}", deletedCount);
         return deletedCount;
     }
 
@@ -144,7 +144,7 @@ public class RefreshTokenService {
         @Override
         public String toString() {
             return "RotatedRefreshToken[rawToken=[REDACTED], expiresAt=" + expiresAt
-                    + ", userId=" + userId + ", role=" + role + "]";
+                    + ", userId=[REDACTED], role=" + role + "]";
         }
     }
 }

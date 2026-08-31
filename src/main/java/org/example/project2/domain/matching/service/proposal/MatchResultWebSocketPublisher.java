@@ -31,10 +31,9 @@ public class MatchResultWebSocketPublisher {
                     DESTINATION,
                     payload
             );
-        } catch (RuntimeException exception) {
+        } catch (RuntimeException ignored) {
             // 결과 전송 실패가 이미 커밋된 매칭을 되돌리지는 않습니다.
-            log.warn("매칭 결과 WebSocket 알림 전송에 실패했습니다. matchId={}, userId={}",
-                    payload.matchId(), userId, exception);
+            log.warn("매칭 결과 WebSocket 알림 전송에 실패했습니다. errorCode=MATCHING_NOTIFICATION_FAILED");
         }
     }
 }

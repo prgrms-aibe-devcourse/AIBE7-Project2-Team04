@@ -30,7 +30,6 @@ public class JwtFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
-        String uri = request.getRequestURI();
         try {
             // 1. extractToken (cookie, header)
             String token = extractToken(request);
@@ -45,12 +44,9 @@ public class JwtFilter extends OncePerRequestFilter {
                 );
                 SecurityContext context = SecurityContextHolder.getContext();
                 context.setAuthentication(auth);
-                log.info("[JwtFilter] 인증 성공 - URI: {}, User: {}", uri, claims.getSubject());
-            } else {
-                log.debug("[JwtFilter] 토큰이 존재하지 않습니다 - URI: {}", uri);
             }
-        } catch (Exception e) {
-            log.error("[JwtFilter] 인증 실패 - URI: {}, 사유: {}", uri, e.getMessage(), e);
+        } catch (Exception ignored) {
+            log.warn("[JwtFilter] 인증 실패. errorCode=AUTH_001");
             SecurityContextHolder.clearContext();
         }
         // 무조건 실행이 되어야함
@@ -63,22 +59,17 @@ public class JwtFilter extends OncePerRequestFilter {
         if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7).trim(); // 'Bearer '
             if (StringUtils.hasText(token)) {
-                log.info("[JwtFilter] Authorization 헤더에서 토큰 추출 성공");
                 return token;
             }
         }
         // cookie <- 내부에서 호출할 때 (HttpOnly 쿠키 방식)
         jakarta.servlet.http.Cookie[] cookies = request.getCookies();
         if (cookies != null) {
-            log.info("[JwtFilter] 수신된 쿠키 개수: {}", cookies.length);
             for (jakarta.servlet.http.Cookie cookie : cookies) {
                 if ("accessToken".equals(cookie.getName())) {
-                    log.info("[JwtFilter] 쿠키에서 accessToken 추출 성공");
                     return cookie.getValue();
                 }
             }
-        } else {
-            log.info("[JwtFilter] 수신된 쿠키가 없음 (null)");
         }
         return null;
     }

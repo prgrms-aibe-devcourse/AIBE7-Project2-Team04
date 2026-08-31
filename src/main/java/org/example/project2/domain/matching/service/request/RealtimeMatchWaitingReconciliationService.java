@@ -42,10 +42,9 @@ public class RealtimeMatchWaitingReconciliationService {
         List<MatchRequest> requests;
         try {
             requests = findNextBatch();
-        } catch (DataAccessException exception) {
+        } catch (DataAccessException ignored) {
             log.warn(
-                    "Redis 대기 재조정 대상을 조회하지 못했습니다. errorType={}",
-                    exception.getClass().getSimpleName()
+                    "Redis 대기 재조정 대상을 조회하지 못했습니다. errorCode=MATCHING_REDIS_UNAVAILABLE"
             );
             return 0;
         }
@@ -60,12 +59,10 @@ public class RealtimeMatchWaitingReconciliationService {
                 if (result == RepairResult.RESTORED || result == RepairResult.EXPIRED) {
                     repaired++;
                 }
-            } catch (RuntimeException exception) {
+            } catch (RuntimeException ignored) {
                 // 한 요청의 DB 잠금·일시 오류가 배치 전체를 중단시키지 않도록 다음 요청으로 진행합니다.
                 log.warn(
-                        "대기 요청 재조정을 다음 주기로 보류합니다. requestId={}, errorType={}",
-                        request.getId(),
-                        exception.getClass().getSimpleName()
+                        "대기 요청 재조정을 다음 주기로 보류합니다. errorCode=MATCHING_RECONCILIATION_RETRY"
                 );
             }
         }

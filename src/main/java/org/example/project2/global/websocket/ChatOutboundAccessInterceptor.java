@@ -1,7 +1,6 @@
 package org.example.project2.global.websocket;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.example.project2.domain.chat.entity.ChatRoom;
 import org.example.project2.domain.chat.entity.ChatRoomStatus;
 import org.example.project2.domain.chat.repository.ChatRoomRepository;
@@ -23,7 +22,6 @@ import org.springframework.stereotype.Component;
  * <p>SimpleBroker는 destination을 구독한 세션에만 전달하므로 수신자 재검증은 생략합니다.
  * 수신 권한 검증은 Inbound의 {@link ChatSubscriptionInterceptor}에서 구독 시점에 이미 처리합니다.</p>
  */
-@Slf4j
 @Component
 @RequiredArgsConstructor
 public class ChatOutboundAccessInterceptor implements ChannelInterceptor {
@@ -74,7 +72,6 @@ public class ChatOutboundAccessInterceptor implements ChannelInterceptor {
     private void validateRoomActive(Long roomId) {
         ChatRoom room = chatRoomRepository.findById(roomId).orElse(null);
         if (room != null && ChatRoomStatus.CLOSED.equals(room.getStatus())) {
-            log.warn("[WS OUTBOUND] 종료된 채팅방으로의 메시지 전송 차단. roomId={}", roomId);
             throw new MessagingException("종료된 채팅방에는 메시지를 전송할 수 없습니다.");
         }
     }

@@ -31,10 +31,9 @@ public class MatchProposalRetryScheduler {
         List<MatchRequest> requests;
         try {
             requests = findNextBatch();
-        } catch (DataAccessException exception) {
+        } catch (DataAccessException ignored) {
             log.warn(
-                    "실시간 매칭 재탐색 대상을 조회하지 못했습니다. errorType={}",
-                    exception.getClass().getSimpleName()
+                    "실시간 매칭 재탐색 대상을 조회하지 못했습니다. errorCode=MATCHING_RETRY_TARGET_UNAVAILABLE"
             );
             return 0;
         }
