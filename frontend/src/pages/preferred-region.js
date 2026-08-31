@@ -183,13 +183,13 @@ export async function renderPreferredRegionPage(container, isCurrentRoute = () =
               <span class="text-xs font-bold uppercase tracking-[0.08em] text-secondary">시·도</span>
               <span class="text-xs text-secondary/70">첫 번째 선택</span>
             </div>
-            <button id="btn-pref-sido-dropdown" type="button" aria-haspopup="listbox" aria-expanded="false" class="w-full min-h-12 rounded-2xl border border-outline-variant/40 bg-surface px-4 pl-12 text-left text-sm font-semibold text-on-surface shadow-sm transition focus:border-primary-container focus:ring-2 focus:ring-primary-container/30 flex items-center justify-between cursor-pointer">
-              <span id="text-pref-sido-selected" class="truncate text-secondary">시·도 선택</span>
-              <span class="material-symbols-outlined text-secondary text-lg">arrow_drop_down</span>
+            <button id="btn-pref-sido-dropdown" type="button" aria-haspopup="listbox" aria-expanded="false" class="preference-dropdown-button w-full min-h-12 rounded-2xl border border-outline-variant/40 bg-surface px-4 text-left text-sm font-semibold text-on-surface shadow-sm transition focus:border-primary-container focus:ring-2 focus:ring-primary-container/30 flex items-center justify-between gap-1 cursor-pointer">
+              <span class="preference-dropdown-leading-icon inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-primary-container/10 text-primary-container">
+                <span class="material-symbols-outlined text-base">map</span>
+              </span>
+              <span id="text-pref-sido-selected" class="preference-dropdown-value truncate text-secondary">시·도 선택</span>
+              <span class="preference-dropdown-icon material-symbols-outlined text-secondary text-lg">arrow_drop_down</span>
             </button>
-            <span class="pointer-events-none absolute left-4 top-[2.55rem] inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-xl bg-primary-container/10 text-primary-container">
-              <span class="material-symbols-outlined text-base">map</span>
-            </span>
             <ul id="list-pref-sido-options" role="listbox" class="absolute left-0 top-full z-50 mt-2 hidden max-h-60 w-full overflow-y-auto rounded-2xl border border-outline-variant/20 bg-white py-1 shadow-lg transition-all duration-150">
             </ul>
           </div>
@@ -200,13 +200,13 @@ export async function renderPreferredRegionPage(container, isCurrentRoute = () =
               <span class="text-xs font-bold uppercase tracking-[0.08em] text-secondary">시·군·구</span>
               <span class="text-xs text-secondary/70">두 번째 선택</span>
             </div>
-            <button id="btn-pref-sigungu-dropdown" type="button" aria-haspopup="listbox" aria-expanded="false" class="w-full min-h-12 rounded-2xl border border-outline-variant/40 bg-surface px-4 pl-12 text-left text-sm font-semibold text-on-surface shadow-sm transition focus:border-primary-container focus:ring-2 focus:ring-primary-container/30 flex items-center justify-between cursor-not-allowed opacity-50" disabled>
-              <span id="text-pref-sigungu-selected" class="truncate text-secondary">시·군·구 선택</span>
-              <span class="material-symbols-outlined text-secondary text-lg">arrow_drop_down</span>
+            <button id="btn-pref-sigungu-dropdown" type="button" aria-haspopup="listbox" aria-expanded="false" class="preference-dropdown-button w-full min-h-12 rounded-2xl border border-outline-variant/40 bg-surface px-4 text-left text-sm font-semibold text-on-surface shadow-sm transition focus:border-primary-container focus:ring-2 focus:ring-primary-container/30 flex items-center justify-between gap-1 cursor-not-allowed opacity-50" disabled>
+              <span class="preference-dropdown-leading-icon inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
+                <span class="material-symbols-outlined text-base">explore</span>
+              </span>
+              <span id="text-pref-sigungu-selected" class="preference-dropdown-value truncate text-secondary">시·군·구 선택</span>
+              <span class="preference-dropdown-icon material-symbols-outlined text-secondary text-lg">arrow_drop_down</span>
             </button>
-            <span class="pointer-events-none absolute left-4 top-[2.55rem] inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
-              <span class="material-symbols-outlined text-base">explore</span>
-            </span>
             <ul id="list-pref-sigungu-options" role="listbox" class="absolute left-0 top-full z-50 mt-2 hidden max-h-60 w-full overflow-y-auto rounded-2xl border border-outline-variant/20 bg-white py-1 shadow-lg transition-all duration-150">
             </ul>
           </div>
@@ -217,26 +217,26 @@ export async function renderPreferredRegionPage(container, isCurrentRoute = () =
               <span class="text-xs font-bold uppercase tracking-[0.08em] text-secondary">세부 지역</span>
               <span class="text-xs text-secondary/70">마지막 선택</span>
             </div>
-            <button id="btn-pref-detail-dropdown" type="button" aria-haspopup="listbox" aria-expanded="false" class="w-full min-h-12 rounded-2xl border border-outline-variant/40 bg-surface px-4 pl-12 text-left text-sm font-semibold text-on-surface shadow-sm transition focus:border-primary-container focus:ring-2 focus:ring-primary-container/30 flex items-center justify-between cursor-not-allowed opacity-50" disabled>
-              <span id="text-pref-detail-selected" class="truncate text-secondary">구 선택</span>
-              <span class="material-symbols-outlined text-secondary text-lg">arrow_drop_down</span>
+            <button id="btn-pref-detail-dropdown" type="button" aria-haspopup="listbox" aria-expanded="false" class="preference-dropdown-button w-full min-h-12 rounded-2xl border border-outline-variant/40 bg-surface px-4 text-left text-sm font-semibold text-on-surface shadow-sm transition focus:border-primary-container focus:ring-2 focus:ring-primary-container/30 flex items-center justify-between gap-1 cursor-not-allowed opacity-50" disabled>
+              <span class="preference-dropdown-leading-icon inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
+                <span class="material-symbols-outlined text-base">location_city</span>
+              </span>
+              <span id="text-pref-detail-selected" class="preference-dropdown-value truncate text-secondary">구 선택</span>
+              <span class="preference-dropdown-icon material-symbols-outlined text-secondary text-lg">arrow_drop_down</span>
             </button>
-            <span class="pointer-events-none absolute left-4 top-[2.55rem] inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
-              <span class="material-symbols-outlined text-base">location_city</span>
-            </span>
             <ul id="list-pref-detail-options" role="listbox" class="absolute left-0 top-full z-50 mt-2 hidden max-h-60 w-full overflow-y-auto rounded-2xl border border-outline-variant/20 bg-white py-1 shadow-lg transition-all duration-150">
             </ul>
           </div>
         </div>
 
         <div class="rounded-2xl border border-primary-container/20 bg-brand-ivory p-4">
-          <div class="flex items-start gap-3">
+          <div class="selected-region-summary flex items-center gap-3">
             <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-primary-container shadow-sm">
               <span class="material-symbols-outlined text-lg">location_on</span>
             </span>
-            <div class="min-w-0">
+            <div class="selected-region-summary-content min-w-0">
               <p class="text-xs font-bold uppercase tracking-[0.08em] text-secondary">선택한 활동 지역</p>
-              <p id="text-selected-region" class="mt-1 truncate font-headline text-lg font-bold text-brand-navy">${initialLocName}</p>
+              <p id="text-selected-region" class="mt-1 truncate font-headline text-lg font-bold leading-tight text-brand-navy">${initialLocName}</p>
             </div>
           </div>
           <p class="mt-3 text-xs leading-relaxed text-secondary">정확한 주소는 저장하지 않고, 선택한 지역 단위로만 매칭에 활용합니다.</p>

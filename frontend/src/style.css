@@ -62,6 +62,50 @@ select {
   font: inherit;
 }
 
+/* Preferred region selectors: keep the value and icon on the same visual center line. */
+.preferred-region-page .preference-dropdown-button {
+  min-height: 3rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  line-height: 1;
+}
+
+.preferred-region-page .preference-dropdown-value {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: block;
+  line-height: 1.25;
+}
+
+.preferred-region-page .preference-dropdown-leading-icon {
+  flex: 0 0 1.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.preferred-region-page .preference-dropdown-icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.preferred-region-page .selected-region-summary {
+  display: flex;
+  align-items: center;
+}
+
+.preferred-region-page .selected-region-summary-content {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+}
+
 /* Glassmorphism Navigation */
 .glass-nav {
   background: rgba(255, 255, 255, 0.85);
