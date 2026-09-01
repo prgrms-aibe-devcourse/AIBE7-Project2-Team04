@@ -46,6 +46,21 @@ const TAG_GROUPS = [
 ]
 
 const TAG_LABELS = new Map(TAG_GROUPS.flatMap((group) => group.tags))
+const TAG_DETAILS = new Map([
+  ['INITIATES_CONVERSATION', { icon: 'forum', description: '먼저 말을 걸며 어색함을 풀어요.' }],
+  ['GOOD_LISTENER', { icon: 'hearing', description: '상대의 이야기에 귀 기울여요.' }],
+  ['FOOD_TALK', { icon: 'restaurant', description: '메뉴와 맛있는 이야기를 나눠요.' }],
+  ['LIGHT_CHAT', { icon: 'chat_bubble', description: '가볍고 편하게 대화해요.' }],
+  ['DEEP_TALK', { icon: 'psychology', description: '생각과 취향을 깊게 나눠요.' }],
+  ['COMFORTABLE_SILENCE', { icon: 'self_improvement', description: '말없이 있어도 편안해요.' }],
+  ['CALM_ATMOSPHERE', { icon: 'spa', description: '차분하고 여유로운 식사를 원해요.' }],
+  ['CHEERFUL_ATMOSPHERE', { icon: 'sentiment_very_satisfied', description: '밝고 유쾌한 분위기를 좋아해요.' }],
+  ['ACTIVE_ATMOSPHERE', { icon: 'celebration', description: '활기차고 에너지 있는 분위기를 좋아해요.' }],
+  ['SHARE_DISHES', { icon: 'group_work', description: '여러 메뉴를 함께 나눠 먹어요.' }],
+  ['TAKE_FOOD_PHOTOS', { icon: 'photo_camera', description: '맛있는 순간을 사진으로 남겨요.' }],
+  ['ENJOY_DESSERT', { icon: 'cake', description: '식사 후 디저트도 함께 즐겨요.' }],
+  ['FOCUS_ON_MEAL', { icon: 'restaurant_menu', description: '식사와 맛에 집중하는 편이에요.' }],
+])
 
 const FOOD_CATEGORIES = [
   ['KOREAN', '한식', '🍚'],
@@ -59,6 +74,16 @@ const FOOD_CATEGORIES = [
 ]
 
 const FOOD_LABELS = new Map(FOOD_CATEGORIES.map(([code, label]) => [code, label]))
+const FOOD_ICONS = new Map([
+  ['KOREAN', 'rice_bowl'],
+  ['JAPANESE', 'ramen_dining'],
+  ['CHINESE', 'soup_kitchen'],
+  ['WESTERN', 'local_pizza'],
+  ['SOUTHEAST_ASIAN', 'set_meal'],
+  ['SNACK', 'bakery_dining'],
+  ['FAST_FOOD', 'fastfood'],
+  ['CAFE_DESSERT', 'local_cafe'],
+])
 const MATCHING_POLL_INTERVAL = 3000
 const DEFAULT_SEARCH_RADIUS = 3000
 const EXPANDED_SEARCH_RADIUS = 5000
@@ -74,9 +99,9 @@ const MATCHING_FORM_STEPS = [
     description: '함께 먹고 싶은 음식 카테고리를 골라 주세요.',
   },
   {
-    label: '어떤 분위기인지',
-    title: '어떤 분위기가 좋을까요?',
-    description: '편안하게 식사할 수 있는 밥친구의 성향을 골라 주세요.',
+    label: '원하는 상대 성향',
+    title: '어떤 성향의 상대와 함께하고 싶나요?',
+    description: '내 성향이 아니라, 함께 만나고 싶은 밥친구의 특징을 골라 주세요.',
   },
 ]
 
@@ -105,6 +130,7 @@ export async function renderMatchingRequestPage(container) {
   let lastErrorToastMessage = ''
 
   const queryLocation = readLocationFromQuery()
+  const defaultDesiredTimeSlot = getDefaultDateTimeValue()
   const state = {
     initialLoading: true,
     locationError: '',
@@ -117,10 +143,16 @@ export async function renderMatchingRequestPage(container) {
     radiusExpansionUsed: false,
     location: queryLocation,
     foodCategory: 'KOREAN',
-    desiredTimeSlot: getDefaultDateTimeValue(),
+    desiredTimeSlot: defaultDesiredTimeSlot,
+    scheduleCalendarMonth: getMonthValueFromDateTime(defaultDesiredTimeSlot),
+    isScheduleDateModalOpen: false,
+    scheduleDraftDate: '',
+    isScheduleTimeModalOpen: false,
+    scheduleDraftTime: '',
     locationName: queryLocation.locationName || '',
     searchRadius: DEFAULT_SEARCH_RADIUS,
     selectedTags: new Set(),
+    personalityGroupIndex: 0,
     desiredPersonalityText: '',
     currentRequest: null,
     currentProposal: null,
@@ -135,6 +167,7 @@ export async function renderMatchingRequestPage(container) {
 
   const cleanup = () => {
     disposed = true
+    document.body.classList.remove('matching-time-modal-open')
     if (pollTimer) clearInterval(pollTimer)
     if (tickerTimer) clearInterval(tickerTimer)
     if (reconnectTimer) clearTimeout(reconnectTimer)
@@ -607,7 +640,13 @@ export async function renderMatchingRequestPage(container) {
     state.errorMessage = ''
     state.noticeMessage = ''
     state.desiredTimeSlot = getDefaultDateTimeValue()
+    state.scheduleCalendarMonth = getMonthValueFromDateTime(state.desiredTimeSlot)
+    state.isScheduleDateModalOpen = false
+    state.scheduleDraftDate = ''
+    state.isScheduleTimeModalOpen = false
+    state.scheduleDraftTime = ''
     state.searchRadius = DEFAULT_SEARCH_RADIUS
+    state.personalityGroupIndex = 0
     render()
   }
 
@@ -616,10 +655,15 @@ export async function renderMatchingRequestPage(container) {
     if (!form) return
     const foodCategory = form.querySelector('[name="foodCategory"]')
     const desiredTimeSlot = form.querySelector('[name="desiredTimeSlot"]')
+    const desiredTimeSlotTime = form.querySelector('[name="desiredTimeSlotTime"]')
     const locationName = form.querySelector('[name="locationName"]')
     const desiredPersonalityText = form.querySelector('[name="desiredPersonalityText"]')
     if (foodCategory) state.foodCategory = foodCategory.value || state.foodCategory
     if (desiredTimeSlot) state.desiredTimeSlot = desiredTimeSlot.value || state.desiredTimeSlot
+    if (desiredTimeSlotTime?.value) {
+      const { date } = splitDateTimeValue(state.desiredTimeSlot)
+      if (date) state.desiredTimeSlot = `${date}T${desiredTimeSlotTime.value}`
+    }
     if (locationName) state.locationName = locationName.value || ''
     if (desiredPersonalityText) state.desiredPersonalityText = desiredPersonalityText.value || ''
   }
@@ -705,6 +749,7 @@ export async function renderMatchingRequestPage(container) {
 
   function render() {
     if (disposed) return
+    document.body.classList.toggle('matching-time-modal-open', state.isScheduleDateModalOpen || state.isScheduleTimeModalOpen)
     if (state.errorMessage && state.errorMessage !== lastErrorToastMessage) {
       lastErrorToastMessage = state.errorMessage
       showToast(state.errorMessage, { type: 'error' })
@@ -830,7 +875,6 @@ export async function renderMatchingRequestPage(container) {
             </div>
             <h2 id="matching-form-title" class="sr-only">매칭 조건 설정</h2>
           </div>
-          <span class="text-xs font-semibold text-secondary">${step === MATCHING_FORM_STEPS.length ? '마지막 단계예요' : '다음 단계에서 이어서 설정해요'}</span>
         </div>
 
         <div class="matching-stepper" aria-label="매칭 조건 진행 단계">
@@ -870,9 +914,8 @@ export async function renderMatchingRequestPage(container) {
           <div class="matching-form-actions mt-8 flex flex-col-reverse gap-3 border-t border-outline-variant/30 pt-6 sm:flex-row sm:items-center sm:justify-between">
             ${step > 1
               ? '<button id="btn-matching-prev" type="button" class="btn-secondary inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-5 text-sm font-bold"><span class="material-symbols-outlined text-lg">arrow_back</span>이전</button>'
-              : '<span class="hidden text-xs font-semibold text-secondary sm:block">선택한 조건은 다음 단계에서도 유지돼요.</span>'}
+              : '<span class="hidden text-xs font-semibold text-secondary sm:block"></span>'}
             <div class="flex flex-col-reverse gap-3 sm:flex-row sm:items-center">
-              <span class="hidden text-xs font-semibold text-secondary sm:block">${step === 1 ? '지역과 시간을 먼저 확인해요.' : step === 2 ? '다음은 밥친구의 분위기예요.' : '3~5개의 태그를 선택해 주세요.'}</span>
               ${step < MATCHING_FORM_STEPS.length
                 ? '<button id="btn-matching-next" type="button" class="btn-primary inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 text-sm font-extrabold shadow-md"><span>다음 단계</span><span class="material-symbols-outlined text-lg">arrow_forward</span></button>'
                 : `<button id="btn-submit-matching-request" type="submit" ${state.isSubmitting ? 'disabled' : ''} class="btn-primary inline-flex min-h-14 items-center justify-center gap-2 rounded-full px-6 text-sm font-extrabold shadow-glow-primary disabled:cursor-not-allowed disabled:opacity-60">
@@ -887,17 +930,16 @@ export async function renderMatchingRequestPage(container) {
     function renderScheduleStep() {
       return `
         <div class="space-y-6">
-          <section class="matching-location-summary rounded-2xl border border-outline-variant/40 bg-surface-container-low p-4 sm:p-5" aria-labelledby="matching-location-title">
+          <section class="matching-location-summary rounded-3xl border border-outline-variant/40 bg-white p-4 sm:p-5" aria-labelledby="matching-location-title">
             <div class="flex items-start justify-between gap-4">
               <div class="flex min-w-0 items-start gap-3">
-                <span class="material-symbols-outlined rounded-full bg-white p-2 text-primary-container shadow-sm">location_on</span>
+                <span class="material-symbols-outlined rounded-full bg-primary-container/10 p-2 text-primary-container shadow-sm">location_on</span>
                 <div class="min-w-0">
                   <p class="text-xs font-semibold text-secondary">선택한 약속 지역</p>
                   <p id="matching-location-title" class="mt-1 truncate text-base font-extrabold text-brand-navy">${escapeHtml(state.location.regionName)}</p>
-                  <p class="mt-1 text-xs leading-5 text-secondary">정밀 위치는 공개하지 않고, 선택한 지역을 기준으로 매칭해요.</p>
                 </div>
               </div>
-              <a href="${escapeHtml(buildMapHref(state.location))}" class="inline-flex shrink-0 items-center gap-1 rounded-full bg-white px-3 py-2 text-xs font-bold text-primary-container shadow-sm hover:bg-primary-container/10" aria-label="지도에서 약속 지역 다시 선택">
+              <a href="${escapeHtml(buildMapHref(state.location))}" class="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary-container/10 px-3 py-2 text-xs font-bold text-primary-container shadow-sm hover:bg-primary-container/20" aria-label="지도에서 약속 지역 다시 선택">
                 <span class="material-symbols-outlined text-base">map</span>
                 수정
               </a>
@@ -905,11 +947,10 @@ export async function renderMatchingRequestPage(container) {
           </section>
 
           <div class="grid gap-5">
-            <label class="block">
+            <div class="block">
               <span class="mb-2 block text-sm font-bold text-brand-navy">희망 식사 일시 <span class="text-primary-container">*</span></span>
-              <input class="matching-control w-full rounded-xl px-3.5 text-sm" type="datetime-local" name="desiredTimeSlot" min="${escapeHtml(getMinimumDateTimeValue())}" value="${escapeHtml(state.desiredTimeSlot)}" required aria-describedby="matching-time-help" />
-              <span id="matching-time-help" class="mt-1.5 block text-xs leading-5 text-secondary">현재 시각 이후로 선택해 주세요.</span>
-            </label>
+              ${renderSchedulePicker(state)}
+            </div>
           </div>
         </div>
       `
@@ -918,23 +959,34 @@ export async function renderMatchingRequestPage(container) {
     function renderFoodStep() {
       return `
         <div class="space-y-6">
-          <div class="matching-step-illustration rounded-3xl bg-surface-container-low p-5 sm:p-7">
-            <div class="flex items-start gap-4">
-              <span class="material-symbols-outlined grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white text-2xl text-primary-container shadow-sm">restaurant</span>
-              <div>
-                <p class="text-sm font-extrabold text-brand-navy">오늘은 어떤 메뉴가 끌리나요?</p>
-                <p class="mt-1 text-sm leading-6 text-secondary">정밀한 메뉴가 아니라 함께 고를 음식의 큰 방향만 알려주면 돼요.</p>
+          <section class="matching-food-picker rounded-3xl border border-outline-variant/40 bg-white p-4 sm:p-5" aria-labelledby="matching-food-title">
+            <div class="flex items-start gap-3">
+              <span class="material-symbols-outlined rounded-full bg-primary-container/10 p-2 text-primary-container shadow-sm">restaurant</span>
+              <div class="min-w-0">
+                <p class="text-xs font-semibold text-secondary">오늘의 메뉴 방향</p>
+                <h4 id="matching-food-title" class="mt-1 text-base font-extrabold text-brand-navy">무엇을 먹을지 골라볼까요?</h4>
+                <p class="mt-1 text-sm leading-6 text-secondary">정밀한 메뉴보다 함께 고를 음식의 큰 방향만 알려주면 돼요.</p>
               </div>
             </div>
-          </div>
 
-          <label class="block">
-            <span class="mb-2 block text-sm font-bold text-brand-navy">음식 카테고리 <span class="text-primary-container">*</span></span>
-            <select class="matching-control w-full rounded-xl px-3.5 text-sm" name="foodCategory" required aria-describedby="matching-food-help">
-              ${FOOD_CATEGORIES.map(([code, label, emoji]) => `<option value="${code}" ${state.foodCategory === code ? 'selected' : ''}>${emoji} ${label}</option>`).join('')}
-            </select>
-            <span id="matching-food-help" class="mt-1.5 block text-xs leading-5 text-secondary">알레르기나 식단 제한은 매칭 후 서로 직접 확인해 주세요.</span>
-          </label>
+            <fieldset class="mt-5" aria-describedby="matching-food-help">
+              <legend class="sr-only">음식 카테고리</legend>
+              <div class="matching-food-grid">
+                ${FOOD_CATEGORIES.map(([code, label]) => {
+                  const isSelected = state.foodCategory === code
+                  return `
+                    <button type="button" data-food-category="${code}" aria-pressed="${isSelected ? 'true' : 'false'}" class="matching-food-option ${isSelected ? 'is-selected' : ''}">
+                      <span class="matching-food-option-icon material-symbols-outlined">${FOOD_ICONS.get(code) || 'restaurant'}</span>
+                      <span class="matching-food-option-label">${escapeHtml(label)}</span>
+                      <span class="matching-food-option-check material-symbols-outlined" aria-hidden="true">${isSelected ? 'check_circle' : ''}</span>
+                    </button>
+                  `
+                }).join('')}
+              </div>
+            </fieldset>
+            <p id="matching-food-help" class="mt-4 text-xs leading-5 text-secondary">알레르기나 식단 제한은 매칭 후 서로 직접 확인해 주세요.</p>
+            <input type="hidden" name="foodCategory" value="${escapeHtml(state.foodCategory)}" />
+          </section>
         </div>
       `
     }
@@ -942,30 +994,7 @@ export async function renderMatchingRequestPage(container) {
     function renderPersonalityStep() {
       return `
         <div class="space-y-7">
-          <fieldset>
-            <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <legend class="text-sm font-bold text-brand-navy">원하는 상대의 성향 태그 <span class="text-primary-container">*</span></legend>
-                <p id="matching-tags-help" class="mt-1 text-xs leading-5 text-secondary">서로의 식사 분위기를 맞출 수 있도록 3~5개를 선택해 주세요.</p>
-              </div>
-              <span class="inline-flex items-center rounded-full bg-primary-container/10 px-3 py-1.5 text-xs font-extrabold text-primary" aria-live="polite">${state.selectedTags.size} / 5 선택</span>
-            </div>
-            <div class="space-y-4" aria-describedby="matching-tags-help">
-              ${TAG_GROUPS.map((group, groupIndex) => `
-                <section class="matching-tag-group rounded-2xl border border-outline-variant/40 p-4" aria-labelledby="matching-tag-group-${groupIndex + 1}">
-                  <h4 id="matching-tag-group-${groupIndex + 1}" class="mb-3 text-xs font-extrabold tracking-wide text-secondary">${group.name}</h4>
-                  <div class="flex flex-wrap gap-2.5">
-                    ${group.tags.map(([code, label]) => `
-                      <button type="button" data-matching-tag="${code}" aria-pressed="${state.selectedTags.has(code)}" class="matching-tag inline-flex min-h-11 items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold ${state.selectedTags.has(code) ? 'is-selected' : ''}">
-                        ${escapeHtml(label)}
-                        ${state.selectedTags.has(code) ? '<span class="material-symbols-outlined text-sm">check</span>' : ''}
-                      </button>
-                    `).join('')}
-                  </div>
-                </section>
-              `).join('')}
-            </div>
-          </fieldset>
+          ${renderPersonalityPicker(state)}
 
           <label class="block">
             <div class="flex items-end justify-between gap-3">
@@ -1005,33 +1034,43 @@ export async function renderMatchingRequestPage(container) {
     const remaining = formatRemaining(state.currentRequest?.expiresAt)
 
     return `
-      <section class="matching-card rounded-[28px] bg-white p-6 text-center sm:p-12" aria-live="polite">
-        <div class="matching-status-orbit mx-auto mb-8 h-16 w-16 rounded-full bg-primary-container/10 text-primary-container">
-          <span class="material-symbols-outlined text-3xl">restaurant</span>
+      <section class="matching-card matching-waiting-card rounded-[28px] bg-white px-5 py-8 text-center sm:px-10 sm:py-12" aria-live="polite">
+        <div class="matching-waiting-scene mx-auto" aria-hidden="true">
+          <div class="matching-waiting-person is-left">
+            <span class="material-symbols-outlined">person</span>
+          </div>
+          <div class="matching-waiting-path is-left"><i></i><i></i><i></i></div>
+          <div class="matching-waiting-table">
+            <span class="material-symbols-outlined">restaurant</span>
+          </div>
+          <div class="matching-waiting-path is-right"><i></i><i></i><i></i></div>
+          <div class="matching-waiting-person is-right">
+            <span class="material-symbols-outlined">person</span>
+          </div>
         </div>
-        <span class="inline-flex items-center gap-1.5 rounded-full bg-primary-container/10 px-3 py-1.5 text-xs font-extrabold text-primary">
-          <span class="h-1.5 w-1.5 rounded-full bg-primary-container"></span>
-          ${isConfirming ? '프로필 확인 중' : '매칭 대기 중'}
-        </span>
-        <h2 class="mt-4 font-headline text-2xl font-extrabold tracking-tight text-brand-navy sm:text-3xl">${title}</h2>
+        <h2 class="mt-7 font-headline text-2xl font-extrabold tracking-tight text-brand-navy sm:text-3xl">${title}</h2>
         <p class="mx-auto mt-3 max-w-lg text-sm leading-6 text-secondary">${description}</p>
 
-        <div class="mx-auto mt-8 grid max-w-2xl gap-3 text-left sm:grid-cols-3">
+        <div class="matching-waiting-summary mx-auto mt-8 grid max-w-2xl text-left sm:grid-cols-3" role="list" aria-label="선택한 매칭 조건">
           ${renderSummaryItem('location_on', '약속 위치', state.location.regionName)}
           ${renderSummaryItem('schedule', '식사 일시', state.hasRequestDetails ? formatDateTime(state.desiredTimeSlot) : '저장된 요청 조건')}
           ${renderSummaryItem('restaurant', '음식', state.hasRequestDetails ? (FOOD_LABELS.get(state.foodCategory) || '선택한 음식') : '저장된 요청 조건')}
         </div>
 
-        <div class="mx-auto mt-8 max-w-2xl">
-          <div class="matching-progress"><span></span></div>
-          <div class="mt-2 flex items-center justify-between text-xs font-semibold text-secondary">
-            <span>조건이 맞는 상대를 안전하게 탐색 중</span>
-            <span>${remaining ? `남은 시간 ${remaining}` : '상태 확인 중'}</span>
+        <div class="mx-auto mt-8 max-w-xl">
+          <div class="matching-search-flow" role="progressbar" aria-label="매칭 상대 탐색 중">
+            <span></span><span></span><span></span><span></span><span></span>
+          </div>
+          <p class="mt-3 text-sm font-bold text-brand-navy">조건이 잘 맞는 상대를 살펴보고 있어요</p>
+          <div class="mt-1 flex items-center justify-center gap-1.5 text-xs font-semibold text-secondary">
+            <span class="material-symbols-outlined text-base text-primary-container" aria-hidden="true">schedule</span>
+            <span data-matching-remaining>${remaining ? `남은 시간 ${remaining}` : '상태 확인 중'}</span>
           </div>
         </div>
 
-        <div class="mx-auto mt-7 max-w-xl rounded-2xl bg-surface-container-low px-4 py-3 text-left text-xs leading-5 text-secondary">
-          <span class="font-bold text-brand-navy">안내:</span> 후보가 제안되면 상대의 공개 프로필과 호환 사유만 확인할 수 있어요. 다른 사용자의 요청이나 상세 위치는 공개하지 않습니다.
+        <div class="mx-auto mt-7 flex max-w-xl items-center justify-center gap-1.5 text-xs leading-5 text-secondary">
+          <span class="material-symbols-outlined text-base text-primary-container" aria-hidden="true">verified_user</span>
+          <span>매칭이 완료되면 공개 프로필만 안전하게 보여드려요.</span>
         </div>
         <button id="btn-cancel-matching" type="button" ${state.isCancelling ? 'disabled' : ''} class="btn-secondary mt-7 inline-flex min-h-12 items-center justify-center gap-2 rounded-full border-error/40 px-6 text-sm font-bold text-error hover:bg-error/5 disabled:cursor-not-allowed disabled:opacity-60">
           ${state.isCancelling ? '<span class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-error border-t-transparent"></span>취소 중…' : '<span class="material-symbols-outlined text-lg">close</span>매칭 요청 취소'}
@@ -1065,7 +1104,7 @@ export async function renderMatchingRequestPage(container) {
           </div>
           <div class="rounded-2xl bg-primary-container/10 px-4 py-3 text-left sm:text-right">
             <p class="text-xs font-bold text-secondary">남은 응답 시간</p>
-            <p class="mt-1 font-headline text-xl font-extrabold tabular-nums text-primary">${formatRemaining(proposal?.expiresAt) || '확인 중'}</p>
+            <p data-matching-remaining class="mt-1 font-headline text-xl font-extrabold tabular-nums text-primary">${formatRemaining(proposal?.expiresAt) || '확인 중'}</p>
           </div>
         </div>
 
@@ -1176,15 +1215,148 @@ export async function renderMatchingRequestPage(container) {
     `
   }
 
+  function selectScheduleDate(dateValue) {
+    if (!isDateSelectable(dateValue)) return
+    state.scheduleDraftDate = dateValue
+    state.scheduleCalendarMonth = getMonthValueFromDateTime(`${dateValue}T00:00`)
+    state.errorMessage = ''
+    render()
+  }
+
+  function openScheduleDateModal() {
+    const { date } = splitDateTimeValue(state.desiredTimeSlot)
+    state.scheduleDraftDate = date
+    state.scheduleCalendarMonth = getMonthValueFromDateTime(`${date}T00:00`)
+    state.scheduleDraftTime = ''
+    state.isScheduleDateModalOpen = true
+    state.isScheduleTimeModalOpen = false
+    render()
+    window.setTimeout(() => {
+      container.querySelector('#matching-schedule-date-close')?.focus({ preventScroll: true })
+    }, 0)
+  }
+
+  function closeScheduleDateModal() {
+    state.isScheduleDateModalOpen = false
+    state.scheduleDraftDate = ''
+    render()
+    window.setTimeout(() => {
+      container.querySelector('#btn-open-schedule-date')?.focus({ preventScroll: true })
+    }, 0)
+  }
+
+  function confirmScheduleDate() {
+    const dateValue = state.scheduleDraftDate
+    if (!dateValue || !isDateSelectable(dateValue)) return
+    const current = splitDateTimeValue(state.desiredTimeSlot)
+    const timeValue = isTimeAvailable(dateValue, current.time)
+      ? current.time
+      : getDefaultTimeForDate(dateValue)
+    state.desiredTimeSlot = `${dateValue}T${timeValue}`
+    state.scheduleCalendarMonth = getMonthValueFromDateTime(state.desiredTimeSlot)
+    state.isScheduleDateModalOpen = false
+    state.scheduleDraftDate = ''
+    state.errorMessage = ''
+    render()
+  }
+
+  function openScheduleTimeModal() {
+    const { time } = splitDateTimeValue(state.desiredTimeSlot)
+    state.scheduleDraftTime = time
+    state.scheduleDraftDate = ''
+    state.isScheduleDateModalOpen = false
+    state.isScheduleTimeModalOpen = true
+    render()
+    window.setTimeout(() => {
+      container.querySelector('#matching-schedule-time-close')?.focus({ preventScroll: true })
+    }, 0)
+  }
+
+  function closeScheduleTimeModal() {
+    state.isScheduleTimeModalOpen = false
+    state.scheduleDraftTime = ''
+    render()
+    window.setTimeout(() => {
+      container.querySelector('#btn-open-schedule-time')?.focus({ preventScroll: true })
+    }, 0)
+  }
+
+  function selectScheduleTime(timeValue) {
+    const { date } = splitDateTimeValue(state.desiredTimeSlot)
+    if (!date || !isTimeAvailable(date, timeValue)) return
+    state.scheduleDraftTime = timeValue
+    render()
+  }
+
+  function confirmScheduleTime() {
+    const { date } = splitDateTimeValue(state.desiredTimeSlot)
+    if (!date || !isTimeAvailable(date, state.scheduleDraftTime)) return
+    state.desiredTimeSlot = `${date}T${state.scheduleDraftTime}`
+    state.isScheduleTimeModalOpen = false
+    state.scheduleDraftTime = ''
+    state.errorMessage = ''
+    render()
+  }
+
   function bindEvents() {
     container.querySelector('#matching-request-form')?.addEventListener('submit', handleSubmit)
     container.querySelector('#btn-matching-next')?.addEventListener('click', handleNextStep)
     container.querySelector('#btn-matching-prev')?.addEventListener('click', handlePreviousStep)
-    container.querySelector('[name="foodCategory"]')?.addEventListener('change', (event) => {
-      state.foodCategory = event.target.value
+    container.querySelectorAll('[data-food-category]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const category = button.getAttribute('data-food-category')
+        if (!FOOD_LABELS.has(category)) return
+        state.foodCategory = category
+        state.errorMessage = ''
+        render()
+      })
     })
     container.querySelector('[name="desiredTimeSlot"]')?.addEventListener('input', (event) => {
       state.desiredTimeSlot = event.target.value
+    })
+    container.querySelector('#btn-open-schedule-date')?.addEventListener('click', openScheduleDateModal)
+    container.querySelector('#btn-open-schedule-time')?.addEventListener('click', openScheduleTimeModal)
+    container.querySelectorAll('[data-schedule-date]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const dateValue = button.getAttribute('data-schedule-date')
+        if (dateValue) selectScheduleDate(dateValue)
+      })
+    })
+    container.querySelectorAll('[data-schedule-time]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const timeValue = button.getAttribute('data-schedule-time')
+        if (timeValue) selectScheduleTime(timeValue)
+      })
+    })
+    container.querySelector('#matching-calendar-prev')?.addEventListener('click', () => {
+      state.scheduleCalendarMonth = shiftMonthValue(state.scheduleCalendarMonth, -1)
+      render()
+    })
+    container.querySelector('#matching-calendar-next')?.addEventListener('click', () => {
+      const maximumMonth = getMonthValueFromDateTime(`${getMaximumDateValue()}T00:00`)
+      if (state.scheduleCalendarMonth >= maximumMonth) return
+      state.scheduleCalendarMonth = shiftMonthValue(state.scheduleCalendarMonth, 1)
+      render()
+    })
+    container.querySelector('[name="desiredTimeSlotTime"]')?.addEventListener('change', (event) => {
+      const timeValue = event.target.value
+      if (!timeValue) return
+      state.scheduleDraftTime = timeValue
+      render()
+    })
+    container.querySelector('#matching-schedule-time-close')?.addEventListener('click', closeScheduleTimeModal)
+    container.querySelector('#matching-schedule-time-cancel')?.addEventListener('click', closeScheduleTimeModal)
+    container.querySelector('#matching-schedule-time-confirm')?.addEventListener('click', confirmScheduleTime)
+    container.querySelector('#matching-schedule-time-backdrop')?.addEventListener('click', closeScheduleTimeModal)
+    container.querySelector('#matching-schedule-time-modal')?.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') closeScheduleTimeModal()
+    })
+    container.querySelector('#matching-schedule-date-close')?.addEventListener('click', closeScheduleDateModal)
+    container.querySelector('#matching-schedule-date-cancel')?.addEventListener('click', closeScheduleDateModal)
+    container.querySelector('#matching-schedule-date-confirm')?.addEventListener('click', confirmScheduleDate)
+    container.querySelector('#matching-schedule-date-backdrop')?.addEventListener('click', closeScheduleDateModal)
+    container.querySelector('#matching-schedule-date-modal')?.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') closeScheduleDateModal()
     })
     container.querySelector('[name="locationName"]')?.addEventListener('input', (event) => {
       state.locationName = event.target.value
@@ -1193,6 +1365,16 @@ export async function renderMatchingRequestPage(container) {
       state.desiredPersonalityText = event.target.value.slice(0, 300)
       const count = container.querySelector('#desired-personality-count')
       if (count) count.textContent = `${state.desiredPersonalityText.length} / 300`
+    })
+
+    container.querySelectorAll('[data-personality-group]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const groupIndex = Number(button.getAttribute('data-personality-group'))
+        if (!Number.isInteger(groupIndex) || groupIndex < 0 || groupIndex >= TAG_GROUPS.length) return
+        state.personalityGroupIndex = groupIndex
+        state.errorMessage = ''
+        render()
+      })
     })
 
     container.querySelectorAll('[data-matching-tag]').forEach((button) => {
@@ -1266,10 +1448,21 @@ export async function renderMatchingRequestPage(container) {
       if (expiresAt && remainingMilliseconds(expiresAt) <= 0 && state.mode === 'proposal' && !state.expiryHandled) {
         state.expiryHandled = true
         state.noticeMessage = '응답 시간이 만료되었습니다. 다시 매칭을 탐색할 수 있어요.'
-        refreshFlow({ checkResult: true })
+        void refreshFlow({ checkResult: true })
+        return
       }
-      render()
+      updateTickerText()
     }, 1000)
+  }
+
+  function updateTickerText() {
+    const ticker = container.querySelector('[data-matching-remaining]')
+    if (!ticker) return
+    const expiresAt = state.currentProposal?.expiresAt || state.currentRequest?.expiresAt
+    const remaining = formatRemaining(expiresAt)
+    ticker.textContent = state.mode === 'proposal'
+      ? remaining || '확인 중'
+      : remaining ? `남은 시간 ${remaining}` : '상태 확인 중'
   }
 
 }
@@ -1342,14 +1535,392 @@ function buildMapHref(location) {
   return `/map?${params.toString()}`
 }
 
+function renderSchedulePicker(state) {
+  const { date: selectedDate, time: selectedTime } = splitDateTimeValue(state.desiredTimeSlot)
+  const selectedDateLabel = formatScheduleDate(selectedDate)
+  const selectedTimeLabel = formatTimeLabel(selectedTime)
+
+  return `
+    <div class="matching-schedule-picker mt-3 rounded-3xl border border-outline-variant/40 bg-white p-4 sm:p-5">
+      <div class="matching-schedule-fields mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)] lg:items-stretch lg:gap-6">
+        <section class="matching-date-panel">
+          <div class="flex items-center gap-2">
+            <div>
+              <p class="text-sm font-extrabold text-brand-navy">식사 날짜</p>
+              <p class="mt-0.5 text-xs text-secondary">버튼을 눌러 만날 날짜를 선택해 보세요.</p>
+            </div>
+          </div>
+          <button id="btn-open-schedule-date" type="button" class="matching-date-trigger mt-4 flex w-full items-center justify-between gap-3 rounded-2xl border border-primary-container/30 bg-primary-container/8 px-4 py-3.5 text-left" aria-haspopup="dialog" aria-expanded="${state.isScheduleDateModalOpen ? 'true' : 'false'}">
+            <span class="min-w-0">
+              <span class="block text-[11px] font-extrabold tracking-wide text-secondary">선택한 날짜</span>
+              <span class="mt-1 block truncate text-lg font-extrabold text-brand-navy">${escapeHtml(selectedDateLabel)}</span>
+            </span>
+            <span class="matching-date-trigger-icon material-symbols-outlined shrink-0 rounded-full bg-white p-2 text-primary-container shadow-sm">chevron_right</span>
+          </button>
+          ${state.isScheduleDateModalOpen ? renderScheduleDateModal(state, selectedDate) : ''}
+        </section>
+
+        <div class="matching-schedule-divider" aria-hidden="true"></div>
+
+        <section class="matching-time-panel">
+          <div class="flex items-center gap-2">
+            <div>
+              <p class="text-sm font-extrabold text-brand-navy">식사 시간</p>
+              <p class="mt-0.5 text-xs text-secondary">버튼을 눌러 가능한 시간을 확인해 보세요.</p>
+            </div>
+          </div>
+          <button id="btn-open-schedule-time" type="button" class="matching-time-trigger mt-4 flex w-full items-center justify-between gap-3 rounded-2xl border border-primary-container/30 bg-primary-container/8 px-4 py-3.5 text-left" aria-haspopup="dialog" aria-expanded="${state.isScheduleTimeModalOpen ? 'true' : 'false'}">
+            <span class="min-w-0">
+              <span class="block text-[11px] font-extrabold tracking-wide text-secondary">선택한 시간</span>
+              <span class="mt-1 block truncate text-lg font-extrabold text-brand-navy">${escapeHtml(selectedTimeLabel)}</span>
+            </span>
+            <span class="matching-time-trigger-icon material-symbols-outlined shrink-0 rounded-full bg-white p-2 text-primary-container shadow-sm">chevron_right</span>
+          </button>
+          ${state.isScheduleTimeModalOpen ? renderScheduleTimeModal(state, selectedDate) : ''}
+        </section>
+      </div>
+      <input type="hidden" name="desiredTimeSlot" value="${escapeHtml(state.desiredTimeSlot)}" />
+    </div>
+  `
+}
+
+function renderScheduleDateModal(state, selectedDate) {
+  const draftDate = state.scheduleDraftDate || selectedDate
+  const calendarMonth = normalizeMonthValue(state.scheduleCalendarMonth, draftDate)
+  const currentMonth = getMonthValue(new Date())
+  const maximumMonth = getMonthValueFromDateTime(`${getMaximumDateValue()}T00:00`)
+  const calendarCells = buildCalendarCells(calendarMonth, draftDate)
+  const canConfirm = Boolean(draftDate) && isDateSelectable(draftDate)
+
+  return `
+    <div id="matching-schedule-date-modal" class="matching-time-modal" role="dialog" aria-modal="true" aria-labelledby="matching-schedule-date-title">
+      <button id="matching-schedule-date-backdrop" type="button" class="matching-time-modal-backdrop" tabindex="-1" aria-label="날짜 선택 닫기"></button>
+      <div class="matching-time-modal-panel matching-date-modal-panel">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p class="text-xs font-extrabold tracking-wide text-primary-container">날짜 선택</p>
+            <h4 id="matching-schedule-date-title" class="mt-1 font-headline text-xl font-extrabold text-brand-navy">식사 날짜를 골라 주세요</h4>
+            <p class="mt-1 text-sm leading-6 text-secondary">오늘부터 일주일 안에서 만날 날짜를 선택해 주세요.</p>
+          </div>
+          <button id="matching-schedule-date-close" type="button" class="matching-time-modal-close" aria-label="날짜 선택 닫기">
+            <span class="material-symbols-outlined text-lg">close</span>
+          </button>
+        </div>
+
+        <div class="matching-calendar mt-5 rounded-2xl border border-outline-variant/35 bg-white p-3.5 sm:p-4" aria-label="희망 식사 날짜 선택">
+          <div class="flex items-center justify-between gap-3">
+            <button id="matching-calendar-prev" type="button" ${calendarMonth <= currentMonth ? 'disabled' : ''} class="matching-calendar-nav" aria-label="이전 달">
+              <span class="material-symbols-outlined text-lg">chevron_left</span>
+            </button>
+            <p class="text-sm font-extrabold text-brand-navy">${escapeHtml(formatCalendarMonth(calendarMonth))}</p>
+            <button id="matching-calendar-next" type="button" ${calendarMonth >= maximumMonth ? 'disabled' : ''} class="matching-calendar-nav" aria-label="다음 달">
+              <span class="material-symbols-outlined text-lg">chevron_right</span>
+            </button>
+          </div>
+          <div class="matching-calendar-weekdays mt-4" aria-hidden="true">
+            ${['일', '월', '화', '수', '목', '금', '토'].map((day) => `<span>${day}</span>`).join('')}
+          </div>
+          <div class="matching-calendar-grid mt-2">
+            ${calendarCells.map((cell) => `
+              <button
+                type="button"
+                data-schedule-date="${cell.dateValue}"
+                class="matching-calendar-day ${cell.isOutside ? 'is-outside' : ''} ${cell.isToday ? 'is-today' : ''} ${cell.isSelected ? 'is-selected' : ''}"
+                ${cell.isDisabled ? 'disabled' : ''}
+                aria-pressed="${cell.isSelected ? 'true' : 'false'}"
+                aria-label="${escapeHtml(cell.ariaLabel)}"
+              >${cell.day}</button>
+            `).join('')}
+          </div>
+        </div>
+
+        <div class="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button id="matching-schedule-date-cancel" type="button" class="btn-secondary inline-flex min-h-11 items-center justify-center rounded-full px-5 text-sm font-bold">취소</button>
+          <button id="matching-schedule-date-confirm" type="button" class="btn-primary inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-sm font-extrabold shadow-md" ${canConfirm ? '' : 'disabled'}>
+            <span class="material-symbols-outlined text-lg">check</span>
+            이 날짜로 선택
+          </button>
+        </div>
+      </div>
+    </div>
+  `
+}
+
+function renderScheduleTimeModal(state, selectedDate) {
+  const { time: selectedTime } = splitDateTimeValue(state.desiredTimeSlot)
+  const draftTime = state.scheduleDraftTime || selectedTime
+  const timeInputMin = selectedDate === toDateValue(new Date()) ? getMinimumTimeValue() : '00:00'
+  const canConfirm = Boolean(selectedDate) && isTimeAvailable(selectedDate, draftTime)
+
+  return `
+    <div id="matching-schedule-time-modal" class="matching-time-modal" role="dialog" aria-modal="true" aria-labelledby="matching-schedule-time-title">
+      <button id="matching-schedule-time-backdrop" type="button" class="matching-time-modal-backdrop" tabindex="-1" aria-label="시간 선택 닫기"></button>
+      <div class="matching-time-modal-panel">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p class="text-xs font-extrabold tracking-wide text-primary-container">${escapeHtml(formatScheduleDate(selectedDate))}</p>
+            <h4 id="matching-schedule-time-title" class="mt-1 font-headline text-xl font-extrabold text-brand-navy">식사 시간을 골라 주세요</h4>
+            <p class="mt-1 text-sm leading-6 text-secondary">밥친구와 만나기 편한 시간을 선택해 주세요.</p>
+          </div>
+          <button id="matching-schedule-time-close" type="button" class="matching-time-modal-close" aria-label="시간 선택 닫기">
+            <span class="material-symbols-outlined text-lg">close</span>
+          </button>
+        </div>
+
+        <div class="matching-time-modal-grid mt-5">
+          ${buildTimeSlots().map((timeValue) => {
+            const isAvailable = Boolean(selectedDate) && isTimeAvailable(selectedDate, timeValue)
+            const isSelected = draftTime === timeValue && isAvailable
+            return `
+              <button type="button" data-schedule-time="${timeValue}" class="matching-time-slot ${isSelected ? 'is-selected' : ''}" ${isAvailable ? '' : 'disabled'} aria-pressed="${isSelected ? 'true' : 'false'}">
+                ${escapeHtml(formatTimeLabel(timeValue))}
+              </button>
+            `
+          }).join('')}
+        </div>
+
+        <div class="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button id="matching-schedule-time-cancel" type="button" class="btn-secondary inline-flex min-h-11 items-center justify-center rounded-full px-5 text-sm font-bold">취소</button>
+          <button id="matching-schedule-time-confirm" type="button" class="btn-primary inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-sm font-extrabold shadow-md" ${canConfirm ? '' : 'disabled'}>
+            <span class="material-symbols-outlined text-lg">check</span>
+            이 시간으로 선택
+          </button>
+        </div>
+      </div>
+    </div>
+  `
+}
+
+function renderPersonalityPicker(state) {
+  const requestedGroupIndex = Number(state.personalityGroupIndex)
+  const activeGroupIndex = Number.isInteger(requestedGroupIndex)
+    ? Math.min(Math.max(requestedGroupIndex, 0), TAG_GROUPS.length - 1)
+    : 0
+  const activeGroup = TAG_GROUPS[activeGroupIndex]
+  const activeGroupSelectedCount = activeGroup.tags.filter(([code]) => state.selectedTags.has(code)).length
+
+  return `
+    <section class="matching-personality-picker rounded-3xl border border-outline-variant/40 bg-white p-4 sm:p-5" aria-labelledby="matching-personality-title">
+      <div class="matching-personality-heading flex items-start gap-3">
+        <span class="matching-personality-heading-icon material-symbols-outlined" aria-hidden="true">person_search</span>
+        <div class="min-w-0 flex-1">
+          <p class="text-xs font-semibold text-secondary">원하는 밥친구</p>
+          <h3 id="matching-personality-title" class="mt-1 text-base font-extrabold text-brand-navy">어떤 성향의 상대와 함께하고 싶나요?</h3>
+          <p class="mt-1 text-sm leading-6 text-secondary">내 성향이 아니라, 함께 만나고 싶은 상대의 특징을 3~5개 선택해 주세요.</p>
+        </div>
+        <span class="matching-personality-total shrink-0" aria-live="polite">상대 성향 ${state.selectedTags.size} / 5</span>
+      </div>
+
+      <div class="matching-personality-tabs mt-5" role="tablist" aria-label="상대 성향 카테고리">
+        ${TAG_GROUPS.map((group, groupIndex) => {
+          const selectedCount = group.tags.filter(([code]) => state.selectedTags.has(code)).length
+          const isActive = groupIndex === activeGroupIndex
+          const groupLabel = `상대의 ${group.name}`
+          return `
+            <button id="matching-personality-tab-${groupIndex}" type="button" data-personality-group="${groupIndex}" role="tab" aria-selected="${isActive ? 'true' : 'false'}" aria-controls="matching-personality-panel-${groupIndex}" class="matching-personality-tab ${isActive ? 'is-active' : ''}">
+              <span class="matching-personality-tab-label">${escapeHtml(groupLabel)}</span>
+              <span class="matching-personality-tab-count ${selectedCount ? 'has-selection' : ''}" aria-label="${selectedCount}개 선택">${selectedCount}</span>
+            </button>
+          `
+        }).join('')}
+      </div>
+
+      <div id="matching-personality-panel-${activeGroupIndex}" class="matching-personality-panel mt-5" role="tabpanel" tabindex="0" aria-labelledby="matching-personality-tab-${activeGroupIndex}" aria-describedby="matching-tags-help">
+        <div class="matching-personality-panel-heading flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <p class="text-sm font-extrabold text-brand-navy">상대의 ${escapeHtml(activeGroup.name)}</p>
+            <p class="mt-1 text-xs leading-5 text-secondary">이런 상대를 만나고 싶어요. 원하는 모습에 가까운 카드를 골라보세요.</p>
+          </div>
+          <span class="text-xs font-bold text-secondary">${activeGroupSelectedCount} / ${activeGroup.tags.length} 선택</span>
+        </div>
+
+        <div class="matching-personality-grid mt-3">
+          ${activeGroup.tags.map(([code, label]) => {
+            const isSelected = state.selectedTags.has(code)
+            const detail = TAG_DETAILS.get(code) || { icon: 'mood', description: '함께할 식사 분위기를 골라보세요.' }
+            return `
+              <button type="button" data-matching-tag="${code}" aria-pressed="${isSelected ? 'true' : 'false'}" class="matching-personality-option ${isSelected ? 'is-selected' : ''}">
+                <span class="matching-personality-option-icon material-symbols-outlined" aria-hidden="true">${detail.icon}</span>
+                <span class="matching-personality-option-copy">
+                  <span class="matching-personality-option-label">${escapeHtml(label)}</span>
+                  <span class="matching-personality-option-description">${escapeHtml(detail.description)}</span>
+                </span>
+                <span class="matching-personality-option-check material-symbols-outlined" aria-hidden="true">${isSelected ? 'check_circle' : 'radio_button_unchecked'}</span>
+              </button>
+            `
+          }).join('')}
+        </div>
+      </div>
+
+      <p id="matching-tags-help" class="mt-4 text-xs leading-5 text-secondary">필수 조건 · 원하는 상대의 성향을 전체 3~5개 선택해 주세요.</p>
+    </section>
+  `
+}
+
+function splitDateTimeValue(value) {
+  const [date = '', time = ''] = String(value || '').split('T')
+  return { date, time: time.slice(0, 5) }
+}
+
+function parseDateValue(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ''))) return null
+  const [year, month, day] = value.split('-').map(Number)
+  const date = new Date(year, month - 1, day)
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day ? date : null
+}
+
+function parseMonthValue(value) {
+  if (!/^\d{4}-\d{2}$/.test(String(value || ''))) return null
+  const [year, month] = value.split('-').map(Number)
+  if (month < 1 || month > 12) return null
+  return new Date(year, month - 1, 1)
+}
+
+function getMonthValue(date) {
+  const pad = (value) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}`
+}
+
+function getMonthValueFromDateTime(value) {
+  const { date } = splitDateTimeValue(value)
+  return getMonthValue(parseDateValue(date) || new Date())
+}
+
+function normalizeMonthValue(value, fallbackDateValue) {
+  const currentMonth = parseMonthValue(getMonthValue(new Date()))
+  const maximumMonth = parseMonthValue(getMonthValueFromDateTime(`${getMaximumDateValue()}T00:00`))
+  const fallbackMonth = parseMonthValue(getMonthValueFromDateTime(`${fallbackDateValue || ''}T00:00`))
+  const candidate = parseMonthValue(value) || fallbackMonth || currentMonth
+  if (candidate < currentMonth) return getMonthValue(currentMonth)
+  if (candidate > maximumMonth) return getMonthValue(maximumMonth)
+  return getMonthValue(candidate)
+}
+
+function shiftMonthValue(value, amount) {
+  const month = parseMonthValue(value) || new Date()
+  month.setMonth(month.getMonth() + amount, 1)
+  return getMonthValue(month)
+}
+
+function buildCalendarCells(monthValue, selectedDate) {
+  const month = parseMonthValue(monthValue) || new Date()
+  const firstDay = new Date(month.getFullYear(), month.getMonth(), 1)
+  const firstCell = new Date(firstDay)
+  firstCell.setDate(firstDay.getDate() - firstDay.getDay())
+  const todayValue = toDateValue(new Date())
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(firstCell)
+    date.setDate(firstCell.getDate() + index)
+    const dateValue = toDateValue(date)
+    const isOutside = date.getMonth() !== month.getMonth()
+    const isToday = dateValue === todayValue
+    const isSelected = dateValue === selectedDate
+    return {
+      dateValue,
+      day: date.getDate(),
+      isOutside,
+      isToday,
+      isSelected,
+      isDisabled: isOutside || !isDateSelectable(dateValue),
+      ariaLabel: `${formatScheduleDate(dateValue)}${isOutside ? ' (다른 달)' : ''}${isToday ? ' (오늘)' : ''}${isDateAfterMaximum(dateValue) ? ' (선택 가능 기간 이후)' : ''}`,
+    }
+  })
+}
+
+function isDateBeforeToday(dateValue) {
+  const date = parseDateValue(dateValue)
+  const today = parseDateValue(toDateValue(new Date()))
+  return !date || date < today
+}
+
+function getMaximumDateValue() {
+  const date = new Date()
+  date.setHours(0, 0, 0, 0)
+  date.setDate(date.getDate() + 7)
+  return toDateValue(date)
+}
+
+function isDateAfterMaximum(dateValue) {
+  const date = parseDateValue(dateValue)
+  const maximumDate = parseDateValue(getMaximumDateValue())
+  return !date || date > maximumDate
+}
+
+function isDateSelectable(dateValue) {
+  return !isDateBeforeToday(dateValue) && !isDateAfterMaximum(dateValue)
+}
+
+function buildTimeSlots() {
+  const slots = []
+  for (let minutes = 10 * 60; minutes <= 21 * 60 + 30; minutes += 30) {
+    const hour = Math.floor(minutes / 60)
+    const minute = minutes % 60
+    slots.push(`${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`)
+  }
+  return slots
+}
+
+function parseDateTimeValue(value) {
+  const { date, time } = splitDateTimeValue(value)
+  const dateValue = parseDateValue(date)
+  if (!dateValue || !/^\d{2}:\d{2}$/.test(time)) return null
+  const [hour, minute] = time.split(':').map(Number)
+  if (hour > 23 || minute > 59) return null
+  return new Date(dateValue.getFullYear(), dateValue.getMonth(), dateValue.getDate(), hour, minute)
+}
+
+function isTimeAvailable(dateValue, timeValue) {
+  const candidate = parseDateTimeValue(`${dateValue}T${timeValue}`)
+  return Boolean(candidate) && candidate.getTime() > Date.now()
+}
+
+function getDefaultTimeForDate(dateValue) {
+  if (dateValue !== toDateValue(new Date())) return '12:00'
+  const date = new Date(Date.now() + 10 * 60 * 1000)
+  date.setSeconds(0, 0)
+  date.setMinutes(Math.ceil(date.getMinutes() / 30) * 30)
+  if (toDateValue(date) !== dateValue) return '23:59'
+  return toTimeValue(date)
+}
+
+function getMinimumTimeValue() {
+  return toTimeValue(new Date(Date.now() + 5 * 60 * 1000))
+}
+
+function toDateValue(date) {
+  const pad = (value) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
+function toTimeValue(date) {
+  const pad = (value) => String(value).padStart(2, '0')
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+function formatCalendarMonth(monthValue) {
+  const date = parseMonthValue(monthValue)
+  return date ? date.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long' }) : ''
+}
+
+function formatScheduleDate(dateValue) {
+  const date = parseDateValue(dateValue)
+  return date
+    ? date.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })
+    : '날짜를 선택해 주세요'
+}
+
+function formatTimeLabel(timeValue) {
+  if (!/^\d{2}:\d{2}$/.test(String(timeValue || ''))) return '시간을 선택해 주세요'
+  const [hour, minute] = timeValue.split(':').map(Number)
+  const date = new Date(2000, 0, 1, hour, minute)
+  return date.toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' })
+}
+
 function getDefaultDateTimeValue() {
   const date = new Date(Date.now() + 60 * 60 * 1000)
   date.setMinutes(Math.ceil(date.getMinutes() / 30) * 30, 0, 0)
   return toDateTimeValue(date)
-}
-
-function getMinimumDateTimeValue() {
-  return toDateTimeValue(new Date(Date.now() + 5 * 60 * 1000))
 }
 
 function toDateTimeValue(date) {
@@ -1395,8 +1966,8 @@ function formatCoordinate(value) {
 
 function renderSummaryItem(icon, label, value) {
   return `
-    <div class="flex min-w-0 items-start gap-2 rounded-2xl bg-surface-container-low px-3 py-3">
-      <span class="material-symbols-outlined text-lg text-primary-container">${icon}</span>
+    <div class="matching-waiting-summary-item flex min-w-0 items-center gap-3 px-4 py-3.5" role="listitem">
+      <span class="matching-waiting-summary-icon material-symbols-outlined">${icon}</span>
       <div class="min-w-0">
         <p class="text-[11px] font-bold text-secondary">${label}</p>
         <p class="mt-1 truncate text-xs font-extrabold text-brand-navy">${escapeHtml(value || '-')}</p>
