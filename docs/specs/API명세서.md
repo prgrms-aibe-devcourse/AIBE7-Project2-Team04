@@ -415,7 +415,7 @@ V1 응답값은 `1`, `3`, `5`만 허용하며 각각 `0`, `50`, `100`점으로 �
 <aside>
 📎
 
-서버는 `regionCode`를 `regions` 기준으로 조회해 표시명을 정규화하고, Kakao 좌표→행정구역 API로 핀이 해당 구에 속하는지 검증한 뒤 PostGIS Point를 경도·위도 순서로 생성한다. 위치 서비스 동의와 기본 활동지역 일치가 필수다. 이 핀은 사용자의 실제 현재 위치가 아니라 희망 매칭 장소다. `searchRadius`를 생략하면 3km를 사용하며 100m~10km를 허용한다. `desiredPersonalityTags`는 `PersonalityTag` 코드 3개 이상 5개 이하로 선택하며 요청 시점 그대로 보존한다. 동일 사용자의 Redis `match:user:{userId}` 예약은 원자적으로 생성하며 이미 `WAITING` 또는 `CONFIRMING` 상태면 `409 MATCHING_003`을 반환한다. 요청 저장 후 `match:waiting:{requestId}`와 `match:waiting:geo`에 식별자·Geo 멤버를 5분 TTL로 등록하고, Geo 개별 TTL 보조 키로 만료 정리를 보장한다. 산식 버전은 `DESIRED_PERSONALITY_MATCH_V1`로 저장한다. 자유 서술은 커밋 이후 비동기로 임베딩하며, 빈 입력에서는 임베딩 이벤트를 발행하지 않고, 요청이 삭제·변경된 경우 오래된 결과를 저장하지 않는다. AI 장애는 요청 생성과 기본 대기 상태를 실패시키지 않는다. 요청 저장 직후의 제안 탐색이 실패하거나 당시 후보가 없더라도 서버는 `WAITING` 요청을 ID 커서 순서로 5초마다 다시 탐색한다. 이미 상태가 변경되거나 종료된 요청은 건너뛰고 일시적인 DB 오류는 다음 주기에 재시도하며, 요청의 5분 TTL이 재탐색 상한이 된다. 후보 쌍에 대한 15초 제한 시간의 상호 수락이 완료되면 요청 ID 오름차순 잠금과 DB 트랜잭션 안에서 양쪽 `match_requests`를 `MATCHED`로 변경하고 `matches`, 정확히 2개의 `match_participants`, 1개의 `chat_rooms`를 함께 기록한다. 커밋 후에만 두 사용자의 인증 전용 `/user/queue/match-result`로 결과를 push한다. 제안 중에는 대기 Geo 멤버를 제거하고 사용자 중복 잠금은 제안 TTL 동안 유지하며 `match:proposal:{proposalId}`에 제안 ID만 15초 TTL로 보관한다. 대기 키가 먼저 사라지면 보정 작업이 DB 상태를 `EXPIRED`로 변경하거나 남은 DB 대기 시간을 기준으로 Redis 키·Geo 멤버를 복구한다. 대기 TTL은 5분이며 DB에는 만료 시각을 중복 저장하지 않고 응답의 `expiresAt`은 Redis TTL 기준으로 계산한다.
+서버는 `regionCode`를 `regions` 기준으로 조회해 표시명을 정규화하고, Kakao 좌표→행정구역 API로 핀이 요청한 구에 속하는지 검증한 뒤 PostGIS Point를 경도·위도 순서로 생성한다. 위치 서비스 동의가 필요하며, 매칭 요청에서 선택한 구는 사용자의 기본 활동지역과 달라도 허용한다. 기본 활동지역은 지도 초기 위치를 정하는 기본값일 뿐 매칭 요청의 선택 구를 제한하지 않는다. 이 핀은 사용자의 실제 현재 위치가 아니라 희망 매칭 장소다. `searchRadius`를 생략하면 3km를 사용하며 100m~10km를 허용한다. `desiredPersonalityTags`는 `PersonalityTag` 코드 3개 이상 5개 이하로 선택하며 요청 시점 그대로 보존한다. 동일 사용자의 Redis `match:user:{userId}` 예약은 원자적으로 생성하며 이미 `WAITING` 또는 `CONFIRMING` 상태면 `409 MATCHING_003`을 반환한다. 요청 저장 후 `match:waiting:{requestId}`와 `match:waiting:geo`에 식별자·Geo 멤버를 5분 TTL로 등록하고, Geo 개별 TTL 보조 키로 만료 정리를 보장한다. 산식 버전은 `DESIRED_PERSONALITY_MATCH_V1`로 저장한다. 자유 서술은 커밋 이후 비동기로 임베딩하며, 빈 입력에서는 임베딩 이벤트를 발행하지 않고, 요청이 삭제·변경된 경우 오래된 결과를 저장하지 않는다. AI 장애는 요청 생성과 기본 대기 상태를 실패시키지 않는다. 요청 저장 직후의 제안 탐색이 실패하거나 당시 후보가 없더라도 서버는 `WAITING` 요청을 ID 커서 순서로 5초마다 다시 탐색한다. 이미 상태가 변경되거나 종료된 요청은 건너뛰고 일시적인 DB 오류는 다음 주기에 재시도하며, 요청의 5분 TTL이 재탐색 상한이 된다. 후보 쌍에 대한 15초 제한 시간의 상호 수락이 완료되면 요청 ID 오름차순 잠금과 DB 트랜잭션 안에서 양쪽 `match_requests`를 `MATCHED`로 변경하고 `matches`, 정확히 2개의 `match_participants`, 1개의 `chat_rooms`를 함께 기록한다. 커밋 후에만 두 사용자의 인증 전용 `/user/queue/match-result`로 결과를 push한다. 제안 중에는 대기 Geo 멤버를 제거하고 사용자 중복 잠금은 제안 TTL 동안 유지하며 `match:proposal:{proposalId}`에 제안 ID만 15초 TTL로 보관한다. 대기 키가 먼저 사라지면 보정 작업이 DB 상태를 `EXPIRED`로 변경하거나 남은 DB 대기 시간을 기준으로 Redis 키·Geo 멤버를 복구한다. 대기 TTL은 5분이며 DB에는 만료 시각을 중복 저장하지 않고 응답의 `expiresAt`은 Redis TTL 기준으로 계산한다.
 
 **GET /matches/realtime/requests/me**는 본인의 현재 `WAITING` 또는 `CONFIRMING` 요청을 반환한다. 활성 요청이 없으면 `404 MATCHING_004`를 반환한다.
 
@@ -495,7 +495,7 @@ WebSocket `/ws-chat` 핸드셰이크는 HttpOnly `accessToken` 쿠키의 서명�
 
 # 3. 위치 (FR-04)
 
-Geolocation API는 필수로 사용하지 않는다. 사용자는 먼저 구 단위 기본 활동지역을 선택하고, 프론트엔드는 해당 구의 대표 좌표를 중심으로 지도를 연다. 사용자가 지도 클릭 또는 마커 이동으로 확정한 핀 좌표를 2장의 실시간 매칭 요청에 전달한다. 정확한 핀 좌표는 `users`나 기본 활동지역에는 저장하지 않고 `match_requests`에만 저장한다.
+Geolocation API는 필수로 사용하지 않는다. 프론트엔드는 사용자의 구 단위 기본 활동지역 대표 좌표를 지도 초기 중심으로 사용한다. 사용자는 지도에서 매칭을 원하는 구와 핀을 별도로 선택할 수 있으며, 선택한 매칭 구는 기본 활동지역과 달라도 된다. 지도 클릭 또는 마커 이동으로 확정한 핀 좌표는 실시간 매칭 요청에 전달한다. 정확한 핀 좌표는 `users`나 기본 활동지역에는 저장하지 않고 `match_requests`에만 저장한다.
 
 | Method | Endpoint | 설명 | 인증 |
 | --- | --- | --- | --- |
