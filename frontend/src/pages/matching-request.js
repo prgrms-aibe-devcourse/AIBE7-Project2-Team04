@@ -1,6 +1,6 @@
 import '../matching/matching-request.css'
 import { getAccessToken } from '../auth/token-storage.js'
-import { navigateTo, regionTree } from '../main.js'
+import { navigateTo, regionTree, showToast } from '../main.js'
 import {
   MatchingApiError,
   cancelRealtimeMatchRequest,
@@ -102,6 +102,7 @@ export async function renderMatchingRequestPage(container) {
   let proposalSubscription = null
   let resultSubscription = null
   let isRefreshing = false
+  let lastErrorToastMessage = ''
 
   const queryLocation = readLocationFromQuery()
   const state = {
@@ -130,7 +131,6 @@ export async function renderMatchingRequestPage(container) {
     isCancelling: false,
     isDeciding: false,
     expiryHandled: false,
-    realtimeConnected: false,
   }
 
   const cleanup = () => {
@@ -315,7 +315,6 @@ export async function renderMatchingRequestPage(container) {
 
   function connectRealtime() {
     if (disposed || stompClient || !window.SockJS || !window.Stomp) {
-      if (!window.SockJS || !window.Stomp) updateRealtimeStatus('자동 조회로 상태를 확인하고 있어요.')
       return
     }
 
@@ -324,8 +323,6 @@ export async function renderMatchingRequestPage(container) {
     stompClient.debug = () => {}
     stompClient.connect({}, () => {
       if (disposed) return
-      state.realtimeConnected = true
-      updateRealtimeStatus('실시간 알림 연결됨')
       proposalSubscription = stompClient.subscribe('/user/queue/match-proposal', (message) => {
         const payload = parseMessage(message)
         if (payload) handleProposal(payload)
@@ -336,8 +333,6 @@ export async function renderMatchingRequestPage(container) {
       })
       refreshFlow()
     }, () => {
-      state.realtimeConnected = false
-      updateRealtimeStatus('실시간 연결이 끊겨 자동 조회 중이에요.')
       stompClient = null
       scheduleReconnect()
     })
@@ -368,7 +363,6 @@ export async function renderMatchingRequestPage(container) {
       }
     }
     stompClient = null
-    state.realtimeConnected = false
   }
 
   function handleProposal(payload) {
@@ -395,9 +389,6 @@ export async function renderMatchingRequestPage(container) {
   function applyMatchResult(payload) {
     state.latestResult = payload
     sessionStorage.setItem('project2.latestMatchResult', JSON.stringify(payload))
-    window.dispatchEvent(new CustomEvent('project2:match-updated', {
-      detail: { isMatching: true },
-    }))
     state.currentRequest = null
     state.currentProposal = null
     state.hasSubmittedRequest = false
@@ -604,9 +595,6 @@ export async function renderMatchingRequestPage(container) {
   function startNewRequest() {
     sessionStorage.removeItem('project2.latestMatchResult')
     document.documentElement.classList.remove('has-cached-chat')
-    window.dispatchEvent(new CustomEvent('project2:match-updated', {
-      detail: { isMatching: false },
-    }))
     state.mode = 'form'
     state.formStep = 1
     state.latestResult = null
@@ -717,6 +705,12 @@ export async function renderMatchingRequestPage(container) {
 
   function render() {
     if (disposed) return
+    if (state.errorMessage && state.errorMessage !== lastErrorToastMessage) {
+      lastErrorToastMessage = state.errorMessage
+      showToast(state.errorMessage, { type: 'error' })
+    } else if (!state.errorMessage) {
+      lastErrorToastMessage = ''
+    }
     if (state.initialLoading) {
       container.innerHTML = renderLoading()
       return
@@ -744,18 +738,7 @@ export async function renderMatchingRequestPage(container) {
               <h1 class="font-headline text-3xl font-extrabold tracking-tight text-brand-navy sm:text-4xl">오늘의 밥친구를 찾아볼까요?</h1>
               <p class="mt-2 max-w-2xl text-sm leading-6 text-secondary sm:text-base">몇 가지 조건을 차례로 알려주면, 서로 편안하게 마주 앉을 수 있는 상대를 찾아드려요.</p>
             </div>
-            <div id="matching-realtime-state" class="inline-flex w-fit items-center gap-2 rounded-full border border-outline-variant/50 bg-white/70 px-3 py-2 text-xs font-semibold text-secondary shadow-sm" aria-live="polite">
-              <span class="h-2 w-2 rounded-full ${state.realtimeConnected ? 'bg-success' : 'bg-slate-300'}"></span>
-              <span>${state.realtimeConnected ? '실시간 알림 연결됨' : '상태 확인 준비 중'}</span>
-            </div>
           </header>
-
-          ${state.noticeMessage ? `
-            <div class="mb-5 flex items-start gap-2 rounded-2xl border border-primary-container/20 bg-primary-container/10 px-4 py-3 text-sm font-semibold text-brand-navy" role="status">
-              <span class="material-symbols-outlined mt-0.5 text-lg text-primary-container">info</span>
-              <p>${escapeHtml(state.noticeMessage)}</p>
-            </div>
-          ` : ''}
 
           ${content}
 
@@ -872,13 +855,6 @@ export async function renderMatchingRequestPage(container) {
           <h3 id="matching-step-title" tabindex="-1" class="mt-1 font-headline text-2xl font-extrabold tracking-tight text-brand-navy sm:text-3xl">${stepMeta.title}</h3>
           <p class="mt-2 text-sm leading-6 text-secondary">${stepMeta.description}</p>
         </div>
-
-        ${state.errorMessage ? `
-          <div class="mb-6 flex items-start gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700" role="alert">
-            <span class="material-symbols-outlined mt-0.5 text-lg">error</span>
-            <p>${escapeHtml(state.errorMessage)}</p>
-          </div>
-        ` : ''}
 
         ${step > 1 ? `
           <div class="matching-selection-summary mb-6 flex flex-wrap gap-2" aria-label="앞서 선택한 조건">
@@ -1060,7 +1036,6 @@ export async function renderMatchingRequestPage(container) {
         <button id="btn-cancel-matching" type="button" ${state.isCancelling ? 'disabled' : ''} class="btn-secondary mt-7 inline-flex min-h-12 items-center justify-center gap-2 rounded-full border-error/40 px-6 text-sm font-bold text-error hover:bg-error/5 disabled:cursor-not-allowed disabled:opacity-60">
           ${state.isCancelling ? '<span class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-error border-t-transparent"></span>취소 중…' : '<span class="material-symbols-outlined text-lg">close</span>매칭 요청 취소'}
         </button>
-        ${state.errorMessage ? `<p class="mx-auto mt-4 max-w-md text-xs font-semibold text-error" role="alert">${escapeHtml(state.errorMessage)}</p>` : ''}
       </section>
     `
   }
@@ -1146,7 +1121,6 @@ export async function renderMatchingRequestPage(container) {
                 <span class="material-symbols-outlined text-lg">close</span>거절하기
               </button>
             </div>
-            ${state.errorMessage ? `<p class="mt-4 text-center text-xs font-semibold text-error" role="alert">${escapeHtml(state.errorMessage)}</p>` : ''}
           </div>
         </div>
       </section>
@@ -1298,14 +1272,6 @@ export async function renderMatchingRequestPage(container) {
     }, 1000)
   }
 
-  function updateRealtimeStatus(message) {
-    const element = container.querySelector('#matching-realtime-state')
-    if (!element) return
-    const dot = element.querySelector('span')
-    const label = element.querySelector('span:last-child')
-    if (dot) dot.className = `h-2 w-2 rounded-full ${state.realtimeConnected ? 'bg-success' : 'bg-slate-300'}`
-    if (label) label.textContent = message
-  }
 }
 
 function readLocationFromQuery() {

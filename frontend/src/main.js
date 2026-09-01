@@ -14,41 +14,44 @@ const initialLandingPageHtml = app?.innerHTML ?? ''
 
 export { API_BASE_URL }
 
-window.addEventListener('project2:match-updated', (event) => {
-  const statusElement = document.querySelector('#header-match-status')
-  if (!statusElement || typeof event.detail?.isMatching !== 'boolean') return
-
-  if (event.detail.isMatching === false) {
-    statusElement.className = 'flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold bg-slate-100 text-slate-500 border border-slate-200'
-    statusElement.innerHTML = '<span class="h-1.5 w-1.5 rounded-full bg-slate-400"></span><span>\uB9E4\uCE6D \uC5C6\uC74C</span>'
-    return
-  }
-
-  statusElement.className = 'flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200'
-  statusElement.innerHTML = '<span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span><span>\uD604\uC7AC \uB9E4\uCE6D\uC911</span>'
-})
-
 // 행정구역 트리 (pages/ 모듈과 공유)
 export let regionTree = {}
 
 // Toast 헬퍼 (pages/ 모듈과 공유)
-export function showToast(message) {
+export function showToast(message, { type = 'info', duration = 3500 } = {}) {
   const existing = document.querySelector('#toast-message')
   if (existing) existing.remove()
 
+  const isError = type === 'error'
   const toast = document.createElement('div')
   toast.id = 'toast-message'
-  toast.className = 'fixed bottom-6 left-1/2 -translate-x-1/2 bg-brand-navy text-white px-6 py-3.5 rounded-full text-xs sm:text-sm font-bold shadow-floating z-50 animate-bounce flex items-center gap-2 border border-white/10'
+  toast.setAttribute('role', isError ? 'alert' : 'status')
+  toast.setAttribute('aria-live', isError ? 'assertive' : 'polite')
+  toast.className = [
+    'fixed bottom-5 right-5 z-50 w-[calc(100%-2.5rem)] max-w-sm',
+    'flex items-start gap-3 rounded-2xl border px-4 py-3.5 text-sm font-semibold shadow-floating',
+    'toast-enter',
+    isError ? 'border-red-200 bg-red-50 text-red-700' : 'border-white/10 bg-brand-navy text-white',
+  ].join(' ')
   toast.innerHTML = `
-    <span class="material-symbols-outlined text-primary-container text-base sm:text-lg">warning</span>
-    <span>${message}</span>
+    <span class="material-symbols-outlined shrink-0 text-base sm:text-lg ${isError ? 'text-red-500' : 'text-primary-container'}" aria-hidden="true">${isError ? 'error' : 'warning'}</span>
+    <span data-toast-message class="min-w-0 flex-1 break-words"></span>
+    <button type="button" data-toast-close class="-mr-1 -mt-1 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-current/70 transition-colors hover:bg-black/5 hover:text-current focus:outline-none focus:ring-2 focus:ring-current/30" aria-label="알림 닫기">
+      <span class="material-symbols-outlined text-base" aria-hidden="true">close</span>
+    </button>
   `
+  toast.querySelector('[data-toast-message]').textContent = String(message ?? '')
   document.body.appendChild(toast)
 
-  setTimeout(() => {
-    toast.classList.add('opacity-0', 'transition-opacity', 'duration-500')
-    setTimeout(() => toast.remove(), 500)
-  }, 2500)
+  const dismiss = () => {
+    if (!toast.isConnected || toast.classList.contains('toast-leaving')) return
+    toast.classList.remove('toast-enter')
+    toast.classList.add('toast-leaving')
+    window.setTimeout(() => toast.remove(), 320)
+  }
+
+  toast.querySelector('[data-toast-close]')?.addEventListener('click', dismiss, { once: true })
+  window.setTimeout(dismiss, duration)
 }
 
 // 행정구역 데이터 로드 (Backend API → regionTree 구성)
@@ -447,11 +450,8 @@ function initCommonHeader() {
             }
 
             const btnGoMypage = document.querySelector('#btn-go-mypage')
-            const matchStatusEl = document.querySelector('#header-match-status')
             if (btnGoMypage) {
               if (body.data.role === 'ADMIN') {
-                matchStatusEl?.classList.add('hidden')
-                matchStatusEl?.classList.remove('flex')
                 btnGoMypage.innerHTML = `
                   <span class="material-symbols-outlined text-sm">admin_panel_settings</span>
                   <span>관리자페이지로 가기</span>
@@ -462,7 +462,6 @@ function initCommonHeader() {
                   navigateTo('/admin', { replace: true })
                 }
               } else {
-                loadHeaderMatchStatus(matchStatusEl)
                 btnGoMypage.innerHTML = `
                   <span class="material-symbols-outlined text-sm">person</span>
                   <span>마이페이지로 가기</span>
@@ -576,29 +575,6 @@ function setLandingMatchState(matchButton, chatButton, isMatching) {
   } else {
     matchButton.classList.remove('hidden')
     chatButton.classList.remove('flex-1')
-  }
-}
-
-async function loadHeaderMatchStatus(statusElement) {
-  if (!statusElement) return
-
-  try {
-    const { getLatestMatchResult } = await import('./matching/matching-api.js')
-    const result = await getLatestMatchResult()
-    const isMatching = result?.status === 'MATCHED'
-
-    statusElement.className = `flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold ${
-      isMatching
-        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-        : 'bg-slate-100 text-slate-500 border border-slate-200'
-    }`
-    statusElement.innerHTML = `
-      <span class="h-1.5 w-1.5 rounded-full ${isMatching ? 'bg-emerald-500' : 'bg-slate-400'}"></span>
-      <span>${isMatching ? '현재 매칭중' : '매칭 없음'}</span>
-    `
-  } catch (error) {
-    statusElement.className = 'flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold bg-slate-100 text-slate-500 border border-slate-200'
-    statusElement.innerHTML = '<span class="h-1.5 w-1.5 rounded-full bg-slate-400"></span><span>매칭 없음</span>'
   }
 }
 

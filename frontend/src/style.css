@@ -292,6 +292,62 @@ select {
   color: #ff6b4a;
 }
 
+/* Toast entrance/exit motion */
+#toast-message {
+  will-change: transform, opacity;
+}
+
+#toast-message.toast-enter {
+  animation: toast-slide-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+#toast-message.toast-leaving {
+  animation: toast-slide-out 320ms ease-in both;
+}
+
+@keyframes toast-slide-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 28px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes toast-slide-out {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #toast-message {
+    transform: none;
+    opacity: 1;
+    animation: none;
+  }
+
+  #toast-message.toast-leaving {
+    transform: none;
+    opacity: 0;
+    animation: toast-fade-out 150ms ease-out both;
+  }
+
+  @keyframes toast-fade-out {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+}
+
 /* Pulse Ring Animation */
 .pulse-ring {
   animation: pulse-ring 2.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
