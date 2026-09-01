@@ -15,7 +15,6 @@ import org.example.project2.domain.personality.entity.PersonalityTag;
 import org.example.project2.domain.personality.entity.UserPersonalityProfile;
 import org.example.project2.domain.personality.repository.UserPersonalityProfileRepository;
 import org.example.project2.domain.user.entity.User;
-import org.example.project2.domain.user.service.ProfileImageUrlResolver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -52,7 +51,6 @@ class MatchProposalInteractionServiceTest {
     @Mock MatchProposalRepository matchProposalRepository;
     @Mock MatchProposalLifecycleService matchProposalLifecycleService;
     @Mock UserPersonalityProfileRepository profileRepository;
-    @Mock ProfileImageUrlResolver profileImageUrlResolver;
 
     private MatchProposalInteractionService service;
     private User sourceUser;
@@ -65,8 +63,7 @@ class MatchProposalInteractionServiceTest {
                 matchProposalRepository,
                 matchProposalLifecycleService,
                 profileRepository,
-                Clock.fixed(NOW, ZoneOffset.UTC),
-                profileImageUrlResolver
+                Clock.fixed(NOW, ZoneOffset.UTC)
         );
         sourceUser = user("source", "소스 닉네임");
         targetUser = user("target", "상대 닉네임");
@@ -95,9 +92,6 @@ class MatchProposalInteractionServiceTest {
         when(matchProposalRepository.findPendingByUserId(sourceUser.getId()))
                 .thenReturn(Optional.of(proposal));
         when(profileRepository.findByUserId(targetUser.getId())).thenReturn(Optional.of(publicProfile));
-        when(profileImageUrlResolver.resolve(targetUser))
-                .thenReturn("https://cdn.example/profile.png");
-
         MatchProposalResponse response = service.getCurrent(sourceUser.getId());
 
         assertThat(response.proposalId()).isEqualTo(proposal.getId());

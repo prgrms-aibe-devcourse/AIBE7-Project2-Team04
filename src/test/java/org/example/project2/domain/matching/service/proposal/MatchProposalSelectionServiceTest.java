@@ -18,7 +18,6 @@ import org.example.project2.domain.personality.entity.UserPersonalityProfile;
 import org.example.project2.domain.personality.repository.UserPersonalityEmbeddingRepository;
 import org.example.project2.domain.personality.repository.UserPersonalityProfileRepository;
 import org.example.project2.domain.user.entity.User;
-import org.example.project2.domain.user.service.ProfileImageUrlResolver;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.locationtech.jts.geom.Coordinate;
@@ -58,7 +57,6 @@ class MatchProposalSelectionServiceTest {
     @Mock PersonalityCompatibilityCalculator personalityCompatibilityCalculator;
     @Mock ApplicationEventPublisher eventPublisher;
     @Mock RealtimeMatchRedisLifecycleService redisLifecycleService;
-    @Mock ProfileImageUrlResolver profileImageUrlResolver;
 
     @InjectMocks MatchProposalSelectionService service;
 
