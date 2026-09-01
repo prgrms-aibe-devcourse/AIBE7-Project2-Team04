@@ -143,77 +143,142 @@ export async function renderMatchMapPage(container, isCurrentRoute = () => true)
   // If name is sub-district, then sigungu is parent city (e.g. 성남시), detail is name (e.g. 분당구)
   const detail = name !== sigungu ? name : ''
 
+  const initialLocationLabel = `${sido} ${sigungu} ${detail}`.trim()
+
   container.innerHTML = `
-    <main class="max-w-[1440px] mx-auto px-margin-mobile md:px-margin-desktop py-8 flex flex-col gap-6 w-full">
-      <!-- 타이틀 바 -->
-      <div class="flex items-center justify-between border-b border-outline-variant/30 pb-4">
-        <div>
-          <h1 class="font-headline text-2xl font-bold text-brand-navy">마주한끼 찾기</h1>
-          <p class="text-sm text-secondary">지정한 위치: <span id="text-current-location" class="font-bold text-primary-container">${sido} ${sigungu} ${detail}</span></p>
+    <main class="preferred-region-page max-w-[1280px] mx-auto w-full px-margin-mobile md:px-margin-desktop py-8 sm:py-10 flex flex-col gap-6">
+      <!-- 페이지 헤더 -->
+      <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-5 border-b border-outline-variant/30 pb-6">
+        <div class="space-y-3">
+          <div class="inline-flex items-center gap-2 rounded-full bg-primary-container/10 px-3 py-1.5 text-xs font-bold text-primary">
+            <span class="material-symbols-outlined text-base">restaurant</span>
+            <span>마주한끼 매칭</span>
+          </div>
+          <div class="space-y-1.5">
+            <h1 class="font-headline text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-brand-navy">어디에서 만날까요?</h1>
+            <p class="text-sm sm:text-base leading-relaxed text-secondary">만날 지역을 선택하고 지도에서 약속 위치를 확인해 주세요.</p>
+          </div>
+          <div class="inline-flex max-w-full items-center gap-2 rounded-full border border-outline-variant/30 bg-white px-3.5 py-2 text-sm shadow-sm">
+            <span class="material-symbols-outlined text-base text-primary-container">location_on</span>
+            <span class="shrink-0 font-semibold text-secondary">현재 선택 위치</span>
+            <span id="text-current-location" class="truncate font-bold text-brand-navy">${initialLocationLabel}</span>
+          </div>
         </div>
-        <div class="flex items-center gap-2">
-          <button id="btn-map-revoke" class="btn-action-revoke px-4 py-2 rounded-full text-sm" aria-label="위치 이용 동의 철회" title="위치 이용 동의 철회">
+        <div class="flex items-center gap-2 self-start lg:self-end">
+          <button id="btn-map-revoke" class="btn-action-revoke px-3.5 py-2 rounded-full text-sm" aria-label="위치 이용 동의 철회" title="위치 이용 동의 철회">
             <span class="material-symbols-outlined text-lg">no_accounts</span>
             <span>동의 철회</span>
           </button>
-          <a href="/" class="btn-secondary px-4 py-2 rounded-full text-sm font-semibold flex items-center gap-1">
+          <a href="/" class="btn-secondary px-3.5 py-2 rounded-full text-sm font-semibold flex items-center gap-1">
             <span class="material-symbols-outlined text-lg">home</span>
             <span>홈으로</span>
           </a>
         </div>
       </div>
 
-      <!-- 지도 및 컨트롤 영역 -->
-      <div class="w-full flex flex-col gap-4">
-        <!-- 필터 바 (시도 / 시군구 / 구 선택) -->
-        <div class="flex flex-col sm:flex-row items-center gap-3 bg-surface-container-lowest p-3 rounded-card shadow-soft border border-outline-variant/30 relative">
-          <!-- 시·도 커스텀 드롭다운 -->
-          <div class="relative w-full sm:flex-1 dropdown-container" id="map-sido-dropdown-container">
-            <button id="btn-map-sido-dropdown" type="button" class="w-full bg-surface border border-outline-variant/40 text-on-surface rounded-full py-2.5 pl-10 pr-4 focus:ring-2 focus:ring-primary-container focus:border-primary-container text-sm font-medium text-left flex items-center justify-between cursor-pointer">
-              <span id="text-map-sido-selected" class="truncate text-secondary">시·도 선택</span>
-              <span class="material-symbols-outlined text-secondary text-lg">arrow_drop_down</span>
-            </button>
-            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-xl pointer-events-none">map</span>
-            <ul id="list-map-sido-options" class="absolute left-0 top-full mt-2 w-full bg-white border border-outline-variant/20 rounded-2xl shadow-lg max-h-60 overflow-y-auto z-50 hidden transition-all duration-150 py-1">
-            </ul>
+      <!-- 지역 선택·지도 영역 -->
+      <div class="grid w-full gap-5 lg:grid-cols-[minmax(280px,0.82fr)_minmax(0,1.6fr)] lg:items-start">
+        <!-- 지역 선택 카드 -->
+        <section class="lg:col-span-1 lg:row-span-2 lg:sticky lg:top-28 h-fit flex flex-col gap-4 rounded-[28px] border border-outline-variant/30 bg-white p-5 shadow-soft sm:p-6 relative">
+          <div class="flex items-start gap-3">
+            <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-primary-container text-sm font-extrabold text-white shadow-sm">1</span>
+            <div>
+              <h2 class="font-headline text-xl font-bold tracking-tight text-brand-navy">만날 지역을 선택해 주세요</h2>
+              <p class="mt-1 text-sm leading-relaxed text-secondary">지역을 고른 뒤 지도에서 정확한 약속 위치를 정할 수 있어요.</p>
+            </div>
+          </div>
+          <div class="mt-2 flex flex-col gap-4">
+            <!-- 시·도 커스텀 드롭다운 -->
+            <div class="relative w-full dropdown-container" id="map-sido-dropdown-container">
+              <div class="mb-1.5 flex items-center justify-between gap-2">
+                <span class="text-xs font-bold uppercase tracking-[0.08em] text-secondary">시·도</span>
+                <span class="text-xs text-secondary/70">첫 번째 선택</span>
+              </div>
+              <button id="btn-map-sido-dropdown" type="button" aria-haspopup="listbox" aria-expanded="false" class="preference-dropdown-button w-full min-h-12 rounded-2xl border border-outline-variant/40 bg-surface px-4 text-left text-sm font-semibold text-on-surface shadow-sm transition focus:border-primary-container focus:ring-2 focus:ring-primary-container/30 flex items-center justify-between gap-1 cursor-pointer">
+                <span class="preference-dropdown-leading-icon inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-primary-container/10 text-primary-container">
+                  <span class="material-symbols-outlined text-base">map</span>
+                </span>
+                <span id="text-map-sido-selected" class="preference-dropdown-value truncate text-secondary">시·도 선택</span>
+                <span class="preference-dropdown-icon material-symbols-outlined text-secondary text-lg">arrow_drop_down</span>
+              </button>
+              <ul id="list-map-sido-options" role="listbox" class="absolute left-0 top-full z-50 mt-2 hidden max-h-60 w-full overflow-y-auto rounded-2xl border border-outline-variant/20 bg-white py-1 shadow-lg transition-all duration-150"></ul>
+            </div>
+
+            <!-- 시·군·구 커스텀 드롭다운 -->
+            <div class="relative w-full dropdown-container" id="map-sigungu-dropdown-container">
+              <div class="mb-1.5 flex items-center justify-between gap-2">
+                <span class="text-xs font-bold uppercase tracking-[0.08em] text-secondary">시·군·구</span>
+                <span class="text-xs text-secondary/70">두 번째 선택</span>
+              </div>
+              <button id="btn-map-sigungu-dropdown" type="button" aria-haspopup="listbox" aria-expanded="false" class="preference-dropdown-button w-full min-h-12 rounded-2xl border border-outline-variant/40 bg-surface px-4 text-left text-sm font-semibold text-on-surface shadow-sm transition focus:border-primary-container focus:ring-2 focus:ring-primary-container/30 flex items-center justify-between gap-1 cursor-not-allowed opacity-50" disabled>
+                <span class="preference-dropdown-leading-icon inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
+                  <span class="material-symbols-outlined text-base">explore</span>
+                </span>
+                <span id="text-map-sigungu-selected" class="preference-dropdown-value truncate text-secondary">시·군·구 선택</span>
+                <span class="preference-dropdown-icon material-symbols-outlined text-secondary text-lg">arrow_drop_down</span>
+              </button>
+              <ul id="list-map-sigungu-options" role="listbox" class="absolute left-0 top-full z-50 mt-2 hidden max-h-60 w-full overflow-y-auto rounded-2xl border border-outline-variant/20 bg-white py-1 shadow-lg transition-all duration-150"></ul>
+            </div>
+
+            <!-- 행정구(구·군) 커스텀 드롭다운 -->
+            <div class="relative w-full dropdown-container hidden" id="map-detail-dropdown-container">
+              <div class="mb-1.5 flex items-center justify-between gap-2">
+                <span class="text-xs font-bold uppercase tracking-[0.08em] text-secondary">세부 지역</span>
+                <span class="text-xs text-secondary/70">마지막 선택</span>
+              </div>
+              <button id="btn-map-detail-dropdown" type="button" aria-haspopup="listbox" aria-expanded="false" class="preference-dropdown-button w-full min-h-12 rounded-2xl border border-outline-variant/40 bg-surface px-4 text-left text-sm font-semibold text-on-surface shadow-sm transition focus:border-primary-container focus:ring-2 focus:ring-primary-container/30 flex items-center justify-between gap-1 cursor-not-allowed opacity-50" disabled>
+                <span class="preference-dropdown-leading-icon inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
+                  <span class="material-symbols-outlined text-base">location_city</span>
+                </span>
+                <span id="text-map-detail-selected" class="preference-dropdown-value truncate text-secondary">구 선택</span>
+                <span class="preference-dropdown-icon material-symbols-outlined text-secondary text-lg">arrow_drop_down</span>
+              </button>
+              <ul id="list-map-detail-options" role="listbox" class="absolute left-0 top-full z-50 mt-2 hidden max-h-60 w-full overflow-y-auto rounded-2xl border border-outline-variant/20 bg-white py-1 shadow-lg transition-all duration-150"></ul>
+            </div>
           </div>
 
-          <!-- 시·군·구 커스텀 드롭다운 -->
-          <div class="relative w-full sm:flex-1 dropdown-container" id="map-sigungu-dropdown-container">
-            <button id="btn-map-sigungu-dropdown" type="button" class="w-full bg-surface border border-outline-variant/40 text-on-surface rounded-full py-2.5 pl-10 pr-4 focus:ring-2 focus:ring-primary-container focus:border-primary-container text-sm font-medium text-left flex items-center justify-between cursor-not-allowed opacity-50" disabled>
-              <span id="text-map-sigungu-selected" class="truncate text-secondary">시·군·구 선택</span>
-              <span class="material-symbols-outlined text-secondary text-lg">arrow_drop_down</span>
-            </button>
-            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-xl pointer-events-none">explore</span>
-            <ul id="list-map-sigungu-options" class="absolute left-0 top-full mt-2 w-full bg-white border border-outline-variant/20 rounded-2xl shadow-lg max-h-60 overflow-y-auto z-50 hidden transition-all duration-150 py-1">
-            </ul>
+          <div class="rounded-2xl border border-primary-container/20 bg-brand-ivory p-4">
+            <div class="selected-region-summary flex items-center gap-3">
+              <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-primary-container shadow-sm">
+                <span class="material-symbols-outlined text-lg">pin_drop</span>
+              </span>
+              <div class="selected-region-summary-content min-w-0">
+                <p class="text-xs font-bold uppercase tracking-[0.08em] text-secondary">선택한 약속 지역</p>
+                <p id="text-selected-region" class="mt-1 truncate font-headline text-lg font-bold leading-tight text-brand-navy">${initialLocationLabel}</p>
+              </div>
+            </div>
+            <p class="mt-3 text-xs leading-relaxed text-secondary">정확한 주소는 공개하지 않고 선택한 지역을 기준으로 매칭합니다.</p>
           </div>
-
-          <!-- 행정구(구·군) 커스텀 드롭다운 (상세구 존재 시 자동 활성화) -->
-          <div class="relative w-full sm:flex-1 dropdown-container hidden" id="map-detail-dropdown-container">
-            <button id="btn-map-detail-dropdown" type="button" class="w-full bg-surface border border-outline-variant/40 text-on-surface rounded-full py-2.5 pl-10 pr-4 focus:ring-2 focus:ring-primary-container focus:border-primary-container text-sm font-medium text-left flex items-center justify-between cursor-not-allowed opacity-50" disabled>
-              <span id="text-map-detail-selected" class="truncate text-secondary">구 선택</span>
-              <span class="material-symbols-outlined text-secondary text-lg">arrow_drop_down</span>
-            </button>
-            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-xl pointer-events-none">location_city</span>
-            <ul id="list-map-detail-options" class="absolute left-0 top-full mt-2 w-full bg-white border border-outline-variant/20 rounded-2xl shadow-lg max-h-60 overflow-y-auto z-50 hidden transition-all duration-150 py-1">
-            </ul>
-          </div>
-        </div>
+        </section>
 
         <!-- 지도 -->
-        <div class="w-full bg-white border border-outline-variant/30 rounded-card shadow-soft overflow-hidden" id="map" style="height: 450px; min-height: 450px;">
-          <!-- 카카오맵이 여기에 렌더링됩니다. -->
-        </div>
+        <section class="min-w-0 lg:col-start-2 lg:row-start-1">
+          <div class="relative overflow-hidden rounded-[28px] border border-outline-variant/30 bg-[#eef3f8] shadow-soft">
+            <div class="w-full h-[360px] sm:h-[430px] lg:h-[460px]" id="map">
+              <!-- 카카오맵이 여기에 렌더링됩니다. -->
+            </div>
+            <div class="pointer-events-none absolute left-4 top-4 z-20 max-w-[calc(100%-2rem)] rounded-2xl border border-white/70 bg-white/90 px-4 py-3 shadow-lg backdrop-blur-sm">
+              <p class="text-[11px] font-bold uppercase tracking-[0.12em] text-secondary">선택한 약속 위치</p>
+              <p id="text-map-selected-location" class="mt-1 truncate font-headline text-base font-bold text-brand-navy">${initialLocationLabel}</p>
+            </div>
+            <div class="pointer-events-none absolute bottom-4 left-4 z-20 inline-flex items-center gap-2 rounded-full bg-brand-navy/90 px-3 py-2 text-xs font-semibold text-white shadow-lg">
+              <span class="material-symbols-outlined text-sm text-primary-container">pin_drop</span>
+              <span>지도를 움직여 약속 위치를 정해 보세요</span>
+            </div>
+          </div>
 
-        <!-- 하단 액션 바 -->
-        <div class="flex flex-col sm:flex-row justify-between items-center bg-white p-4 border border-outline-variant/30 rounded-card shadow-soft gap-4">
-          <p id="map-status-msg" class="text-sm text-secondary">지도의 핀을 마우스로 드래그하거나 지도를 클릭하여 원하시는 상세 약속 위치를 잡아주세요.</p>
-          <button id="btn-confirm-location" class="btn-primary py-2.5 px-6 rounded-full text-sm font-bold flex items-center gap-2 shadow-md shrink-0">
-            <span class="material-symbols-outlined text-sm">check_circle</span>
-            <span>약속 위치 확정</span>
-          </button>
-        </div>
+          <!-- 확정 액션 바 -->
+          <div class="sticky bottom-4 z-20 mt-4 flex flex-col gap-3 rounded-[24px] border border-outline-variant/30 bg-white/95 p-4 shadow-floating backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between sm:p-5">
+            <div class="flex min-w-0 items-start gap-2.5">
+              <span class="material-symbols-outlined mt-0.5 shrink-0 text-lg text-primary-container">check_circle</span>
+              <p id="map-status-msg" class="text-sm leading-relaxed text-secondary">지도를 움직이거나 클릭해 약속 위치를 정한 뒤 확정해 주세요.</p>
+            </div>
+            <button id="btn-confirm-location" class="btn-primary inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-6 py-2.5 text-sm font-bold shadow-md transition sm:w-auto sm:min-w-[180px] shrink-0">
+              <span class="material-symbols-outlined text-base">check_circle</span>
+              <span>약속 위치 확정</span>
+            </button>
+          </div>
+        </section>
       </div>
     </main>
   `
@@ -462,10 +527,11 @@ export async function renderMatchMapPage(container, isCurrentRoute = () => true)
 }
 
 function updateCurrentLocationLabel(sido, sigungu, detail) {
-  const textLocation = document.querySelector('#text-current-location')
-  if (textLocation) {
-    textLocation.textContent = `${sido} ${sigungu} ${detail}`.trim()
-  }
+  const label = `${sido} ${sigungu} ${detail}`.trim()
+  ;['#text-current-location', '#text-selected-region', '#text-map-selected-location'].forEach((selector) => {
+    const element = document.querySelector(selector)
+    if (element) element.textContent = label
+  })
 }
 
 function initKakaoMap(lat, lng, name, sido, sigungu, detail) {
