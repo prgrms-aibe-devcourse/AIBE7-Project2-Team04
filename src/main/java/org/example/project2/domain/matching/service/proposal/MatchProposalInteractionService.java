@@ -130,7 +130,13 @@ public class MatchProposalInteractionService {
                 : viewerIsRequest1
                 ? snapshot.sourceToTargetMatchedTags()
                 : snapshot.targetToSourceMatchedTags();
-        Short score = snapshot == null ? null : snapshot.pairScore();
+        Short myScore = snapshot == null
+                ? null
+                : viewerIsRequest1 ? snapshot.sourceToTargetScore() : snapshot.targetToSourceScore();
+        Short partnerScore = snapshot == null
+                ? null
+                : viewerIsRequest1 ? snapshot.targetToSourceScore() : snapshot.sourceToTargetScore();
+        Short score = myScore;
 
         return new MatchProposalResponse(
                 proposal.getId(),
@@ -145,6 +151,8 @@ public class MatchProposalInteractionService {
                         publicTags
                 ),
                 score,
+                myScore,
+                partnerScore,
                 matchedTags,
                 reasons
         );

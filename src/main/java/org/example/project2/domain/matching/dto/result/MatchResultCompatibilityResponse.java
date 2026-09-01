@@ -10,10 +10,21 @@ import java.util.List;
  */
 public record MatchResultCompatibilityResponse(
         Short score,
+        Short myScore,
+        Short partnerScore,
         List<PersonalityTag> matchedTags,
         List<String> reasons,
         String formulaVersion
 ) {
+    public MatchResultCompatibilityResponse(
+            Short score,
+            List<PersonalityTag> matchedTags,
+            List<String> reasons,
+            String formulaVersion
+    ) {
+        this(score, score, score, matchedTags, reasons, formulaVersion);
+    }
+
     public MatchResultCompatibilityResponse {
         if (score != null && (score < 0 || score > 100)) {
             throw new IllegalArgumentException("호환도 점수는 0 이상 100 이하여야 합니다.");

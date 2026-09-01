@@ -74,8 +74,9 @@ public class MatchResultResponseAssembler {
             return null;
         }
         boolean viewerIsRequest1 = viewerRequest.getId().equals(proposal.getRequest1().getId());
+        Short myScore = viewerIsRequest1 ? snapshot.sourceToTargetScore() : snapshot.targetToSourceScore();
         return new MatchResultCompatibilityResponse(
-                snapshot.pairScore(),
+                myScore,
                 viewerIsRequest1
                         ? snapshot.sourceToTargetMatchedTags()
                         : snapshot.targetToSourceMatchedTags(),

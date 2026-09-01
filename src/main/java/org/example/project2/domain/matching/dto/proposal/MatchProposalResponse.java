@@ -14,6 +14,8 @@ public record MatchProposalResponse(
         MatchProposalDecision myDecision,
         MatchProposalPartnerProfileResponse partner,
         Short compatibilityScore,
+        Short myCompatibilityScore,
+        Short partnerCompatibilityScore,
         List<PersonalityTag> matchedTags,
         List<String> compatibilityReasons
 ) {
@@ -33,7 +35,33 @@ public record MatchProposalResponse(
                 myDecision,
                 partner,
                 compatibilityScore,
+                compatibilityScore,
+                compatibilityScore,
                 List.of(),
+                compatibilityReasons
+        );
+    }
+
+    public MatchProposalResponse(
+            Long proposalId,
+            Instant expiresAt,
+            MatchProposalStatus status,
+            MatchProposalDecision myDecision,
+            MatchProposalPartnerProfileResponse partner,
+            Short compatibilityScore,
+            List<PersonalityTag> matchedTags,
+            List<String> compatibilityReasons
+    ) {
+        this(
+                proposalId,
+                expiresAt,
+                status,
+                myDecision,
+                partner,
+                compatibilityScore,
+                compatibilityScore,
+                compatibilityScore,
+                matchedTags,
                 compatibilityReasons
         );
     }

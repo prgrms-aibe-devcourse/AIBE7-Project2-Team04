@@ -42,7 +42,7 @@ public class MatchProposalSelectionService {
     public static final String FORMULA_VERSION = "DESIRED_PERSONALITY_MATCH_V1_BIDIRECTIONAL_MIN_V1";
 
     private static final short BASE_CONDITION_SCORE = 50;
-    private static final Duration PROPOSAL_TTL = Duration.ofSeconds(15);
+    private static final Duration PROPOSAL_TTL = Duration.ofSeconds(180);
     private static final String FALLBACK_REASON = "성향 정보가 부족해 기본 조건을 기준으로 제안했어요.";
 
     private final BidirectionalCandidateSearchService candidateSearchService;
@@ -70,7 +70,7 @@ public class MatchProposalSelectionService {
         }
         List<UUID> userIds = collectUserIds(source, hardFilteredCandidates, requestsById);
         Map<UUID, UserPersonalityProfile> profilesByUserId = loadProfilesByUserId(userIds);
-        Map<UUID, UserPersonalityEmbedding> embeddingsByUserId = loadEmbeddingsByUserId(userIds);
+        Map<UUID, List<UserPersonalityEmbedding>> embeddingsByUserId = loadEmbeddingsByUserId(userIds);
 
         List<ScoredCandidate> rankedCandidates = hardFilteredCandidates
                 .stream()
@@ -87,7 +87,7 @@ public class MatchProposalSelectionService {
                         .comparingInt((ScoredCandidate candidate) ->
                                 candidate.personalityScoreAvailable() ? 1 : 0).reversed()
                         .thenComparing(Comparator.comparingInt(
-                                (ScoredCandidate candidate) -> candidate.scoreSnapshot().pairScore()
+                                (ScoredCandidate candidate) -> candidate.scoreSnapshot().sourceToTargetScore()
                         ).reversed())
                         .thenComparingInt(candidate -> candidate.candidate().distanceMeters())
                         .thenComparing(
@@ -122,7 +122,7 @@ public class MatchProposalSelectionService {
             BidirectionalMatchCandidate candidate,
             Map<Long, MatchRequest> requestsById,
             Map<UUID, UserPersonalityProfile> profilesByUserId,
-            Map<UUID, UserPersonalityEmbedding> embeddingsByUserId
+            Map<UUID, List<UserPersonalityEmbedding>> embeddingsByUserId
     ) {
         MatchRequest target = requestsById.get(candidate.requestId());
         if (target == null) {
@@ -131,18 +131,10 @@ public class MatchProposalSelectionService {
 
         UserPersonalityProfile sourceProfile = profilesByUserId.get(source.getUser().getId());
         UserPersonalityProfile targetProfile = profilesByUserId.get(target.getUser().getId());
-        UserPersonalityEmbedding sourceSelfDescriptionEmbedding =
-                embeddingsByUserId.get(source.getUser().getId());
-        UserPersonalityEmbedding targetSelfDescriptionEmbedding =
-                embeddingsByUserId.get(target.getUser().getId());
-        sourceSelfDescriptionEmbedding = eligibleSelfDescriptionEmbedding(
-                sourceProfile,
-                sourceSelfDescriptionEmbedding
-        );
-        targetSelfDescriptionEmbedding = eligibleSelfDescriptionEmbedding(
-                targetProfile,
-                targetSelfDescriptionEmbedding
-        );
+        List<UserPersonalityEmbedding> sourceSelfDescriptionEmbeddings =
+                embeddingsByUserId.getOrDefault(source.getUser().getId(), List.of());
+        List<UserPersonalityEmbedding> targetSelfDescriptionEmbeddings =
+                embeddingsByUserId.getOrDefault(target.getUser().getId(), List.of());
 
         return new PersonalityRankingInput(
                 candidate,
@@ -150,8 +142,8 @@ public class MatchProposalSelectionService {
                 target,
                 sourceProfile,
                 targetProfile,
-                sourceSelfDescriptionEmbedding,
-                targetSelfDescriptionEmbedding
+                sourceSelfDescriptionEmbeddings,
+                targetSelfDescriptionEmbeddings
         );
     }
 
@@ -162,12 +154,12 @@ public class MatchProposalSelectionService {
         DirectionScore sourceToTarget = calculateDirection(
                 source,
                 input.targetProfile(),
-                input.targetSelfDescriptionEmbedding()
+                input.targetSelfDescriptionEmbeddings()
         );
         DirectionScore targetToSource = calculateDirection(
                 target,
                 input.sourceProfile(),
-                input.sourceSelfDescriptionEmbedding()
+                input.sourceSelfDescriptionEmbeddings()
         );
         short pairScore = (short) Math.min(sourceToTarget.score(), targetToSource.score());
 
@@ -191,25 +183,42 @@ public class MatchProposalSelectionService {
     private DirectionScore calculateDirection(
             MatchRequest requester,
             UserPersonalityProfile candidateProfile,
-            UserPersonalityEmbedding candidateSelfDescriptionEmbedding
+            List<UserPersonalityEmbedding> candidateEmbeddings
     ) {
-        PersonalityCompatibilityScore compatibility = personalityCompatibilityCalculator.calculate(
+        List<PersonalityEmbeddingVector> candidateVectors = selfDescriptionEmbeddingListOf(candidateProfile, candidateEmbeddings);
+        PersonalityCompatibilityScore compatibility = personalityCompatibilityCalculator.calculateWithList(
                 requester.getDesiredPersonalityTags(),
                 candidateProfile == null ? null : candidateProfile.getStyleTags(),
                 requestedFreeTextEmbeddingOf(requester),
-                selfDescriptionEmbeddingOf(candidateSelfDescriptionEmbedding)
+                candidateVectors
         );
         if (!compatibility.available()) {
             return new DirectionScore(BASE_CONDITION_SCORE, List.of(), List.of(FALLBACK_REASON), false);
         }
 
         List<PersonalityTag> matchedTags = topMatchedTags(compatibility.matchedTags());
-        List<String> reasons = matchedTags.isEmpty()
-                ? compatibility.embeddingScore() == null
-                ? List.of("선택한 성향 선호를 반영했어요.")
-                : List.of("자유 서술한 식사 스타일이 비슷해요.")
-                : List.of("원하는 성향 태그와 잘 맞아요.");
-        return new DirectionScore(compatibility.score(), matchedTags, reasons, true);
+        List<String> reasons = new java.util.ArrayList<>();
+
+        if (compatibility.tagScore() != null) {
+            reasons.add("태그 호환도: " + compatibility.tagScore() + "점 (80% 비중)");
+        }
+        if (compatibility.embeddingScore() != null) {
+            reasons.add("AI 취향 유사도: " + compatibility.embeddingScore() + "점 (20% 비중)");
+        }
+
+        if (compatibility.tagScore() != null && compatibility.embeddingScore() != null) {
+            reasons.add("산식 계산: (" + compatibility.tagScore() + "점 × 0.8) + (" + compatibility.embeddingScore() + "점 × 0.2) = " + compatibility.score() + "점");
+        } else if (compatibility.tagScore() != null) {
+            reasons.add("산식 계산: 텍스트 미작성으로 태그 점수 100% 반영 = " + compatibility.score() + "점");
+        } else if (compatibility.embeddingScore() != null) {
+            reasons.add("산식 계산: 태그 미선택으로 AI 취향 유사도 100% 반영 = " + compatibility.score() + "점");
+        }
+
+        if (reasons.isEmpty()) {
+            reasons.add("위치, 식사 시간 등 기본 조건이 서로 잘 맞아요.");
+        }
+
+        return new DirectionScore(compatibility.score(), matchedTags, List.copyOf(reasons), true);
     }
 
     private Optional<MatchProposal> reserveAndCreate(
@@ -293,7 +302,13 @@ public class MatchProposalSelectionService {
                 : viewerIsRequest1
                 ? snapshot.sourceToTargetMatchedTags()
                 : snapshot.targetToSourceMatchedTags();
-        Short score = snapshot == null ? null : snapshot.pairScore();
+        Short myScore = snapshot == null
+                ? null
+                : viewerIsRequest1 ? snapshot.sourceToTargetScore() : snapshot.targetToSourceScore();
+        Short partnerScore = snapshot == null
+                ? null
+                : viewerIsRequest1 ? snapshot.targetToSourceScore() : snapshot.sourceToTargetScore();
+        Short score = myScore;
 
         return new MatchProposalResponse(
                 proposal.getId(),
@@ -308,6 +323,8 @@ public class MatchProposalSelectionService {
                         publicTags
                 ),
                 score,
+                myScore,
+                partnerScore,
                 matchedTags,
                 reasons
         );
@@ -375,14 +392,15 @@ public class MatchProposalSelectionService {
         return Map.copyOf(profilesByUserId);
     }
 
-    private Map<UUID, UserPersonalityEmbedding> loadEmbeddingsByUserId(List<UUID> userIds) {
+    private Map<UUID, List<UserPersonalityEmbedding>> loadEmbeddingsByUserId(List<UUID> userIds) {
         if (userIds.isEmpty()) {
             return Map.of();
         }
-        Map<UUID, UserPersonalityEmbedding> embeddingsByUserId = new LinkedHashMap<>();
-        personalityEmbeddingRepository.findAllByUserIdIn(userIds).forEach(embedding -> {
-            if (embedding != null && embedding.getUserId() != null) {
-                embeddingsByUserId.putIfAbsent(embedding.getUserId(), embedding);
+        Map<UUID, List<UserPersonalityEmbedding>> embeddingsByUserId = new LinkedHashMap<>();
+        personalityEmbeddingRepository.findAllByProfileUserIdIn(userIds).forEach(embedding -> {
+            if (embedding != null && embedding.getProfile() != null && embedding.getProfile().getUserId() != null) {
+                embeddingsByUserId.computeIfAbsent(embedding.getProfile().getUserId(), k -> new java.util.ArrayList<>())
+                        .add(embedding);
             }
         });
         return Map.copyOf(embeddingsByUserId);
@@ -401,34 +419,28 @@ public class MatchProposalSelectionService {
         return vector.isValidForCurrentRanking() ? vector : null;
     }
 
-    private PersonalityEmbeddingVector selfDescriptionEmbeddingOf(UserPersonalityEmbedding embedding) {
-        if (embedding == null) {
-            return null;
-        }
-        PersonalityEmbeddingVector vector = new PersonalityEmbeddingVector(
-                embedding.getEmbedding(),
-                embedding.getModelName(),
-                embedding.getSourceVersion()
-        );
-        return vector.isValidForCurrentRanking() ? vector : null;
-    }
-
-    private UserPersonalityEmbedding eligibleSelfDescriptionEmbedding(
+    private List<PersonalityEmbeddingVector> selfDescriptionEmbeddingListOf(
             UserPersonalityProfile profile,
-            UserPersonalityEmbedding embedding
+            List<UserPersonalityEmbedding> embeddings
     ) {
-        if (profile == null || !profile.isAiAnalysisConsent()
-                || profile.getSelfDescription() == null
-                || profile.getSelfDescription().isBlank()
-                || embedding == null
-                || embedding.getSourceText() == null
-                || embedding.getSourceText().isBlank()) {
-            return null;
+        if (profile == null || !profile.isAiAnalysisConsent() || profile.getSelfDescription() == null
+                || profile.getSelfDescription().isBlank() || embeddings == null || embeddings.isEmpty()) {
+            return List.of();
         }
-        if (!Objects.equals(normalize(profile.getSelfDescription()), normalize(embedding.getSourceText()))) {
-            return null;
+        List<PersonalityEmbeddingVector> vectors = new java.util.ArrayList<>();
+        for (UserPersonalityEmbedding emb : embeddings) {
+            if (emb != null && emb.getEmbedding() != null) {
+                PersonalityEmbeddingVector vec = new PersonalityEmbeddingVector(
+                        emb.getEmbedding(),
+                        emb.getModelName(),
+                        emb.getSourceVersion()
+                );
+                if (vec.isValidForCurrentRanking()) {
+                    vectors.add(vec);
+                }
+            }
         }
-        return embedding;
+        return List.copyOf(vectors);
     }
 
     private List<PersonalityTag> topMatchedTags(Set<PersonalityTag> matchedTags) {
@@ -459,8 +471,8 @@ public class MatchProposalSelectionService {
             MatchRequest target,
             UserPersonalityProfile sourceProfile,
             UserPersonalityProfile targetProfile,
-            UserPersonalityEmbedding sourceSelfDescriptionEmbedding,
-            UserPersonalityEmbedding targetSelfDescriptionEmbedding
+            List<UserPersonalityEmbedding> sourceSelfDescriptionEmbeddings,
+            List<UserPersonalityEmbedding> targetSelfDescriptionEmbeddings
     ) {
     }
 
