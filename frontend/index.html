@@ -242,21 +242,6 @@
                 <span>마주한끼 찾기</span>
               </button>
             </div>
-
-            <div class="flex items-center justify-center lg:justify-start gap-6 text-xs text-secondary font-medium pt-2">
-              <div class="flex items-center gap-1.5">
-                <span class="material-symbols-outlined text-success text-base font-bold">verified</span>
-                <span>로컬 인증 프로필</span>
-              </div>
-              <div class="flex items-center gap-1.5">
-                <span class="material-symbols-outlined text-primary-container text-base font-bold">bolt</span>
-                <span>평균 3분 내 매칭</span>
-              </div>
-              <div class="flex items-center gap-1.5">
-                <span class="material-symbols-outlined text-brand-navy text-base font-bold">forum</span>
-                <span>1:1 안전 안심 채팅</span>
-              </div>
-            </div>
           </div>
 
           <!-- Hero Graphic / Illustration Preview -->
@@ -272,125 +257,71 @@
           </div>
         </section>
 
-        <!-- Bento Grid Features Section -->
+        <!-- How It Works Section -->
         <section id="features" class="max-w-7xl mx-auto px-margin-mobile md:px-margin-desktop py-16">
-          <div class="text-center mb-12">
-            <h2 class="font-headline text-2xl sm:text-3xl font-extrabold text-brand-navy mb-3">
-              마주한끼가 특별한 이유
+          <div class="mx-auto mb-10 max-w-2xl text-center sm:mb-12">
+            <h2 class="font-headline text-2xl font-extrabold text-brand-navy sm:text-3xl">
+              마주한끼 이용 방법
             </h2>
-            <p class="text-base text-secondary max-w-xl mx-auto">
-              위치, 성향, 식사 속도까지 분석하여 부담 없는 완벽한 식사 메이트를 연결합니다.
+            <p class="mx-auto mt-3 max-w-xl text-sm leading-6 text-secondary sm:text-base">
+              원하는 지역과 식사 조건을 정하면, 편안하게 만날 밥친구를 찾을 수 있어요.
             </p>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[280px]">
-            <!-- Bento 1: Hyper-local Matches -->
-            <div class="bg-surface-container-lowest rounded-card p-6 shadow-soft card-hover flex flex-col justify-between relative overflow-hidden border border-outline-variant/20">
-              <div class="flex items-center justify-between z-10">
-                <div class="flex items-center gap-2 px-3 py-1 rounded-full bg-primary-container/10 text-primary-container text-xs font-bold">
-                  <span class="w-2 h-2 rounded-full bg-primary-container animate-ping"></span>
-                  <span>동네 기반 매칭</span>
-                </div>
-                <span class="material-symbols-outlined text-secondary">distance</span>
+          <ol class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <li class="card-hover relative rounded-card border border-outline-variant/30 bg-surface-container-lowest p-6 shadow-soft">
+              <div class="mb-6 flex items-center justify-between">
+                <span class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-primary-container text-sm font-extrabold text-white shadow-sm">1</span>
+                <span class="material-symbols-outlined text-3xl text-primary-container">location_on</span>
               </div>
-              <div class="z-10 mt-auto">
-                <h3 class="font-headline text-xl font-bold text-brand-navy mb-1.5">가까운 거리의 밥친구</h3>
-                <p class="text-xs sm:text-sm text-secondary leading-relaxed">
-                  내가 지정한 활동 구와 핀 포인트를 기준으로 가까운 동네 친구를 실시간 탐색합니다.
-                </p>
-              </div>
-              <div class="absolute -right-6 -bottom-6 w-32 h-32 bg-primary-container/5 rounded-full blur-xl"></div>
-            </div>
+              <p class="mb-2 text-xs font-bold uppercase tracking-[0.12em] text-primary-container">지역 설정</p>
+              <h3 class="font-headline text-xl font-bold text-brand-navy">만날 지역을 정해요</h3>
+              <p class="mt-3 text-sm leading-6 text-secondary">활동 지역을 선택하고 지도에서 약속 위치를 확인해요.</p>
+            </li>
 
-            <!-- Bento 2: Vibe Sync -->
-            <div class="bg-surface-container-lowest rounded-card p-6 shadow-soft card-hover col-span-1 md:col-span-2 flex flex-col justify-between border border-outline-variant/20 bg-gradient-to-br from-white to-surface-container-low">
-              <div class="flex items-center justify-between">
-                <div>
-                  <h3 class="font-headline text-xl sm:text-2xl font-bold text-brand-navy mt-1">96% 성향 싱크로율</h3>
-                </div>
-                <div class="bg-brand-navy text-white px-3.5 py-1.5 rounded-full text-xs font-bold shadow-sm flex items-center gap-1.5">
-                  <span class="material-symbols-outlined text-sm text-primary-container" style="font-variation-settings: 'FILL' 1;">favorite</span>
-                  <span>취향 일치</span>
-                </div>
+            <li class="card-hover relative rounded-card border border-outline-variant/30 bg-surface-container-lowest p-6 shadow-soft">
+              <div class="mb-6 flex items-center justify-between">
+                <span class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-primary-container text-sm font-extrabold text-white shadow-sm">2</span>
+                <span class="material-symbols-outlined text-3xl text-primary-container">tune</span>
               </div>
-              <div class="my-4">
-                <p class="text-xs text-secondary mb-2 font-medium">매칭 시 고려되는 세밀한 성향 태그</p>
-                <div class="flex flex-wrap gap-2">
-                  <span class="chip px-3 py-1.5 rounded-full text-xs font-semibold border border-primary-container/20">#천천히먹어요 (Slow Eater)</span>
-                  <span class="chip px-3 py-1.5 rounded-full text-xs font-semibold border border-primary-container/20">#편안한침묵 (Comfortable Silence)</span>
-                  <span class="chip px-3 py-1.5 rounded-full text-xs font-semibold border border-primary-container/20">#스몰토크좋아요</span>
-                  <span class="chip px-3 py-1.5 rounded-full text-xs font-semibold border border-primary-container/20">#라멘매니아</span>
-                  <span class="chip px-3 py-1.5 rounded-full text-xs font-semibold border border-primary-container/20">#맵찔이환영</span>
-                </div>
-              </div>
-              <p class="text-xs text-secondary">
-                자가 응답 기반 식사·대화 성향 알고리즘으로 대화의 어색함을 사전에 방지합니다.
-              </p>
-            </div>
+              <p class="mb-2 text-xs font-bold uppercase tracking-[0.12em] text-primary-container">조건 선택</p>
+              <h3 class="font-headline text-xl font-bold text-brand-navy">원하는 식사를 알려요</h3>
+              <p class="mt-3 text-sm leading-6 text-secondary">날짜·시간, 음식 카테고리, 대화와 식사 성향을 선택해요.</p>
+            </li>
 
-            <!-- Bento 3: AI Restaurant Curated -->
-            <div class="bg-surface-container-lowest rounded-card p-6 shadow-soft card-hover col-span-1 md:col-span-2 flex flex-col justify-between border border-outline-variant/20">
-              <div class="flex items-center justify-between">
-                <div>
-                  <h3 class="font-headline text-xl sm:text-2xl font-bold text-brand-navy mt-1">둘만을 위한 맞춤 식당 추천</h3>
-                </div>
-                <span class="material-symbols-outlined text-success text-2xl">auto_awesome</span>
+            <li class="card-hover relative rounded-card border border-outline-variant/30 bg-gradient-to-br from-white to-surface-container-low p-6 shadow-soft">
+              <div class="mb-6 flex items-center justify-between">
+                <span class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-primary-container text-sm font-extrabold text-white shadow-sm">3</span>
+                <span class="material-symbols-outlined text-3xl text-primary-container">group</span>
               </div>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 my-3">
-                <div class="p-3 rounded-xl bg-surface border border-outline-variant/30 flex items-center gap-3">
-                  <div class="w-10 h-10 rounded-lg bg-primary-container/10 text-primary-container flex items-center justify-center flex-shrink-0">
-                    <span class="material-symbols-outlined">soup_kitchen</span>
-                  </div>
-                  <div>
-                    <p class="text-sm font-bold text-brand-navy">따뜻한 스키야키 하우스</p>
-                    <p class="text-[11px] text-secondary flex items-center gap-1">
-                      <span class="material-symbols-outlined text-[13px] text-yellow-500" style="font-variation-settings: 'FILL' 1;">star</span>
-                      <span>4.8 (조용한 대화 분위기)</span>
-                    </p>
-                  </div>
-                </div>
-                <div class="p-3 rounded-xl bg-surface border border-outline-variant/30 flex items-center gap-3">
-                  <div class="w-10 h-10 rounded-lg bg-primary-container/10 text-primary-container flex items-center justify-center flex-shrink-0">
-                    <span class="material-symbols-outlined">dinner_dining</span>
-                  </div>
-                  <div>
-                    <p class="text-sm font-bold text-brand-navy">연남 골목 생면 파스타</p>
-                    <p class="text-[11px] text-secondary flex items-center gap-1">
-                      <span class="material-symbols-outlined text-[13px] text-yellow-500" style="font-variation-settings: 'FILL' 1;">star</span>
-                      <span>4.7 (가벼운 스몰토크 적합)</span>
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <p class="text-xs text-secondary">
-                서로의 음식 알레르기, 비선호 메뉴, 선호 분위기를 종합 분석하여 최적의 약속 장소를 제안합니다.
-              </p>
-            </div>
+              <p class="mb-2 text-xs font-bold uppercase tracking-[0.12em] text-primary-container">매칭 제안</p>
+              <h3 class="font-headline text-xl font-bold text-brand-navy">밥친구를 확인해요</h3>
+              <p class="mt-3 text-sm leading-6 text-secondary">조건에 맞는 상대의 제안을 확인하고 수락 또는 거절할 수 있어요.</p>
+            </li>
 
-            <!-- Bento 4: Safety & Review Card -->
-            <div id="reviews" class="bg-brand-navy rounded-card p-6 shadow-soft card-hover flex flex-col justify-between text-white border border-white/10">
-              <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-primary-container">verified_user</span>
-                <span class="text-xs font-bold text-primary-container tracking-wider uppercase">Safe & Trusted</span>
+            <li class="card-hover relative rounded-card border border-outline-variant/30 bg-brand-navy p-6 text-white shadow-soft">
+              <div class="mb-6 flex items-center justify-between">
+                <span class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-primary-container text-sm font-extrabold text-white shadow-sm">4</span>
+                <span class="material-symbols-outlined text-3xl text-primary-container">chat</span>
               </div>
-              <div class="bg-white/10 rounded-2xl p-4 backdrop-blur-sm border border-white/10 my-auto">
-                <div class="flex text-yellow-400 mb-2">
-                  <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
-                  <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
-                  <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
-                  <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
-                  <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
-                </div>
-                <p class="text-xs sm:text-sm text-gray-200 leading-relaxed">
-                  "같은 내향형 개발자 분과 조용하고 맛있는 점심을 먹었어요. 억지 대화 부담 없이 정말 편안했습니다."
-                </p>
-                <p class="text-[11px] text-gray-400 mt-2 font-medium">- 마포구 마주한끼 식사 후기</p>
-              </div>
-              <div class="flex items-center justify-between text-[11px] text-gray-300">
-                <span>100% 실명 인증 기반</span>
-                <span>매너 평가 시스템 운영</span>
+              <p class="mb-2 text-xs font-bold uppercase tracking-[0.12em] text-primary-container">만남 준비</p>
+              <h3 class="font-headline text-xl font-bold">채팅으로 약속을 정해요</h3>
+              <p class="mt-3 text-sm leading-6 text-gray-200">매칭이 완료되면 서비스 안에서 대화하고 식사 약속을 준비해요.</p>
+            </li>
+          </ol>
+
+          <div id="reviews" class="mt-6 flex flex-col gap-4 rounded-card border border-primary-container/20 bg-brand-ivory p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+            <div class="flex items-start gap-3">
+              <span class="material-symbols-outlined mt-0.5 text-2xl text-primary-container">verified_user</span>
+              <div>
+                <h3 class="font-headline text-lg font-bold text-brand-navy">식사 후기도 안전하게 남겨요</h3>
+                <p class="mt-1 text-sm leading-6 text-secondary">만남 후 만족도를 선택하고, 불편한 상황은 신고 기능으로 알려주세요.</p>
               </div>
             </div>
+            <span class="inline-flex w-fit shrink-0 items-center gap-1.5 rounded-full bg-white px-3 py-2 text-xs font-bold text-brand-navy shadow-sm">
+              <span class="material-symbols-outlined text-base text-primary-container">shield</span>
+              서비스 안에서 안전하게
+            </span>
           </div>
         </section>
 
@@ -447,7 +378,7 @@
                   </div>
                   <div>
                     <p class="text-sm font-bold text-brand-navy">투명한 성향 정보</p>
-                    <p class="text-xs text-secondary">대화 스타일, 식사 템포, 비선호 음식 확인 가능</p>
+                    <p class="text-xs text-secondary">대화 스타일, 식사 템포, 선호 음식 확인 가능</p>
                   </div>
                 </li>
                 <li class="flex items-start gap-3">
