@@ -100,12 +100,14 @@ const regionsPromise = loadRegions()
 let activeRouteId = 0
 
 // SPA 라우팅 네비게이션 함수
-export function navigateTo(path) {
+export function navigateTo(path, options = {}) {
   if (path === '/') {
     window.location.assign('/')
     return
   }
-  window.history.pushState({}, '', path)
+  const { replace = false } = options
+  const updateHistory = replace ? window.history.replaceState : window.history.pushState
+  updateHistory.call(window.history, {}, '', path)
   routeApp()
 }
 
@@ -457,7 +459,7 @@ function initCommonHeader() {
                 btnGoMypage.onclick = (e) => {
                   e.preventDefault()
                   document.querySelector('#profile-dropdown')?.classList.add('hidden')
-                  navigateTo('/admin')
+                  navigateTo('/admin', { replace: true })
                 }
               } else {
                 loadHeaderMatchStatus(matchStatusEl)
