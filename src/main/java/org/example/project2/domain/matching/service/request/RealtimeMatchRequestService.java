@@ -69,8 +69,8 @@ public class RealtimeMatchRequestService {
             RealtimeMatchRequestCreateRequest request
     ) {
         User user = findUser(userId);
-        UserLocationPreference locationPreference = requireLocationConsent(userId);
-        Region region = normalizeRegion(request.regionCode(), locationPreference);
+        requireLocationConsent(userId);
+        Region region = normalizeRegion(request.regionCode());
         validatePin(region.getRegionCode(), request.longitude(), request.latitude());
 
         String reservationToken = UUID.randomUUID().toString();
@@ -218,7 +218,7 @@ public class RealtimeMatchRequestService {
                 .orElseThrow(AuthenticatedRealtimeMatchUserNotFoundException::new);
     }
 
-    private UserLocationPreference requireLocationConsent(UUID userId) {
+    private void requireLocationConsent(UUID userId) {
         UserLocationPreference preference = locationPreferenceRepository.findById(userId)
                 .orElseThrow(() -> new RealtimeMatchRequestException(
                         RealtimeMatchRequestErrorCode.LOCATION_CONSENT_REQUIRED
@@ -228,17 +228,13 @@ public class RealtimeMatchRequestService {
                     RealtimeMatchRequestErrorCode.LOCATION_CONSENT_REQUIRED
             );
         }
-        return preference;
     }
 
-    private Region normalizeRegion(
-            String requestedRegionCode,
-            UserLocationPreference locationPreference
-    ) {
-        if (!locationPreference.getRegionCode().equals(requestedRegionCode)) {
+    private Region normalizeRegion(String requestedRegionCode) {
+        if (requestedRegionCode == null || requestedRegionCode.isBlank()) {
             throw new RealtimeMatchRequestException(
                     RealtimeMatchRequestErrorCode.INVALID_INPUT,
-                    "기본 활동지역과 동일한 행정구역에서만 매칭을 요청할 수 있습니다."
+                    "행정구역 코드는 필수입니다."
             );
         }
         return regionRepository.findById(requestedRegionCode)

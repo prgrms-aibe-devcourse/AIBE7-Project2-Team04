@@ -53,6 +53,8 @@ class RealtimeMatchRequestServiceTest {
     private static final GeometryFactory GEOMETRY_FACTORY =
             new GeometryFactory(new PrecisionModel(), 4326);
     private static final String REGION_CODE = "11680";
+    private static final String DIFFERENT_REGION_CODE = "11740";
+    private static final String UNSUPPORTED_REGION_CODE = "99999";
 
     @Autowired RealtimeMatchRequestService service;
     @Autowired UserRepository userRepository;
@@ -135,6 +137,36 @@ class RealtimeMatchRequestServiceTest {
                 eq(user.getId()), any(String.class), eq(saved.getId()),
                 eq(saved.getLocation().getX()), eq(saved.getLocation().getY()), eq(Duration.ofMinutes(5))
         );
+    }
+
+    @Test
+    void createsWaitingRequestWhenRequestedRegionDiffersFromPreferredRegion() {
+        var center = GEOMETRY_FACTORY.createPoint(new Coordinate(127.1238, 37.5301));
+        center.setSRID(4326);
+        regionRepository.save(new Region(
+                DIFFERENT_REGION_CODE,
+                "서울특별시",
+                "강동구",
+                "서울특별시 강동구",
+                center
+        ));
+        when(regionPinValidator.validate(eq(DIFFERENT_REGION_CODE), anyDouble(), anyDouble()))
+                .thenReturn(RegionPinValidationResult.MATCHES);
+
+        var response = service.create(
+                user.getId(),
+                validRequest(DIFFERENT_REGION_CODE, 37.5301, 127.1238, null)
+        );
+
+        MatchRequest saved = matchRequestRepository.findDetailedById(response.requestId()).orElseThrow();
+        assertThat(response.status()).isEqualTo(MatchRequestStatus.WAITING);
+        assertThat(saved.getRegionCode()).isEqualTo(DIFFERENT_REGION_CODE);
+        assertThat(saved.getRegionName()).isEqualTo("서울특별시 강동구");
+        assertThat(saved.getLocation().getX()).isEqualTo(127.1238);
+        assertThat(saved.getLocation().getY()).isEqualTo(37.5301);
+        assertThat(locationPreferenceRepository.findById(user.getId()).orElseThrow().getRegionCode())
+                .isEqualTo(REGION_CODE);
+        verify(regionPinValidator).validate(DIFFERENT_REGION_CODE, 127.1238, 37.5301);
     }
 
     @Test
@@ -236,6 +268,20 @@ class RealtimeMatchRequestServiceTest {
     }
 
     @Test
+    void rejectsUnsupportedRequestedRegionBeforeRedisReservation() {
+        assertThatThrownBy(() -> service.create(
+                user.getId(),
+                validRequest(UNSUPPORTED_REGION_CODE, 37.501, 127.039, null)
+        ))
+                .isInstanceOfSatisfying(RealtimeMatchRequestException.class, exception ->
+                        assertThat(exception.getErrorCode())
+                                .isEqualTo(RealtimeMatchRequestErrorCode.INVALID_INPUT));
+
+        verify(regionPinValidator, never()).validate(any(), anyDouble(), anyDouble());
+        verify(waitingStore, never()).reserve(any(), any(), any());
+    }
+
+    @Test
     void getsCurrentRequestAndCancelsOnlyOwnedRequest() {
         var created = service.create(user.getId(), validRequest(null));
         when(waitingStore.remainingTtl(created.requestId()))
@@ -292,14 +338,23 @@ class RealtimeMatchRequestServiceTest {
     }
 
     private RealtimeMatchRequestCreateRequest validRequest(String desiredText) {
+        return validRequest(REGION_CODE, 37.501, 127.039, desiredText);
+    }
+
+    private RealtimeMatchRequestCreateRequest validRequest(
+            String regionCode,
+            double latitude,
+            double longitude,
+            String desiredText
+    ) {
         return new RealtimeMatchRequestCreateRequest(
                 FoodCategory.KOREAN,
                 Instant.now().plusSeconds(3_600),
-                REGION_CODE,
+                regionCode,
                 "클라이언트 임의 표시명",
                 "강남역 11번 출구",
-                37.501,
-                127.039,
+                latitude,
+                longitude,
                 null,
                 Set.of(
                         PersonalityTag.GOOD_LISTENER,
