@@ -26,7 +26,8 @@
 
 ## 3. 데이터 저장소 준비
 
-- [x] Supabase 서울 리전 PostgreSQL에 PostGIS와 pgvector 확장을 활성화하고 `docs/migrations/README.md`의 필수 마이그레이션을 순서대로 적용한다.
+- [x] Supabase 서울 리전 PostgreSQL에 `uuid-ossp`, PostGIS와 pgvector 확장을 활성화한다.
+- [ ] `docs/migrations/README.md`의 성향·매칭·후기·신고·지역 데이터 마이그레이션을 운영·개발 DB에 순서대로 적용한 뒤 `현재_스키마_검증.sql`을 통과시킨다.
 - [x] Aiven for Valkey의 host, port, username, password, TLS 연결을 Spring 설정과 Lettuce 연결 팩토리에 반영하고 Redis GEO 및 Lua Script가 정상 실행되는지 확인한다.
 - [x] Aiven 무료 Valkey의 단일 노드·리전 선택 불가·유휴 서비스 정지 가능성을 확인하고, 매칭 대기열과 채팅 서비스의 무료 운영 제약을 수용할지 결정한다.
   - 개발·시연 목적이므로 단일 노드, 리전 선택 제한, 유휴 서비스 중지 가능성과 장애 시 실시간 기능 일시 중단 가능성을 수용한다. 운영 전환 시 다중 노드·고가용성·분산 메시지 브로커를 재검토한다.
