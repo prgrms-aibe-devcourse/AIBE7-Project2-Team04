@@ -36,7 +36,7 @@ export async function getPersonalityProfile() {
 /**
  * 성향 프로필(기본 스타일 카드 및 세부 태그)을 최초 등록하거나 전체 갱신합니다.
  */
-export async function upsertPersonalityProfile({ questionnaireVersion = 'MEAL_PERSONALITY_V1', answers, styleTags, selfDescription, aiAnalysisConsent }) {
+export async function upsertPersonalityProfile({ questionnaireVersion = 'MEAL_PERSONALITY_V1', answers, styleTags, selfDescription, aiAnalysisConsent, aiKeywords = [] }) {
   const csrfToken = await ensureCsrfToken()
 
   const response = await fetch(`${API_BASE_URL}/users/me/personality-profile`, {
@@ -53,6 +53,7 @@ export async function upsertPersonalityProfile({ questionnaireVersion = 'MEAL_PE
       styleTags,
       selfDescription,
       aiAnalysisConsent,
+      aiKeywords,
     }),
   })
 
@@ -98,6 +99,36 @@ export async function suggestPersonalityTags({ selfDescription, aiAnalysisConsen
   }
   if (!response.ok || !body?.success) {
     const error = new Error(body?.error?.message || 'AI 태그 추천에 실패했습니다.')
+    error.status = response.status
+    error.code = body?.error?.code
+    throw error
+  }
+  return body.data
+}
+
+/**
+ * 텍스트에서 AI 동적 키워드 태그를 추출합니다.
+ */
+export async function extractKeywordsFromText({ selfDescription }) {
+  const csrfToken = await ensureCsrfToken()
+  const response = await fetch(`${API_BASE_URL}/users/me/personality-profile/keyword-extractions`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-XSRF-TOKEN': csrfToken,
+      'Accept': 'application/json',
+    },
+    body: JSON.stringify({ selfDescription, aiAnalysisConsent: true }),
+  })
+  const body = await readJson(response)
+  if (response.status === 401) {
+    const error = new Error('로그인이 만료되었습니다. 다시 로그인해 주세요.')
+    error.status = 401
+    throw error
+  }
+  if (!response.ok || !body?.success) {
+    const error = new Error(body?.error?.message || 'AI 키워드 추출에 실패했습니다.')
     error.status = response.status
     error.code = body?.error?.code
     throw error

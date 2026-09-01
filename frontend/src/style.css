@@ -561,13 +561,14 @@ select {
 
 .survey-tag-badge.is-selected {
   border-color: #ff6b4a;
-  background: #fffaf7;
-  color: #1e2c4a;
-  box-shadow: 0 0 0 2px rgba(255, 107, 74, 0.12), 0 6px 16px rgba(255, 107, 74, 0.1);
+  background: #ff6b4a !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(255, 107, 74, 0.35);
+  font-weight: 800;
 }
 
 .survey-tag-badge.is-selected .material-symbols-outlined {
-  color: #ff6b4a;
+  color: #ffffff !important;
 }
 
 .survey-dim-card:focus-visible,

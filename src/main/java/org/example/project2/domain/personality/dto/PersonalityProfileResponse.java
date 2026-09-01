@@ -14,9 +14,23 @@ public record PersonalityProfileResponse(
         @Schema(nullable = true) PersonalityScoresResponse scores,
         Set<PersonalityTag> styleTags,
         @Schema(nullable = true, maxLength = 300) String selfDescription,
-        boolean aiAnalysisConsent
+        boolean aiAnalysisConsent,
+        java.util.List<String> aiKeywords
 ) {
+    public PersonalityProfileResponse(
+            PersonalityOnboardingStatus onboardingStatus,
+            boolean completed,
+            PersonalityQuestionnaireVersion questionnaireVersion,
+            PersonalityScoresResponse scores,
+            Set<PersonalityTag> styleTags,
+            String selfDescription,
+            boolean aiAnalysisConsent
+    ) {
+        this(onboardingStatus, completed, questionnaireVersion, scores, styleTags,
+                selfDescription, aiAnalysisConsent, java.util.List.of());
+    }
+
     public static PersonalityProfileResponse incomplete(PersonalityOnboardingStatus onboardingStatus) {
-        return new PersonalityProfileResponse(onboardingStatus, false, null, null, Set.of(), null, false);
+        return new PersonalityProfileResponse(onboardingStatus, false, null, null, Set.of(), null, false, java.util.List.of());
     }
 }

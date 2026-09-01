@@ -35,12 +35,25 @@ public record PersonalityProfileUpsertRequest(
         String selfDescription,
 
         @Schema(description = "자기소개 AI 분석 동의 여부", example = "false")
-        boolean aiAnalysisConsent
+        boolean aiAnalysisConsent,
+        @Size(max = 5, message = "AI 키워드는 최대 5개까지 저장할 수 있습니다.")
+        List<@NotNull(message = "AI 키워드에는 null을 포함할 수 없습니다.") String> aiKeywords
 ) {
+    public PersonalityProfileUpsertRequest(
+            PersonalityQuestionnaireVersion questionnaireVersion,
+            List<PersonalityAnswerRequest> answers,
+            Set<PersonalityTag> styleTags,
+            String selfDescription,
+            boolean aiAnalysisConsent
+    ) {
+        this(questionnaireVersion, answers, styleTags, selfDescription, aiAnalysisConsent, List.of());
+    }
+
     public PersonalityProfileUpsertRequest {
         answers = answers == null ? null : List.copyOf(answers);
         styleTags = styleTags == null ? null : Set.copyOf(styleTags);
         selfDescription = normalizeDescription(selfDescription, aiAnalysisConsent);
+        aiKeywords = normalizeKeywords(aiKeywords, aiAnalysisConsent);
     }
 
     public Map<PersonalityDimension, PersonalityAnswerValue> validatedAnswers() {
@@ -75,5 +88,15 @@ public record PersonalityProfileUpsertRequest(
             return null;
         }
         return description.strip();
+    }
+
+    private static List<String> normalizeKeywords(List<String> keywords, boolean consent) {
+        if (!consent || keywords == null) return List.of();
+        return keywords.stream()
+                .filter(keyword -> keyword != null && !keyword.isBlank())
+                .map(String::strip)
+                .distinct()
+                .limit(5)
+                .toList();
     }
 }

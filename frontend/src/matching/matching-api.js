@@ -52,6 +52,7 @@ export async function cancelRealtimeMatchRequest(requestId) {
       Accept: 'application/json',
       'X-XSRF-TOKEN': csrfToken,
     },
+    keepalive: true,
   })
   return readResponse(response, '매칭 요청을 취소하지 못했습니다.')
 }
@@ -75,8 +76,37 @@ export async function decideMatchProposal(proposalId, decision) {
       'X-XSRF-TOKEN': csrfToken,
     },
     body: JSON.stringify({ decision }),
+    keepalive: true,
   })
   return readResponse(response, '후보 제안 응답을 저장하지 못했습니다.')
+}
+
+export async function cancelCurrentRealtimeMatchState() {
+  let currentRequest = null
+  try {
+    currentRequest = await getCurrentRealtimeMatchRequest()
+  } catch (error) {
+    if (error?.status !== 404) throw error
+  }
+
+  if (currentRequest?.requestId
+      && ['WAITING', 'CONFIRMING'].includes(currentRequest.status)) {
+    await cancelRealtimeMatchRequest(currentRequest.requestId)
+    return true
+  }
+
+  let currentProposal = null
+  try {
+    currentProposal = await getCurrentMatchProposal()
+  } catch (error) {
+    if (error?.status !== 404) throw error
+  }
+
+  if (currentProposal?.proposalId && currentProposal.status === 'PENDING') {
+    await decideMatchProposal(currentProposal.proposalId, 'REJECT')
+    return true
+  }
+  return false
 }
 
 export async function getLatestMatchResult() {

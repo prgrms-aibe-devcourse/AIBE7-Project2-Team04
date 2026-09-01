@@ -1,4 +1,4 @@
-import { getPersonalityProfile, upsertPersonalityProfile, skipPersonalityProfile, updateFoodPreferences, getFoodPreferences, suggestPersonalityTags } from '../personality/personality-api.js'
+import { getPersonalityProfile, upsertPersonalityProfile, skipPersonalityProfile, updateFoodPreferences, getFoodPreferences, extractKeywordsFromText } from '../personality/personality-api.js'
 import { navigateTo, showToast } from '../main.js'
 
 // V1 기본 스타일 차원 및 옵션 정의
@@ -185,6 +185,7 @@ export async function renderPersonalitySurvey(container) {
   }
   const selectedTags = new Set()
   const suggestedTags = new Set()
+  let extractedKeywords = []
   const selectedFoods = new Set()
   let selfDescription = ''
   let aiAnalysisConsent = false
@@ -225,6 +226,10 @@ export async function renderPersonalitySurvey(container) {
       }
       selfDescription = data.selfDescription || ''
       aiAnalysisConsent = data.aiAnalysisConsent === true
+      if (Array.isArray(data.aiKeywords) && data.aiKeywords.length > 0) {
+        extractedKeywords = uniqueKeywords(data.aiKeywords)
+        needsUpdate = true
+      }
     }
 
     if (foodData.status === 'fulfilled' && foodData.value) {
@@ -263,8 +268,8 @@ export async function renderPersonalitySurvey(container) {
         <div class="mx-auto w-full max-w-4xl">
           <header class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div class="min-w-0">
-              <h1 class="font-headline text-2xl font-extrabold tracking-tight text-brand-navy sm:text-3xl">나와 잘 맞는 식사 스타일을 찾아볼까요?</h1>
-              <p class="mt-1.5 text-sm leading-relaxed text-secondary">약 1분이면 마주한끼에서 어울리는 밥친구를 찾는 데 도움이 되는 정보를 완성할 수 있어요.</p>
+              <h1 class="font-headline text-2xl font-extrabold tracking-tight text-brand-navy sm:text-3xl">나만의 식사 성향 설정</h1>
+              <p class="mt-1.5 text-sm leading-relaxed text-secondary">약 1분이면 마주한끼에서 어울리는 밥친구를 찾는 데 필요한 식사 성향을 설정할 수 있어요.</p>
             </div>
             <button id="btn-survey-skip" type="button" class="inline-flex items-center gap-1 self-start rounded-full border border-outline-variant/40 bg-white px-3.5 py-2 text-xs font-bold text-secondary transition hover:border-outline-variant hover:bg-brand-ivory hover:text-brand-navy sm:self-auto">
               <span>다음에 하기</span>
@@ -320,7 +325,7 @@ export async function renderPersonalitySurvey(container) {
                 ${
                   currentStep < SURVEY_STEPS.length
                     ? `<button id="btn-survey-next" type="button" class="inline-flex items-center gap-2 rounded-xl bg-primary-container px-5 py-2.5 text-sm font-extrabold text-white shadow-glow-primary transition hover:bg-primary hover:shadow-lg active:scale-95 sm:px-6"><span>다음 단계</span><span class="material-symbols-outlined text-base" aria-hidden="true">arrow_forward</span></button>`
-                    : `<button id="btn-survey-submit" type="button" ${isSubmitting ? 'disabled' : ''} class="inline-flex items-center gap-2 rounded-xl bg-primary-container px-5 py-2.5 text-sm font-extrabold text-white shadow-glow-primary transition hover:bg-primary hover:shadow-lg active:scale-95 sm:px-6 ${isSubmitting ? 'cursor-not-allowed opacity-60' : ''}">${isSubmitting ? '<span class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>' : '<span class="material-symbols-outlined text-base" aria-hidden="true">check_circle</span>'}<span>내 식사 스타일 확인하기</span></button>`
+                    : `<button id="btn-survey-submit" type="button" ${isSubmitting ? 'disabled' : ''} class="inline-flex items-center gap-2 rounded-xl bg-primary-container px-5 py-2.5 text-sm font-extrabold text-white shadow-glow-primary transition hover:bg-primary hover:shadow-lg active:scale-95 sm:px-6 ${isSubmitting ? 'cursor-not-allowed opacity-60' : ''}">${isSubmitting ? '<span class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>' : '<span class="material-symbols-outlined text-base" aria-hidden="true">check_circle</span>'}<span>내 식사 성향 저장하기</span></button>`
                 }
               </div>
             </div>
@@ -468,12 +473,12 @@ export async function renderPersonalitySurvey(container) {
                       aria-pressed="${isSelected}"
                       class="survey-tag-badge inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold transition-all sm:text-sm ${
                       isSelected
-                        ? 'is-selected border-primary-container text-brand-navy shadow-sm'
+                        ? 'is-selected border-primary-container bg-primary-container text-white shadow-glow-primary font-extrabold'
                         : 'border-slate-200 bg-white text-slate-700 hover:border-primary-container/40 hover:bg-brand-ivory'
                     }"
                   >
+                    ${isSelected ? '<span class="material-symbols-outlined text-sm" aria-hidden="true">check</span>' : ''}
                     <span>${tag.label}</span>
-                    <span class="material-symbols-outlined text-sm" aria-hidden="true">${isSelected ? 'check' : 'add'}</span>
                   </button>
                 `
                 })
@@ -489,33 +494,29 @@ export async function renderPersonalitySurvey(container) {
                 <span class="material-symbols-outlined text-lg" aria-hidden="true">edit_note</span>
               </span>
               <div class="min-w-0 flex-1">
-                <label for="personality-self-description" class="text-sm font-extrabold text-brand-navy">나의 식사 스타일을 직접 소개해 주세요 <span class="font-normal text-slate-400">(선택)</span></label>
-                <p class="mt-1 text-xs leading-relaxed text-secondary">조금 더 나다운 모습을 전하고 싶다면 자유롭게 적어 주세요.</p>
+                <label for="personality-self-description" class="text-sm font-extrabold text-brand-navy">나의 식사 스타일 & 취미/관심사 소개해 주세요 <span class="font-normal text-slate-400">(선택)</span></label>
+                <p class="mt-1 text-xs leading-relaxed text-secondary">취미, 대화 주제, 라이프스타일을 적어주시면 AI가 핵심 키워드 태그로 정제하여 매칭에 반영해요.</p>
               </div>
             </div>
-            <textarea id="personality-self-description" maxlength="300" rows="4" class="mt-4 w-full resize-y rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm leading-relaxed text-brand-navy outline-none transition focus:border-primary-container focus:ring-2 focus:ring-primary-container/20" placeholder="예: 처음에는 조용하지만 친해지면 대화를 많이 하고, 새로운 맛집을 찾아다니는 편이에요.">${escapeHtml(selfDescription)}</textarea>
+            <textarea id="personality-self-description" maxlength="300" rows="4" class="mt-4 w-full resize-y rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm leading-relaxed text-brand-navy outline-none transition focus:border-primary-container focus:ring-2 focus:ring-primary-container/20" placeholder="예: '백엔드 개발 취준생이라 IT 이야기 좋아해요', '평소 클라이밍이나 노포 맛집 탐방 좋아하시는 분' 등 자유롭게 적어주세요.">${escapeHtml(selfDescription)}</textarea>
             <div class="mt-1.5 flex items-center justify-between text-xs text-slate-400"><span>최대 300자</span><span><span id="self-description-count">${selfDescription.length}</span> / 300</span></div>
+
+            <div class="mt-4 border-t border-slate-200/60 pt-3">
+              <button id="btn-extract-keywords" type="button" ${isSuggesting ? 'disabled' : ''} class="inline-flex items-center gap-1.5 rounded-xl bg-primary-container px-4 py-2 text-xs font-extrabold text-white transition hover:bg-primary-container/90 shadow-sm disabled:cursor-not-allowed disabled:opacity-50">
+                <span class="material-symbols-outlined text-sm" aria-hidden="true">auto_awesome</span>
+                <span>${isSuggesting ? '키워드 태그 분석 중…' : 'AI 키워드 태그 추출하기'}</span>
+              </button>
+            </div>
           </div>
 
-          <div class="rounded-2xl border border-primary-container/15 bg-primary-container/5 p-4">
-            <label class="flex cursor-pointer items-start gap-3">
-              <input id="ai-analysis-consent" type="checkbox" ${aiAnalysisConsent ? 'checked' : ''} class="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary-container focus:ring-primary-container">
-              <span class="min-w-0 text-xs leading-relaxed text-secondary"><span class="font-extrabold text-brand-navy">AI로 키워드 추천받기</span><br>자유 설명을 AI 태그 추천과 성향 임베딩 생성에 사용하는 데 동의합니다. 동의를 철회하면 자유 설명과 파생 임베딩이 삭제됩니다.</span>
-            </label>
-            <button id="btn-suggest-tags" type="button" ${isSuggesting ? 'disabled' : ''} class="mt-3 inline-flex items-center gap-1.5 rounded-xl border border-primary px-3.5 py-2 text-xs font-extrabold text-primary transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50">
-              <span class="material-symbols-outlined text-sm" aria-hidden="true">auto_awesome</span>
-              <span>${isSuggesting ? '추천 중…' : 'AI 태그 추천받기'}</span>
-            </button>
-          </div>
-
-          ${suggestedTags.size > 0 ? `
+          ${extractedKeywords.length > 0 ? `
             <div class="rounded-2xl border border-primary-container/20 bg-white p-4 shadow-soft">
               <div class="flex items-start gap-2">
                 <span class="material-symbols-outlined text-lg text-primary-container" aria-hidden="true">auto_awesome</span>
-                <p class="text-xs leading-relaxed text-secondary">AI가 추천한 키워드예요. 원하는 항목을 눌러 최종 선택에 추가해 주세요.</p>
+                <p class="text-xs leading-relaxed text-secondary"><span class="font-bold text-brand-navy">AI가 분석한 핵심 키워드 태그</span>입니다. 상대방이 희망 키워드로 검색할 때 고순도 임베딩 매칭에 사용돼요.</p>
               </div>
               <div class="mt-3 flex flex-wrap gap-2">
-                ${Array.from(suggestedTags).map((code) => `<button type="button" data-suggested-tag="${code}" class="inline-flex items-center gap-1 rounded-full border border-primary-container/30 bg-primary-container/5 px-3 py-1.5 text-xs font-extrabold text-primary transition hover:bg-primary-container/10"><span class="material-symbols-outlined text-sm" aria-hidden="true">add</span>${escapeHtml(tagLabel(code))}</button>`).join('')}
+                ${extractedKeywords.map((keyword) => `<span class="inline-flex items-center gap-1 rounded-full border border-primary-container/30 bg-primary-container/10 px-3 py-1.5 text-xs font-extrabold text-primary"><span class="text-xs">#</span>${escapeHtml(keyword)}</span>`).join('')}
               </div>
             </div>
           ` : ''}
@@ -649,6 +650,7 @@ export async function renderPersonalitySurvey(container) {
     const descriptionInput = container.querySelector('#personality-self-description')
     descriptionInput?.addEventListener('input', () => {
       selfDescription = descriptionInput.value
+      if (selfDescription.trim()) aiAnalysisConsent = true
       const count = container.querySelector('#self-description-count')
       if (count) count.textContent = String(selfDescription.length)
     })
@@ -657,14 +659,9 @@ export async function renderPersonalitySurvey(container) {
       if (!aiAnalysisConsent) suggestedTags.clear()
       updateView()
     })
-    container.querySelector('#btn-suggest-tags')?.addEventListener('click', async () => {
-      if (!aiAnalysisConsent) {
-        errorMessage = 'AI 태그 추천을 받으려면 분석 동의가 필요합니다.'
-        updateView()
-        return
-      }
+    container.querySelector('#btn-extract-keywords')?.addEventListener('click', async () => {
       if (!selfDescription.trim()) {
-        errorMessage = '태그 추천을 받을 자유 설명을 입력해 주세요.'
+        errorMessage = 'AI 키워드 추출을 진행할 텍스트를 입력해 주세요.'
         updateView()
         return
       }
@@ -672,12 +669,11 @@ export async function renderPersonalitySurvey(container) {
       errorMessage = ''
       updateView()
       try {
-        const result = await suggestPersonalityTags({ selfDescription: selfDescription.trim(), aiAnalysisConsent: true })
-        suggestedTags.clear()
-        ;(result.suggestedTags || []).forEach((tag) => suggestedTags.add(tag))
-        if (!result.available) errorMessage = '현재 AI 추천을 사용할 수 없습니다. 직접 태그를 선택해 주세요.'
+        const result = await extractKeywordsFromText({ selfDescription: selfDescription.trim() })
+        extractedKeywords = uniqueKeywords(result.keywords)
+        if (!result.available) errorMessage = '현재 AI 키워드 추출을 사용할 수 없습니다. 텍스트를 자유롭게 적어 주세요.'
       } catch (err) {
-        errorMessage = err.message || 'AI 태그 추천에 실패했습니다.'
+        errorMessage = err.message || 'AI 키워드 태그 추출에 실패했습니다.'
       } finally {
         isSuggesting = false
         updateView()
@@ -779,12 +775,16 @@ export async function renderPersonalitySurvey(container) {
           value,
         }))
 
+        const hasSelfDesc = Boolean(selfDescription && selfDescription.trim())
+        const consentPayload = hasSelfDesc || aiAnalysisConsent
+
         await upsertPersonalityProfile({
           questionnaireVersion: 'MEAL_PERSONALITY_V1',
           answers: answerPayload,
           styleTags: Array.from(selectedTags),
-          selfDescription: aiAnalysisConsent ? selfDescription.trim() || null : null,
-          aiAnalysisConsent,
+          selfDescription: hasSelfDesc ? selfDescription.trim() : null,
+          aiAnalysisConsent: consentPayload,
+          aiKeywords: extractedKeywords,
         })
 
         // 2. 음식 선호 카테고리 갱신
@@ -818,6 +818,20 @@ function escapeHtml(value) {
   })[character])
 }
 
+function uniqueKeywords(keywords) {
+  if (!Array.isArray(keywords)) return []
+  const seen = new Set()
+  return keywords
+    .map((keyword) => String(keyword ?? '').trim())
+    .filter((keyword) => {
+      const key = keyword.toLocaleLowerCase()
+      if (!key || seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+    .slice(0, 5)
+}
+
 function renderCompletionView(container) {
   container.innerHTML = `
     <main class="personality-survey-page flex min-h-[calc(100vh-88px)] items-center px-4 py-10 sm:px-6">
@@ -835,11 +849,15 @@ function renderCompletionView(container) {
             <p class="text-xs leading-relaxed text-secondary">마이페이지에서 언제든 성향과 선호 음식을 다시 바꿀 수 있어요.</p>
           </div>
         </div>
-        <a class="mt-7 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-primary-container px-5 text-sm font-extrabold text-white shadow-glow-primary transition hover:bg-primary hover:shadow-lg" href="/mypage">
+        <button id="btn-go-mypage" type="button" class="mt-7 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-primary-container px-5 text-sm font-extrabold text-white shadow-glow-primary transition hover:bg-primary hover:shadow-lg">
           <span>마이페이지로 이동하기</span>
           <span class="material-symbols-outlined text-base" aria-hidden="true">arrow_forward</span>
-        </a>
+        </button>
       </section>
     </main>
   `
+
+  container.querySelector('#btn-go-mypage')?.addEventListener('click', () => {
+    navigateTo('/mypage')
+  })
 }

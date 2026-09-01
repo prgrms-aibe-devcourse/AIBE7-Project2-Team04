@@ -129,6 +129,20 @@ public class PersonalityProfileController {
     }
 
     @Operation(
+            summary = "식사 스타일 자유 텍스트 AI 키워드 태그 추출",
+            description = "입력한 텍스트에서 AI가 핵심 취미, 관심사, 성향 키워드 태그를 3~5개 추출합니다."
+    )
+    @Parameter(name = "X-XSRF-TOKEN", in = ParameterIn.HEADER, required = true,
+            description = "GET /auth/csrf 응답의 data.token")
+    @PostMapping("/keyword-extractions")
+    public ResponseEntity<CommonResponse<org.example.project2.domain.personality.dto.PersonalityKeywordExtractionResponse>> extractKeywords(
+            @AuthenticationPrincipal UUID userId,
+            @Valid @RequestBody PersonalityTagSuggestionRequest request
+    ) {
+        return ResponseEntity.ok(CommonResponse.success(personalityService.extractKeywords(request)));
+    }
+
+    @Operation(
             summary = "내 성향 프로필 초기화",
             description = "프로필, 원본 응답, 태그와 파생 데이터를 삭제하고 온보딩 상태를 NOT_STARTED로 변경합니다."
     )

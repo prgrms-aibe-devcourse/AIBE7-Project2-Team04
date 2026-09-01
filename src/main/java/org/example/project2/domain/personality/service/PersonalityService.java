@@ -1,6 +1,34 @@
 package org.example.project2.domain.personality.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.example.project2.domain.personality.dto.FoodPreferencesResponse;
+import org.example.project2.domain.personality.dto.FoodPreferencesUpdateRequest;
+import org.example.project2.domain.personality.dto.PersonalityProfileResponse;
+import org.example.project2.domain.personality.dto.PersonalityProfileUpsertRequest;
+import org.example.project2.domain.personality.dto.PersonalityScoresResponse;
+import org.example.project2.domain.personality.dto.PersonalityTagSuggestionRequest;
+import org.example.project2.domain.personality.dto.PersonalityTagSuggestionResponse;
+import org.example.project2.domain.personality.entity.PersonalityAnswerValue;
+import org.example.project2.domain.personality.entity.PersonalityDimension;
+import org.example.project2.domain.personality.entity.PersonalityTag;
+import org.example.project2.domain.personality.entity.UserPersonalityAnswer;
+import org.example.project2.domain.personality.entity.UserPersonalityProfile;
+import org.example.project2.domain.personality.exception.AuthenticatedUserNotFoundException;
+import org.example.project2.domain.personality.exception.InvalidPersonalityInputException;
+import org.example.project2.domain.personality.repository.UserPersonalityAnswerRepository;
+import org.example.project2.domain.personality.repository.UserPersonalityEmbeddingRepository;
+import org.example.project2.domain.personality.repository.UserPersonalityProfileRepository;
+import org.example.project2.domain.personality.service.ai.PersonalityAiClient;
+import org.example.project2.domain.personality.service.calculation.PersonalityScoreCalculator;
+import org.example.project2.domain.personality.service.embedding.PersonalityEmbeddingRequestedEvent;
+import org.example.project2.domain.user.entity.FoodCategory;
+import org.example.project2.domain.user.entity.User;
+import org.example.project2.domain.user.repository.UserRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.transaction.annotation.Transactional;
+
 import org.example.project2.domain.personality.dto.FoodPreferencesResponse;
 import org.example.project2.domain.personality.dto.FoodPreferencesUpdateRequest;
 import org.example.project2.domain.personality.dto.PersonalityProfileResponse;
@@ -38,6 +66,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 @Transactional(readOnly = true)
 public class PersonalityService {
     private final UserRepository userRepository;
@@ -48,6 +77,7 @@ public class PersonalityService {
     private final PersonalityAiClient aiClient;
     private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
+    private final jakarta.persistence.EntityManager entityManager;
 
     public PersonalityProfileResponse getProfile(UUID userId) {
         User user = findUser(userId);
@@ -82,9 +112,15 @@ public class PersonalityService {
                 request.styleTags(),
                 request.selfDescription(),
                 request.aiAnalysisConsent(),
-                completedAt
+                completedAt,
+                request.aiKeywords()
         );
         UserPersonalityProfile savedProfile = profileRepository.save(profile);
+        entityManager.flush();
+        log.info("성향 태그 DB 저장 확정 완료: userId={}, tagCount={}, styleTags={}",
+                userId,
+                savedProfile.getStyleTags().size(),
+                savedProfile.getStyleTags());
 
         answerRepository.deleteAllByUserId(userId);
         List<UserPersonalityAnswer> answerEntities = answers.entrySet().stream()
@@ -98,13 +134,13 @@ public class PersonalityService {
 
         if (request.aiAnalysisConsent() && request.selfDescription() != null) {
             // 새 프로필이 커밋되기 전까지 이전 벡터가 매칭에 사용되지 않도록 제거합니다.
-            embeddingRepository.deleteById(userId);
+            deleteEmbeddingIfPresent(userId);
             eventPublisher.publishEvent(new PersonalityEmbeddingRequestedEvent(
                     userId,
                     savedProfile.getSelfDescription()
             ));
         } else {
-            embeddingRepository.deleteById(userId);
+            deleteEmbeddingIfPresent(userId);
         }
 
         user.completePersonalityOnboarding();
@@ -117,12 +153,18 @@ public class PersonalityService {
                 .orElseGet(() -> new PersonalityTagSuggestionResponse(false, Set.of()));
     }
 
+    public org.example.project2.domain.personality.dto.PersonalityKeywordExtractionResponse extractKeywords(PersonalityTagSuggestionRequest request) {
+        return aiClient.extractKeywords(request.selfDescription())
+                .map(keywords -> new org.example.project2.domain.personality.dto.PersonalityKeywordExtractionResponse(true, keywords))
+                .orElseGet(() -> new org.example.project2.domain.personality.dto.PersonalityKeywordExtractionResponse(false, java.util.List.of()));
+    }
+
     @Transactional
     public void resetProfile(UUID userId) {
         User user = findUser(userId);
         profileRepository.findById(userId).ifPresent(profile -> {
             answerRepository.deleteAllByUserId(userId);
-            embeddingRepository.deleteById(userId);
+            deleteEmbeddingIfPresent(userId);
             profileRepository.delete(profile);
         });
         user.resetPersonalityOnboarding();
@@ -192,13 +234,18 @@ public class PersonalityService {
                 scores,
                 copyTags(profile.getStyleTags()),
                 profile.getSelfDescription(),
-                profile.isAiAnalysisConsent()
+                profile.isAiAnalysisConsent(),
+                List.copyOf(profile.getAiKeywords())
         );
     }
 
     private User findUser(UUID userId) {
         return userRepository.findById(userId)
                 .orElseThrow(AuthenticatedUserNotFoundException::new);
+    }
+
+    private void deleteEmbeddingIfPresent(UUID userId) {
+        embeddingRepository.deleteAllByProfileUserId(userId);
     }
 
     private Set<PersonalityTag> copyTags(Set<PersonalityTag> tags) {

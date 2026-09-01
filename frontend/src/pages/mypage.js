@@ -72,14 +72,14 @@ export async function renderMyPage(container) {
             <div class="space-y-1.5 mb-4">
               <div class="flex items-center gap-2 text-primary-container">
                 <span class="material-symbols-outlined text-lg">psychology</span>
-                <span class="text-sm font-bold">식사 성향 테스트</span>
+                <span class="text-sm font-bold">식사 성향 설정</span>
               </div>
               <p class="text-xs text-secondary leading-relaxed">
-                밥친구를 만날 때 어색함 없는 식사 템포와 대화 스타일 취향을 다시 테스트합니다.
+                밥친구를 만날 때 어색함 없는 식사 템포와 대화 스타일 취향을 설정하고 관리합니다.
               </p>
             </div>
             <button id="btn-mypage-survey" class="btn-secondary w-full py-2.5 rounded-full text-xs sm:text-sm font-semibold">
-              식사 성향 테스트하기
+              식사 성향 설정하기
             </button>
           </div>
         </div>

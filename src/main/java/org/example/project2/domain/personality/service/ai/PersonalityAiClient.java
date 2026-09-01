@@ -8,6 +8,8 @@ import java.util.Set;
 public interface PersonalityAiClient {
     Optional<Set<PersonalityTag>> suggestTags(String selfDescription);
 
+    Optional<java.util.List<String>> extractKeywords(String sourceText);
+
     Optional<float[]> embed(String sourceText);
 
     String embeddingModelName();

@@ -11,7 +11,7 @@ import {
   getLatestMatchResult,
   getPreferredRegion,
 } from '../matching/matching-api.js'
-import { getPersonalityProfile } from '../personality/personality-api.js'
+import { extractKeywordsFromText, getPersonalityProfile } from '../personality/personality-api.js'
 import { API_BASE_URL } from '../config/api.js'
 
 const TAG_GROUPS = [
@@ -154,6 +154,8 @@ export async function renderMatchingRequestPage(container) {
     selectedTags: new Set(),
     personalityGroupIndex: 0,
     desiredPersonalityText: '',
+    desiredExtractedKeywords: [],
+    isExtractingDesiredKeywords: false,
     currentRequest: null,
     currentProposal: null,
     latestResult: null,
@@ -1001,8 +1003,27 @@ export async function renderMatchingRequestPage(container) {
               <span class="text-sm font-bold text-brand-navy">희망 상대에게 바라는 점 <span class="font-normal text-slate-400">(선택)</span></span>
               <span id="desired-personality-count" class="text-xs font-semibold text-secondary">${state.desiredPersonalityText.length} / 300</span>
             </div>
-            <textarea class="matching-control mt-2 min-h-32 w-full resize-y rounded-xl px-3.5 py-3 text-sm leading-6" name="desiredPersonalityText" maxlength="300" aria-describedby="matching-personality-help" placeholder="예: 대화를 편하게 이어가되 식사 속도가 비슷한 분이면 좋아요.">${escapeHtml(state.desiredPersonalityText)}</textarea>
-            <span id="matching-personality-help" class="mt-1.5 block text-xs leading-5 text-secondary">입력한 내용은 매칭 기준으로만 사용하며, 상대에게 원문이 공개되지 않아요.</span>
+            <textarea class="matching-control mt-2 min-h-32 w-full resize-y rounded-xl px-3.5 py-3 text-sm leading-6" name="desiredPersonalityText" maxlength="300" aria-describedby="matching-personality-help" placeholder="예: 주말에 풋살이나 축구하는 걸 좋아하고, 인스타그램 맛집 탐방이나 사진 촬영을 즐기는 분이면 좋겠어요.">${escapeHtml(state.desiredPersonalityText)}</textarea>
+            
+            <div class="mt-3 flex flex-wrap items-center justify-between gap-2">
+              <span id="matching-personality-help" class="text-xs leading-5 text-secondary">입력한 내용은 매칭 기준으로만 사용하며, 상대에게 원문이 공개되지 않아요.</span>
+              <button id="btn-extract-desired-keywords" type="button" ${state.isExtractingDesiredKeywords ? 'disabled' : ''} class="inline-flex items-center gap-1.5 rounded-xl bg-primary-container px-3.5 py-2 text-xs font-extrabold text-white transition hover:bg-primary-container/90 shadow-xs disabled:cursor-not-allowed disabled:opacity-50">
+                <span class="material-symbols-outlined text-sm">auto_awesome</span>
+                <span>${state.isExtractingDesiredKeywords ? 'AI 키워드 추출 중…' : '✨ AI 희망 키워드 태그 추출하기'}</span>
+              </button>
+            </div>
+
+            ${state.desiredExtractedKeywords.length > 0 ? `
+              <div class="mt-3 rounded-2xl bg-primary-container/10 p-3.5 border border-primary-container/20 space-y-2">
+                <div class="flex items-center gap-1.5 text-xs font-extrabold text-primary">
+                  <span class="material-symbols-outlined text-sm">auto_awesome</span>
+                  <span>AI 추출 희망 키워드 태그</span>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  ${state.desiredExtractedKeywords.map(kw => `<span class="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-extrabold text-primary border border-primary-container/30 shadow-2xs">#${escapeHtml(kw)}</span>`).join('')}
+                </div>
+              </div>
+            ` : ''}
           </label>
 
           ${!state.personalityProfileCompleted ? `
@@ -1395,6 +1416,32 @@ export async function renderMatchingRequestPage(container) {
       })
     })
 
+    async function handleExtractDesiredKeywords() {
+      const text = (state.desiredPersonalityText || '').trim()
+      if (!text) {
+        showToast('희망 상대에게 바라는 점 텍스트를 먼저 입력해 주세요.')
+        return
+      }
+      state.isExtractingDesiredKeywords = true
+      render()
+      try {
+        const res = await extractKeywordsFromText({ selfDescription: text })
+        const keywordsList = res?.keywords || (Array.isArray(res) ? res : [])
+        state.desiredExtractedKeywords = keywordsList
+        if (state.desiredExtractedKeywords.length === 0) {
+          showToast('키워드 태그를 추출하지 못했습니다.')
+        } else {
+          showToast('✨ AI 희망 키워드 태그 추출이 완료되었습니다!')
+        }
+      } catch (err) {
+        showToast(err.message || 'AI 키워드 추출에 실패했습니다.')
+      } finally {
+        state.isExtractingDesiredKeywords = false
+        render()
+      }
+    }
+
+    container.querySelector('#btn-extract-desired-keywords')?.addEventListener('click', handleExtractDesiredKeywords)
     container.querySelector('#btn-cancel-matching')?.addEventListener('click', handleCancel)
     container.querySelector('#btn-expand-radius')?.addEventListener('click', handleExpandRadius)
     container.querySelector('#btn-cancel-radius-expansion')?.addEventListener('click', handleCancelRadiusExpansion)

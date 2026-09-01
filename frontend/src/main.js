@@ -431,6 +431,33 @@ function initCommonHeader() {
   const headerAuth = document.querySelector('#header-auth')
   if (!headerAuth) return
 
+  const brandHomeLink = document.querySelector('#brand-home-link')
+  if (brandHomeLink && !brandHomeLink.dataset.cleanupBound) {
+    brandHomeLink.dataset.cleanupBound = 'true'
+    brandHomeLink.addEventListener('click', async (event) => {
+      event.preventDefault()
+      if (sessionStorage.getItem('project2.isLoggedIn') !== 'true' || !getAccessToken()) {
+        window.location.assign('/')
+        return
+      }
+      if (brandHomeLink.dataset.cleanupPending === 'true') return
+      brandHomeLink.dataset.cleanupPending = 'true'
+      try {
+        const { cancelCurrentRealtimeMatchState } = await import('./matching/matching-api.js')
+        await cancelCurrentRealtimeMatchState()
+        window.location.assign('/')
+      } catch (error) {
+        if (error?.status === 404) {
+          window.location.assign('/')
+          return
+        }
+        showToast(error?.message || '진행 중인 매칭을 정리하지 못했습니다.', { type: 'error' })
+      } finally {
+        delete brandHomeLink.dataset.cleanupPending
+      }
+    })
+  }
+
   const isLoggedIn = sessionStorage.getItem('project2.isLoggedIn') === 'true'
 
   if (isLoggedIn) {

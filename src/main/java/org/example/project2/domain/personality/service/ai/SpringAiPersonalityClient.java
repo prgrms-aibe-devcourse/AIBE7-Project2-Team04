@@ -8,13 +8,17 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Component
 public class SpringAiPersonalityClient implements PersonalityAiClient {
     private static final int MAX_SUGGESTIONS = 5;
@@ -38,6 +42,12 @@ public class SpringAiPersonalityClient implements PersonalityAiClient {
         this.embeddingModelProvider = embeddingModelProvider;
         this.embeddingModelName = embeddingModelName;
     }
+
+    private static final String KEYWORD_PROMPT = """
+            사용자의 문장에서 핵심 키워드 태그를 최대 4개 추출하세요.
+            반드시 쉼표로 구분한 단어만 즉시 출력하고 서론, 설명, 마크다운은 절대 출력하지 마세요.
+            예시: 축구, 맛집, IT개발
+            """;
 
     @Override
     public Optional<Set<PersonalityTag>> suggestTags(String selfDescription) {
@@ -64,6 +74,49 @@ public class SpringAiPersonalityClient implements PersonalityAiClient {
         } catch (RuntimeException ignored) {
             return Optional.empty();
         }
+    }
+
+    @Override
+    public Optional<java.util.List<String>> extractKeywords(String sourceText) {
+        if (sourceText == null || sourceText.isBlank()) {
+            return Optional.of(java.util.List.of());
+        }
+        ChatModel chatModel = chatModelProvider.getIfAvailable();
+        if (chatModel != null) {
+            try {
+                String content = ChatClient.create(chatModel)
+                        .prompt()
+                        .system(KEYWORD_PROMPT)
+                        .user(sourceText)
+                        .call()
+                        .content();
+                java.util.List<String> keywords = parseKeywordContent(content);
+                if (!keywords.isEmpty()) {
+                    return Optional.of(keywords);
+                }
+            } catch (RuntimeException e) {
+                log.warn("AI 모델 키워드 추출 API 호출 실패: {}", e.getMessage());
+            }
+        }
+        // AI 모델 미설정 또는 호출 실패 시 단어 기반 Fallback
+        java.util.List<String> fallbackKeywords = Arrays.stream(sourceText.split("\\s+"))
+                .map(s -> s.replaceAll("[^가-힣a-zA-Z0-9_]", ""))
+                .filter(s -> s.length() >= 2)
+                .distinct()
+                .limit(4)
+                .toList();
+        return Optional.of(fallbackKeywords);
+    }
+
+    private java.util.List<String> parseKeywordContent(String content) {
+        if (content == null || content.isBlank()) {
+            return java.util.List.of();
+        }
+        return Arrays.stream(content.split("[,\\n]+"))
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .limit(5)
+                .toList();
     }
 
     @Override
