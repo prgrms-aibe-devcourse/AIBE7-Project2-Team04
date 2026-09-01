@@ -98,29 +98,43 @@ export async function renderMyPage(container) {
           </div>
         </div>
 
-        <!-- 민감 영역 (위치 동의 철회) -->
-        <div class="mt-8 border-t border-outline-variant/20 pt-6">
-          <h2 class="font-headline text-lg font-bold text-red-600 mb-2">개인정보 파기</h2>
-          <p class="text-xs text-secondary leading-relaxed mb-4">
-            위치 정보 이용 동의를 철회할 경우, 등록하신 선호 위치 데이터와 대기 중인 모든 실시간 매칭 요청이 즉시 영구 파기됩니다.
-          </p>
-          <button id="btn-mypage-revoke" class="px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-full text-xs sm:text-sm font-bold transition-colors flex items-center gap-1.5 w-full sm:w-auto justify-center">
-            <span class="material-symbols-outlined text-sm">no_accounts</span>
-            <span>위치동의 철회</span>
-          </button>
-        </div>
+        <!-- 계정 및 개인정보 관리 -->
+        <section class="mt-8 border-t border-outline-variant/20 pt-6" aria-labelledby="mypage-account-privacy-heading">
+          <div class="mb-4">
+            <h2 id="mypage-account-privacy-heading" class="font-headline text-lg font-bold text-brand-navy">계정 및 개인정보 관리</h2>
+            <p class="text-xs text-secondary mt-1">복구할 수 없는 작업이 포함되어 있으니 처리 전 내용을 확인해주세요.</p>
+          </div>
 
-        <!-- 계정 탈퇴 -->
-        <div class="mt-8 border-t border-outline-variant/20 pt-6">
-          <h2 class="font-headline text-lg font-bold text-red-600 mb-2">계정 탈퇴</h2>
-          <p class="text-xs text-secondary leading-relaxed mb-4">
-            탈퇴 시 회원 정보 및 서비스 이용 기록이 모두 파기되며, 이 작업은 되돌릴 수 없습니다.
-          </p>
-          <button id="btn-mypage-withdraw" class="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-full text-xs sm:text-sm font-bold transition-colors flex items-center gap-1.5 w-full sm:w-auto justify-center">
-            <span class="material-symbols-outlined text-sm">delete_forever</span>
-            <span>계정 탈퇴하기</span>
-          </button>
-        </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- 개인정보 파기 -->
+            <div class="bg-surface rounded-2xl p-5 border border-red-100 flex flex-col justify-between">
+              <div class="space-y-1.5 mb-4">
+                <h3 class="font-headline text-base font-bold text-red-600">개인정보 파기</h3>
+                <p class="text-xs text-secondary leading-relaxed">
+                  위치 정보 이용 동의를 철회하면 등록하신 선호 위치 데이터와 대기 중인 모든 실시간 매칭 요청이 즉시 영구 파기됩니다.
+                </p>
+              </div>
+              <button id="btn-mypage-revoke" class="px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-full text-xs sm:text-sm font-bold transition-colors flex items-center gap-1.5 w-full justify-center">
+                <span class="material-symbols-outlined text-sm">no_accounts</span>
+                <span>위치동의 철회</span>
+              </button>
+            </div>
+
+            <!-- 계정 탈퇴 -->
+            <div class="bg-surface rounded-2xl p-5 border border-red-100 flex flex-col justify-between">
+              <div class="space-y-1.5 mb-4">
+                <h3 class="font-headline text-base font-bold text-red-600">계정 탈퇴</h3>
+                <p class="text-xs text-secondary leading-relaxed">
+                  탈퇴 시 회원 정보 및 서비스 이용 기록이 모두 파기되며, 이 작업은 되돌릴 수 없습니다.
+                </p>
+              </div>
+              <button id="btn-mypage-withdraw" class="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-full text-xs sm:text-sm font-bold transition-colors flex items-center gap-1.5 w-full justify-center">
+                <span class="material-symbols-outlined text-sm">delete_forever</span>
+                <span>계정 탈퇴하기</span>
+              </button>
+            </div>
+          </div>
+        </section>
       </div>
     </main>
   `
