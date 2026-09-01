@@ -465,10 +465,10 @@ export async function renderPersonalitySurvey(container) {
                   <button
                     type="button"
                     data-tag="${tag.code}"
-                    aria-pressed="${isSelected}"
-                    class="survey-tag-badge inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold transition-all sm:text-sm ${
+                      aria-pressed="${isSelected}"
+                      class="survey-tag-badge inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold transition-all sm:text-sm ${
                       isSelected
-                        ? 'border-primary-container bg-primary-container text-white shadow-sm'
+                        ? 'is-selected border-primary-container text-brand-navy shadow-sm'
                         : 'border-slate-200 bg-white text-slate-700 hover:border-primary-container/40 hover:bg-brand-ivory'
                     }"
                   >
@@ -825,7 +825,6 @@ function renderCompletionView(container) {
         <div class="mx-auto inline-flex h-20 w-20 items-center justify-center rounded-[26px] bg-primary-container/10 text-primary-container shadow-soft">
           <span class="material-symbols-outlined text-5xl" aria-hidden="true">celebration</span>
         </div>
-        <p class="mt-6 text-xs font-extrabold uppercase tracking-[0.16em] text-primary-container">PROFILE READY</p>
         <h1 class="mt-2 font-headline text-2xl font-extrabold tracking-tight text-brand-navy sm:text-3xl">식사 스타일 설정 완료!</h1>
         <p class="mt-3 text-sm leading-relaxed text-secondary sm:text-base">
           선택한 식사 스타일과 선호 음식을 바탕으로<br class="hidden sm:inline" /> 나와 잘 맞는 밥친구를 찾아드릴게요.

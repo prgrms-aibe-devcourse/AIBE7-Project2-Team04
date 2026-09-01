@@ -559,6 +559,17 @@ select {
   transform: translateY(-2px);
 }
 
+.survey-tag-badge.is-selected {
+  border-color: #ff6b4a;
+  background: #fffaf7;
+  color: #1e2c4a;
+  box-shadow: 0 0 0 2px rgba(255, 107, 74, 0.12), 0 6px 16px rgba(255, 107, 74, 0.1);
+}
+
+.survey-tag-badge.is-selected .material-symbols-outlined {
+  color: #ff6b4a;
+}
+
 .survey-dim-card:focus-visible,
 .survey-food-card:focus-visible,
 .survey-tag-badge:focus-visible,
