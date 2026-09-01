@@ -12,7 +12,7 @@ export async function renderMyPage(container) {
   container.innerHTML = `
     <main class="max-w-4xl mx-auto px-margin-mobile md:px-margin-desktop py-12 flex-grow">
       <div class="bg-surface-container-lowest rounded-card p-6 md:p-8 shadow-soft border border-outline-variant/20 mb-8">
-        <div class="flex flex-col sm:flex-row items-center gap-6 border-b border-outline-variant/20 pb-6 mb-6">
+        <div class="relative flex flex-col sm:flex-row items-center gap-6 border-b border-outline-variant/20 pb-6 mb-6">
 
           <!-- 프로필 이미지 컨테이너 (카메라 아이콘 탑재) -->
           <div class="relative group">
@@ -125,6 +125,13 @@ export async function renderMyPage(container) {
     </main>
   `
 
+  document.querySelector('#mypage-user-email')?.insertAdjacentHTML('afterend', `
+    <div id="mypage-dasi-score" class="mt-3 sm:mt-0 sm:absolute sm:right-0 sm:top-1/2 sm:-translate-y-1/2 rounded-2xl bg-primary-container/10 border border-primary-container/20 px-5 py-3 text-center">
+      <p class="text-[11px] font-bold text-secondary">다시한끼 지수</p>
+      <p id="mypage-dasi-score-value" class="mt-1 text-xl font-extrabold text-primary">확인 중...</p>
+    </div>
+  `)
+
   let cachedUserId = null
   let cachedNickname = ''
 
@@ -149,6 +156,31 @@ export async function renderMyPage(container) {
   }
 
   await loadProfile()
+
+  const loadDasiHankkiScore = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/mypage/reviews`, { credentials: 'include' })
+      const body = await response.json()
+      const scoreElement = document.querySelector('#mypage-dasi-score-value')
+      if (!scoreElement || !body.success || !body.data) return
+
+      if (body.data.scoreStatus === 'AVAILABLE' && body.data.dasiHankkiScore != null) {
+        scoreElement.textContent = `${body.data.dasiHankkiScore}점`
+      } else {
+        scoreElement.textContent = body.data.scoreStatus === 'NO_REVIEWS'
+          ? '아직 후기가 없어요'
+          : '후기가 더 모이면 다시한끼 지수가 공개돼요'
+        scoreElement.classList.remove('text-xl')
+        scoreElement.classList.add('text-xs')
+      }
+    } catch (err) {
+      console.error('다시한끼 지수 로드 실패', err)
+      const scoreElement = document.querySelector('#mypage-dasi-score-value')
+      if (scoreElement) scoreElement.textContent = '-'
+    }
+  }
+
+  await loadDasiHankkiScore()
 
   let currentHistoryPage = 0
 
