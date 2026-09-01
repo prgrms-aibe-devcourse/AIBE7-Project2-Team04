@@ -63,6 +63,43 @@ public class PersonalityCompatibilityCalculator {
         );
     }
 
+    public PersonalityCompatibilityScore calculateWithList(
+            Set<PersonalityTag> desiredTags,
+            Set<PersonalityTag> candidateTags,
+            PersonalityEmbeddingVector desiredFreeTextEmbedding,
+            java.util.List<PersonalityEmbeddingVector> candidateEmbeddings
+    ) {
+        DesiredPersonalityTagMatchScore tagScore = tagScoreCalculator.calculate(desiredTags, candidateTags);
+        OptionalInt embeddingScore = calculateEmbeddingScoreFromList(
+                desiredFreeTextEmbedding,
+                candidateEmbeddings
+        );
+        if (!tagScore.available() && embeddingScore.isEmpty()) {
+            return PersonalityCompatibilityScore.unavailable(FORMULA_VERSION);
+        }
+
+        short finalScore;
+        if (tagScore.available() && embeddingScore.isPresent()) {
+            finalScore = weightedAverage(
+                    tagScore.score(), TAG_WEIGHT_IN_FINAL_SCORE,
+                    embeddingScore.getAsInt(), EMBEDDING_WEIGHT_IN_FINAL_SCORE
+            );
+        } else if (tagScore.available()) {
+            finalScore = tagScore.score();
+        } else {
+            finalScore = (short) embeddingScore.getAsInt();
+        }
+
+        return new PersonalityCompatibilityScore(
+                true,
+                finalScore,
+                tagScore.available() ? tagScore.score() : null,
+                embeddingScore.isPresent() ? (short) embeddingScore.getAsInt() : null,
+                tagScore.matchedTags(),
+                FORMULA_VERSION
+        );
+    }
+
     private OptionalInt calculateFreeTextEmbeddingScore(
             PersonalityEmbeddingVector desiredFreeTextEmbedding,
             PersonalityEmbeddingVector candidateSelfDescriptionEmbedding
@@ -91,9 +128,70 @@ public class PersonalityCompatibilityCalculator {
             return OptionalInt.empty();
         }
 
-        double cosineSimilarity = dotProduct / (Math.sqrt(desiredNorm) * Math.sqrt(candidateNorm));
-        double normalized = (Math.max(-1, Math.min(1, cosineSimilarity)) + 1) * 50;
-        return OptionalInt.of((int) Math.round(normalized));
+        double sim = dotProduct / (Math.sqrt(desiredNorm) * Math.sqrt(candidateNorm));
+        sim = Math.max(-1.0, Math.min(1.0, sim));
+
+        // 단어 세만틱 임베딩 공간 정밀 0~100점 스케일링 공식 (0~30점, 30~70점, 70~100점)
+        double scaledScore;
+        if (sim <= 0.20) {
+            scaledScore = Math.max(0, (sim / 0.20) * 30.0);
+        } else if (sim <= 0.50) {
+            scaledScore = 30.0 + ((sim - 0.20) / 0.30) * 40.0;
+        } else {
+            scaledScore = 70.0 + Math.min(1.0, (sim - 0.50) / 0.50) * 30.0;
+        }
+        return OptionalInt.of((int) Math.round(scaledScore));
+    }
+
+    public OptionalInt calculateEmbeddingScoreFromList(
+            PersonalityEmbeddingVector desiredFreeTextEmbedding,
+            java.util.List<PersonalityEmbeddingVector> candidateEmbeddings
+    ) {
+        if (desiredFreeTextEmbedding == null || candidateEmbeddings == null || candidateEmbeddings.isEmpty()) {
+            return OptionalInt.empty();
+        }
+        int maxScore = -1;
+        for (PersonalityEmbeddingVector candidateEmb : candidateEmbeddings) {
+            OptionalInt scoreOpt = calculateFreeTextEmbeddingScore(desiredFreeTextEmbedding, candidateEmb);
+            if (scoreOpt.isPresent()) {
+                maxScore = Math.max(maxScore, scoreOpt.getAsInt());
+            }
+        }
+        return maxScore >= 0 ? OptionalInt.of(maxScore) : OptionalInt.empty();
+    }
+
+    public OptionalInt calculateFullMatrixCrossScore(
+            java.util.List<PersonalityEmbeddingVector> desiredWordEmbeddings,
+            java.util.List<PersonalityEmbeddingVector> candidateWordEmbeddings
+    ) {
+        if (desiredWordEmbeddings == null || desiredWordEmbeddings.isEmpty()
+                || candidateWordEmbeddings == null || candidateWordEmbeddings.isEmpty()) {
+            return OptionalInt.empty();
+        }
+
+        double totalBestScoreSum = 0;
+        int validDesiredCount = 0;
+
+        for (PersonalityEmbeddingVector desiredEmb : desiredWordEmbeddings) {
+            int bestScoreForWord = -1;
+            for (PersonalityEmbeddingVector candidateEmb : candidateWordEmbeddings) {
+                OptionalInt scoreOpt = calculateFreeTextEmbeddingScore(desiredEmb, candidateEmb);
+                if (scoreOpt.isPresent()) {
+                    bestScoreForWord = Math.max(bestScoreForWord, scoreOpt.getAsInt());
+                }
+            }
+            if (bestScoreForWord >= 0) {
+                totalBestScoreSum += bestScoreForWord;
+                validDesiredCount++;
+            }
+        }
+
+        if (validDesiredCount == 0) {
+            return OptionalInt.empty();
+        }
+
+        int finalScore = (int) Math.round(totalBestScoreSum / validDesiredCount);
+        return OptionalInt.of(finalScore);
     }
 
     private short weightedAverage(int firstScore, int firstWeight, int secondScore, int secondWeight) {

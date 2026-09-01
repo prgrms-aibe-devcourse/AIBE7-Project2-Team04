@@ -23,8 +23,12 @@ public class DesiredPersonalityTagScoreCalculator {
             return DesiredPersonalityTagMatchScore.unavailable();
         }
 
-        Set<PersonalityTag> matchedTags = EnumSet.copyOf(desiredTags);
-        matchedTags.retainAll(candidateStyleTags);
+        Set<PersonalityTag> matchedTags = EnumSet.noneOf(PersonalityTag.class);
+        for (PersonalityTag tag : desiredTags) {
+            if (candidateStyleTags.contains(tag)) {
+                matchedTags.add(tag);
+            }
+        }
 
         short score = (short) Math.round((matchedTags.size() * 100.0) / desiredTags.size());
         return new DesiredPersonalityTagMatchScore(true, score, matchedTags);
