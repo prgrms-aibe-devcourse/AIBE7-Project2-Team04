@@ -38,18 +38,14 @@ public class PersonalityEmbeddingEventHandler {
         }
         UserPersonalityProfile profile = optionalProfile.get();
         if (!profile.isAiAnalysisConsent() || profile.getSelfDescription() == null) {
-            embeddingRepository.deleteById(event.userId());
+            embeddingRepository.deleteAllByProfileUserId(event.userId());
             return;
         }
         if (!event.sourceText().equals(profile.getSelfDescription())) {
             return;
         }
 
-        PersonalityEmbeddingDocument document = documentBuilder.build(event.sourceText());
-        Optional<float[]> optionalEmbedding = aiClient.embed(document.sourceText());
-        if (optionalEmbedding.isEmpty() || optionalEmbedding.get().length != EMBEDDING_DIMENSIONS) {
-            return;
-        }
+        java.util.List<String> keywords = aiClient.extractKeywords(event.sourceText()).orElse(java.util.List.of());
 
         // 외부 AI 호출 중 프로필이 수정·삭제될 수 있으므로 저장 직전에 다시 확인합니다.
         Optional<UserPersonalityProfile> latestProfile = profileRepository.findByUserId(event.userId());
@@ -59,17 +55,65 @@ public class PersonalityEmbeddingEventHandler {
             return;
         }
 
-        float[] vector = optionalEmbedding.get();
-        UserPersonalityEmbedding embedding = embeddingRepository.findById(event.userId())
-                .orElseGet(() -> UserPersonalityEmbedding.builder()
-                        .profile(profile)
+        UserPersonalityProfile targetProfile = latestProfile.get();
+        if (!keywords.isEmpty()) {
+            java.util.Set<org.example.project2.domain.personality.entity.PersonalityTag> preservedTags =
+                    targetProfile.getStyleTags() != null
+                            ? new java.util.HashSet<>(targetProfile.getStyleTags())
+                            : java.util.Set.of();
+            targetProfile.replace(
+                    targetProfile.getQuestionnaireVersion(),
+                    targetProfile.getConversationLevel(),
+                    targetProfile.getMealPace(),
+                    targetProfile.getPlanningStyle(),
+                    targetProfile.getNoveltyPreference(),
+                    preservedTags,
+                    targetProfile.getSelfDescription(),
+                    targetProfile.isAiAnalysisConsent(),
+                    targetProfile.getCompletedAt(),
+                    keywords
+            );
+            profileRepository.saveAndFlush(targetProfile);
+        }
+
+        // 1NF 원자화: 기존 해당 유저의 임베딩 레코드 전체 삭제 후 단어별 1:1 레코드 독립 INSERT
+        embeddingRepository.deleteAllByProfileUserId(event.userId());
+
+        java.util.List<UserPersonalityEmbedding> newEmbeddings = new java.util.ArrayList<>();
+        java.time.Instant now = java.time.Instant.now();
+
+        if (!keywords.isEmpty()) {
+            for (String word : keywords) {
+                if (word == null || word.isBlank()) continue;
+                String cleanWord = word.strip();
+                Optional<float[]> wordEmb = aiClient.embed(cleanWord);
+                if (wordEmb.isPresent() && wordEmb.get().length == EMBEDDING_DIMENSIONS) {
+                    newEmbeddings.add(UserPersonalityEmbedding.builder()
+                            .profile(targetProfile)
+                            .sourceText(cleanWord)
+                            .embedding(wordEmb.get())
+                            .modelName(aiClient.embeddingModelName())
+                            .sourceVersion(PersonalityTextEmbeddingDocumentBuilder.DOCUMENT_VERSION)
+                            .generatedAt(now)
+                            .build());
+                }
+            }
+        } else {
+            Optional<float[]> rawEmb = aiClient.embed(event.sourceText());
+            if (rawEmb.isPresent() && rawEmb.get().length == EMBEDDING_DIMENSIONS) {
+                newEmbeddings.add(UserPersonalityEmbedding.builder()
+                        .profile(targetProfile)
+                        .sourceText(event.sourceText().strip())
+                        .embedding(rawEmb.get())
+                        .modelName(aiClient.embeddingModelName())
+                        .sourceVersion(PersonalityTextEmbeddingDocumentBuilder.DOCUMENT_VERSION)
+                        .generatedAt(now)
                         .build());
-        embedding.replace(
-                document.sourceText(),
-                vector,
-                aiClient.embeddingModelName(),
-                document.sourceVersion()
-        );
-        embeddingRepository.save(embedding);
+            }
+        }
+
+        if (!newEmbeddings.isEmpty()) {
+            embeddingRepository.saveAll(newEmbeddings);
+        }
     }
 }

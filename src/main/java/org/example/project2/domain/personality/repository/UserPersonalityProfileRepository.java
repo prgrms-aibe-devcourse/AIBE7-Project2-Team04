@@ -14,8 +14,12 @@ import java.util.UUID;
 
 public interface UserPersonalityProfileRepository extends JpaRepository<UserPersonalityProfile, UUID> {
 
-    @EntityGraph(attributePaths = "styleTags")
+    @EntityGraph(attributePaths = {"styleTags", "aiKeywords"})
     Optional<UserPersonalityProfile> findByUserId(UUID userId);
+
+    @Override
+    @EntityGraph(attributePaths = {"styleTags", "aiKeywords"})
+    Optional<UserPersonalityProfile> findById(UUID id);
 
     @Query("""
             SELECT DISTINCT profile

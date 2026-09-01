@@ -62,7 +62,9 @@ public class PersonalityEmbeddingMigrationService {
             if (userId == null) {
                 continue;
             }
-            UserPersonalityEmbedding existing = embeddingRepository.findById(userId)
+            UserPersonalityEmbedding existing = embeddingRepository.findAllByProfileUserId(userId)
+                    .stream()
+                    .findFirst()
                     .orElse(null);
             if (isCurrent(existing, sourceText, currentModel)) {
                 continue;

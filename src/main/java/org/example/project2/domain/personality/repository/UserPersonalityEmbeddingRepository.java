@@ -8,8 +8,12 @@ import org.springframework.data.jpa.repository.Query;
 import java.util.List;
 import java.util.UUID;
 
-public interface UserPersonalityEmbeddingRepository extends JpaRepository<UserPersonalityEmbedding, UUID> {
+public interface UserPersonalityEmbeddingRepository extends JpaRepository<UserPersonalityEmbedding, Long> {
 
-    @Query("SELECT embedding FROM UserPersonalityEmbedding embedding WHERE embedding.userId IN :userIds")
-    List<UserPersonalityEmbedding> findAllByUserIdIn(@Param("userIds") List<UUID> userIds);
+    List<UserPersonalityEmbedding> findAllByProfileUserId(UUID userId);
+
+    void deleteAllByProfileUserId(UUID userId);
+
+    @Query("SELECT embedding FROM UserPersonalityEmbedding embedding WHERE embedding.profile.userId IN :userIds")
+    List<UserPersonalityEmbedding> findAllByProfileUserIdIn(@Param("userIds") List<UUID> userIds);
 }

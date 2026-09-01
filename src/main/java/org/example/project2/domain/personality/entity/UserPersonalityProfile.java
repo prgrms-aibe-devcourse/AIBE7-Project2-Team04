@@ -74,7 +74,7 @@ public class UserPersonalityProfile {
     private short noveltyPreference;
 
     @Builder.Default
-    @ElementCollection(fetch = FetchType.LAZY)
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(
             name = "user_personality_tags",
             joinColumns = @JoinColumn(name = "user_id", nullable = false),
@@ -88,6 +88,17 @@ public class UserPersonalityProfile {
     @Column(name = "tag_code", nullable = false, length = 50)
     @OnDelete(action = OnDeleteAction.CASCADE)
     private Set<PersonalityTag> styleTags = new HashSet<>();
+
+    @Builder.Default
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(
+            name = "user_personality_ai_keywords",
+            joinColumns = @JoinColumn(name = "user_id", nullable = false),
+            indexes = @Index(name = "idx_user_personality_ai_keywords_user", columnList = "user_id")
+    )
+    @Column(name = "keyword", nullable = false, length = 100)
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    private Set<String> aiKeywords = new HashSet<>();
 
     @Column(name = "self_description", length = 300)
     private String selfDescription;
@@ -112,17 +123,32 @@ public class UserPersonalityProfile {
             Set<PersonalityTag> styleTags,
             String selfDescription,
             boolean aiAnalysisConsent,
-            Instant completedAt
+            Instant completedAt,
+            java.util.Collection<String> aiKeywords
     ) {
         this.questionnaireVersion = questionnaireVersion;
         this.conversationLevel = conversationLevel;
         this.mealPace = mealPace;
         this.planningStyle = planningStyle;
         this.noveltyPreference = noveltyPreference;
-        this.styleTags.clear();
-        this.styleTags.addAll(styleTags);
+        if (this.styleTags == null) {
+            this.styleTags = new java.util.HashSet<>();
+        } else {
+            this.styleTags.clear();
+        }
+        if (styleTags != null && !styleTags.isEmpty()) {
+            this.styleTags.addAll(styleTags);
+        }
         this.aiAnalysisConsent = aiAnalysisConsent;
         this.selfDescription = aiAnalysisConsent ? selfDescription : null;
         this.completedAt = completedAt;
+        if (this.aiKeywords == null) {
+            this.aiKeywords = new java.util.HashSet<>();
+        } else {
+            this.aiKeywords.clear();
+        }
+        if (aiAnalysisConsent && aiKeywords != null && !aiKeywords.isEmpty()) {
+            this.aiKeywords.addAll(aiKeywords);
+        }
     }
 }
