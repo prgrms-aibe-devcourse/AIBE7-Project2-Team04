@@ -315,15 +315,15 @@ body.matching-time-modal-open {
 }
 
 .matching-page .matching-food-option.is-selected {
-  border-color: #ff6b4a;
-  background: #ff6b4a !important;
-  color: #ffffff;
-  box-shadow: 0 8px 18px rgba(255, 107, 74, 0.2);
+  border-color: rgba(255, 107, 74, 0.62);
+  background: rgba(255, 107, 74, 0.14) !important;
+  color: #8f2711;
+  box-shadow: 0 8px 18px rgba(255, 107, 74, 0.12);
 }
 
 .matching-page .matching-food-option.is-selected:hover,
 .matching-page .matching-food-option.is-selected:active {
-  background: #ff6b4a !important;
+  background: rgba(255, 107, 74, 0.2) !important;
 }
 
 .matching-page .matching-food-option-icon {
@@ -339,8 +339,8 @@ body.matching-time-modal-open {
 }
 
 .matching-page .matching-food-option.is-selected .matching-food-option-icon {
-  background: rgba(255, 255, 255, 0.2);
-  color: #ffffff;
+  background: rgba(255, 107, 74, 0.18);
+  color: #ae3115;
 }
 
 .matching-page .matching-food-option-label {
@@ -361,7 +361,7 @@ body.matching-time-modal-open {
 }
 
 .matching-page .matching-food-option.is-selected .matching-food-option-check {
-  color: #ffffff;
+  color: #ae3115;
 }
 
 @media (min-width: 640px) {
@@ -519,15 +519,15 @@ body.matching-time-modal-open {
 }
 
 .matching-page .matching-personality-option.is-selected {
-  border-color: #ff6b4a;
-  background: #ff6b4a !important;
-  color: #ffffff;
-  box-shadow: 0 8px 18px rgba(255, 107, 74, 0.2);
+  border-color: rgba(255, 107, 74, 0.62);
+  background: rgba(255, 107, 74, 0.14) !important;
+  color: #8f2711;
+  box-shadow: 0 8px 18px rgba(255, 107, 74, 0.12);
 }
 
 .matching-page .matching-personality-option.is-selected:hover,
 .matching-page .matching-personality-option.is-selected:active {
-  background: #ff6b4a !important;
+  background: rgba(255, 107, 74, 0.2) !important;
 }
 
 .matching-page .matching-personality-option-icon {
@@ -543,8 +543,8 @@ body.matching-time-modal-open {
 }
 
 .matching-page .matching-personality-option.is-selected .matching-personality-option-icon {
-  background: rgba(255, 255, 255, 0.2);
-  color: #ffffff;
+  background: rgba(255, 107, 74, 0.18);
+  color: #ae3115;
 }
 
 .matching-page .matching-personality-option-copy {
@@ -571,7 +571,7 @@ body.matching-time-modal-open {
 }
 
 .matching-page .matching-personality-option.is-selected .matching-personality-option-description {
-  color: rgba(255, 255, 255, 0.78);
+  color: rgba(143, 39, 17, 0.72);
 }
 
 .matching-page .matching-personality-option-check {
@@ -580,7 +580,7 @@ body.matching-time-modal-open {
 }
 
 .matching-page .matching-personality-option.is-selected .matching-personality-option-check {
-  color: #ffffff;
+  color: #ae3115;
 }
 
 @media (min-width: 640px) {
