@@ -6,25 +6,39 @@ import { API_BASE_URL } from '../config/api.js'
 import './chat.css'
 
 const FOOD_CATEGORY_DETAILS = {
-  KOREAN: { label: '한식', groupCode: 'FD6', categoryKeywords: ['한식'] },
-  JAPANESE: { label: '일식', groupCode: 'FD6', categoryKeywords: ['일식', '일본음식'] },
-  CHINESE: { label: '중식', groupCode: 'FD6', categoryKeywords: ['중식', '중국요리'] },
-  WESTERN: { label: '양식', groupCode: 'FD6', categoryKeywords: ['양식'] },
+  KOREAN: { label: '한식', groupCode: 'FD6', searchKeywords: ['한식'], categoryKeywords: ['한식'] },
+  JAPANESE: {
+    label: '일식', groupCode: 'FD6', searchKeywords: ['일식', '일본음식'], categoryKeywords: ['일식', '일본음식'],
+  },
+  CHINESE: {
+    label: '중식', groupCode: 'FD6', searchKeywords: ['중식', '중국요리'], categoryKeywords: ['중식', '중국요리'],
+  },
+  WESTERN: {
+    label: '양식',
+    groupCode: 'FD6',
+    searchKeywords: ['양식', '이탈리안', '스테이크'],
+    categoryKeywords: ['양식', '이탈리안', '프랑스음식', '스테이크,립', '패밀리레스토랑'],
+  },
   SOUTHEAST_ASIAN: {
     label: '동남아 음식',
     groupCode: 'FD6',
+    searchKeywords: ['동남아 음식', '베트남 음식', '태국 음식', '인도 음식'],
     categoryKeywords: ['동남아음식', '아시아음식', '베트남음식', '태국음식', '인도음식'],
   },
-  SNACK: { label: '분식', groupCode: 'FD6', categoryKeywords: ['분식'] },
-  FAST_FOOD: { label: '패스트푸드', groupCode: 'FD6', categoryKeywords: ['패스트푸드'] },
-  CAFE_DESSERT: { label: '카페·디저트', groupCode: 'CE7', categoryKeywords: [] },
+  SNACK: { label: '분식', groupCode: 'FD6', searchKeywords: ['분식'], categoryKeywords: ['분식'] },
+  FAST_FOOD: {
+    label: '패스트푸드', groupCode: 'FD6', searchKeywords: ['패스트푸드'], categoryKeywords: ['패스트푸드'],
+  },
+  CAFE_DESSERT: {
+    label: '카페·디저트', groupCode: 'CE7', searchKeywords: ['카페', '디저트'], categoryKeywords: ['카페'],
+  },
 }
 
 const MAX_RESTAURANT_SEARCH_PAGES = 3
 const MAX_DISPLAYED_RESTAURANTS = 10
+const MAX_RESTAURANTS_PER_CATEGORY = 5
 const PRIMARY_RESTAURANT_SEARCH_RADIUS_METERS = 1500
 const EXPANDED_RESTAURANT_SEARCH_RADIUS_METERS = 3000
-const MIN_RESTAURANT_CANDIDATES_BEFORE_EXPANSION = 8
 
 /**
  * 마주한끼 테마의 1:1 채팅 페이지
@@ -600,21 +614,19 @@ export function renderChatPage(container) {
     try {
       let appliedSearchRadius = PRIMARY_RESTAURANT_SEARCH_RADIUS_METERS
       let results = await searchRestaurantCandidates(searches, center, appliedSearchRadius)
-      let mergedCandidates = mergePlaceCandidates(results.flat())
 
-      if (mergedCandidates.length < MIN_RESTAURANT_CANDIDATES_BEFORE_EXPANSION) {
+      if (hasInsufficientCategoryCandidates(results)) {
         appliedSearchRadius = EXPANDED_RESTAURANT_SEARCH_RADIUS_METERS
         results = await searchRestaurantCandidates(searches, center, appliedSearchRadius)
-        mergedCandidates = mergePlaceCandidates(results.flat())
       }
 
-      const candidates = rankPlaceCandidates(
-        mergedCandidates,
+      const candidates = selectRestaurantCandidates(
+        results,
         mine,
         partner,
         midpoint,
         appliedSearchRadius,
-      ).slice(0, MAX_DISPLAYED_RESTAURANTS)
+      )
       if (!candidates.length) {
         showRestaurantStatus('반경 3km 안에서 식당 후보를 찾지 못했어요.', true)
         return
@@ -640,11 +652,26 @@ export function renderChatPage(container) {
   function searchRestaurantCandidates(searches, center, searchRadius) {
     return Promise.all(
       searches.map(search => searchCategoryPlaces(search, center, searchRadius)
-        .then(places => places.map(place => ({ place, owners: search.owners })))),
+        .then(places => ({
+          search,
+          entries: places.map(place => ({ place, owners: search.owners })),
+        }))),
     )
   }
 
-  function searchCategoryPlaces(category, location, searchRadius) {
+  async function searchCategoryPlaces(category, location, searchRadius) {
+    const keywordResults = await Promise.all(
+      category.searchKeywords.map(keyword => searchKeywordPlaces(category, keyword, location, searchRadius)),
+    )
+    const placesById = new Map()
+    keywordResults.flat().forEach(place => {
+      const placeKey = place.id || `${place.x}:${place.y}:${place.place_name}`
+      if (!placesById.has(placeKey)) placesById.set(placeKey, place)
+    })
+    return Array.from(placesById.values())
+  }
+
+  function searchKeywordPlaces(category, keyword, location, searchRadius) {
     return new Promise((resolve, reject) => {
       const places = new window.kakao.maps.services.Places()
       const matchedPlaces = []
@@ -678,13 +705,44 @@ export function renderChatPage(container) {
         reject(new Error('장소 검색에 실패했습니다.'))
       }
 
-      places.categorySearch(category.groupCode, handleResult, {
+      places.keywordSearch(keyword, handleResult, {
         location,
         radius: searchRadius,
         size: 15,
+        category_group_code: category.groupCode,
         sort: window.kakao.maps.services.SortBy.ACCURACY,
       })
     })
+  }
+
+  function hasInsufficientCategoryCandidates(results) {
+    return results.some(result => {
+      const targetCount = result.search.owners.length > 1
+        ? MAX_DISPLAYED_RESTAURANTS
+        : MAX_RESTAURANTS_PER_CATEGORY
+      return result.entries.length < targetCount
+    })
+  }
+
+  function selectRestaurantCandidates(results, mine, partner, midpoint, searchRadius) {
+    const perCategoryLimit = results.length === 1
+      ? MAX_DISPLAYED_RESTAURANTS
+      : MAX_RESTAURANTS_PER_CATEGORY
+    const selectedEntries = results.flatMap(result => rankPlaceCandidates(
+      result.entries,
+      mine,
+      partner,
+      midpoint,
+      searchRadius,
+    ).slice(0, perCategoryLimit))
+
+    return rankPlaceCandidates(
+      mergePlaceCandidates(selectedEntries),
+      mine,
+      partner,
+      midpoint,
+      searchRadius,
+    ).slice(0, MAX_DISPLAYED_RESTAURANTS)
   }
 
   function matchesFoodCategory(place, category) {
