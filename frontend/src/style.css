@@ -48,6 +48,76 @@
   box-sizing: border-box;
 }
 
+/* Google Material Symbols 폰트 로드 시 크기/너비/위치 튀는 현상 차단 */
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: inherit;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle !important;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'liga';
+  width: 1em !important;
+  height: 1em !important;
+  max-width: 1em !important;
+  max-height: 1em !important;
+  overflow: hidden !important;
+  flex-shrink: 0 !important;
+  box-sizing: content-box;
+}
+
+/* Tailwind 아이콘 크기 클래스가 구글 폰트 24px 디폴트에 밀려 튀는 현상 강제 차단 */
+.text-6xl.material-symbols-outlined,
+.text-6xl > .material-symbols-outlined {
+  font-size: 3.75rem !important;
+}
+.text-5xl.material-symbols-outlined,
+.text-5xl > .material-symbols-outlined {
+  font-size: 3rem !important;
+}
+.text-4xl.material-symbols-outlined,
+.text-4xl > .material-symbols-outlined {
+  font-size: 2.25rem !important;
+}
+.text-3xl.material-symbols-outlined,
+.text-3xl > .material-symbols-outlined {
+  font-size: 1.875rem !important;
+}
+.text-2xl.material-symbols-outlined,
+.text-2xl > .material-symbols-outlined {
+  font-size: 1.5rem !important;
+}
+.text-xl.material-symbols-outlined,
+.text-xl > .material-symbols-outlined {
+  font-size: 1.25rem !important;
+}
+.text-lg.material-symbols-outlined,
+.text-lg > .material-symbols-outlined {
+  font-size: 1.125rem !important;
+}
+.text-base.material-symbols-outlined,
+.text-base > .material-symbols-outlined {
+  font-size: 1rem !important;
+}
+.text-sm.material-symbols-outlined,
+.text-sm > .material-symbols-outlined {
+  font-size: 0.875rem !important;
+}
+.text-xs.material-symbols-outlined,
+.text-xs > .material-symbols-outlined {
+  font-size: 0.75rem !important;
+}
+
 body {
   min-width: 320px;
   min-height: 100vh;
