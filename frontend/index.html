@@ -477,8 +477,11 @@
                 id="login-password"
                 required
                 placeholder="비밀번호를 입력하세요"
-                class="w-full bg-surface border border-outline-variant/40 rounded-xl py-2.5 pl-9 pr-3 text-sm focus:ring-2 focus:ring-primary-container focus:border-primary-container outline-none"
+                class="w-full bg-surface border border-outline-variant/40 rounded-xl py-2.5 pl-9 pr-10 text-sm focus:ring-2 focus:ring-primary-container focus:border-primary-container outline-none"
               />
+              <button type="button" class="btn-toggle-password-visibility absolute right-3 top-1/2 -translate-y-1/2 text-secondary hover:text-primary transition-colors focus:outline-none" data-target="login-password" aria-label="비밀번호 표시/숨기기">
+                <span class="material-symbols-outlined text-lg select-none">visibility_off</span>
+              </button>
             </div>
           </div>
 
@@ -538,8 +541,11 @@
                 maxlength="100"
                 autocomplete="new-password"
                 placeholder="영문, 숫자, 특수기호 포함 8자 이상"
-                class="w-full bg-surface border border-outline-variant/40 rounded-xl py-2.5 pl-9 pr-3 text-sm focus:ring-2 focus:ring-primary-container focus:border-primary-container outline-none"
+                class="w-full bg-surface border border-outline-variant/40 rounded-xl py-2.5 pl-9 pr-10 text-sm focus:ring-2 focus:ring-primary-container focus:border-primary-container outline-none"
               />
+              <button type="button" class="btn-toggle-password-visibility absolute right-3 top-1/2 -translate-y-1/2 text-secondary hover:text-primary transition-colors focus:outline-none" data-target="signup-password" aria-label="비밀번호 표시/숨기기">
+                <span class="material-symbols-outlined text-lg select-none">visibility_off</span>
+              </button>
             </div>
             <p class="mt-1 text-[11px] text-slate-400">영문, 숫자, 특수기호를 각각 1자 이상 포함해 주세요.</p>
           </div>
@@ -556,8 +562,11 @@
                 maxlength="100"
                 autocomplete="new-password"
                 placeholder="비밀번호를 다시 입력하세요"
-                class="w-full bg-surface border border-outline-variant/40 rounded-xl py-2.5 pl-9 pr-3 text-sm focus:ring-2 focus:ring-primary-container focus:border-primary-container outline-none"
+                class="w-full bg-surface border border-outline-variant/40 rounded-xl py-2.5 pl-9 pr-10 text-sm focus:ring-2 focus:ring-primary-container focus:border-primary-container outline-none"
               />
+              <button type="button" class="btn-toggle-password-visibility absolute right-3 top-1/2 -translate-y-1/2 text-secondary hover:text-primary transition-colors focus:outline-none" data-target="signup-password-confirm" aria-label="비밀번호 표시/숨기기">
+                <span class="material-symbols-outlined text-lg select-none">visibility_off</span>
+              </button>
             </div>
           </div>
 

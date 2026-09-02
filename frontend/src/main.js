@@ -57,6 +57,28 @@ export function showToast(message, { type = 'info', duration = 3500 } = {}) {
   window.setTimeout(dismiss, duration)
 }
 
+export async function checkPersonalityProfileCompleted() {
+  const token = getAccessToken()
+  if (!token) return true
+  try {
+    const { getPersonalityProfile } = await import('./personality/personality-api.js')
+    const profile = await getPersonalityProfile()
+    if (
+      !profile ||
+      profile.onboardingStatus !== 'COMPLETED' ||
+      !Array.isArray(profile.styleTags) ||
+      profile.styleTags.length === 0 ||
+      !Array.isArray(profile.aiKeywords) ||
+      profile.aiKeywords.length === 0
+    ) {
+      return false
+    }
+    return true
+  } catch {
+    return false
+  }
+}
+
 // 행정구역 데이터 로드 (Backend API → regionTree 구성)
 const loadRegions = async () => {
   try {
@@ -145,37 +167,51 @@ const routeApp = async () => {
 
     if (path === '/profile/setup') {
       renderProfileSetup(app)
-    } else if (path === '/map') {
-      await regionsPromise // 지도 관련 페이지 진입 시에만 데이터를 기다림
-      if (!isCurrentRoute()) return
-      if (params.get('mode') === 'preferred') {
-        await renderPreferredRegionPage(app, isCurrentRoute)
-      } else {
-        await renderMatchMapPage(app, isCurrentRoute)
-      }
-    } else if (path === '/personality/survey') {
-      renderPersonalitySurvey(app)
-    } else if (path === '/chat') {
-      renderChatPage(app)
-    } else if (path === '/matching/request') {
-      await regionsPromise // 매칭 요청 페이지 진입 시에만 데이터를 기다림
-      await renderMatchingRequestPage(app)
-    } else if (path === '/mypage') {
-      const { renderMyPage } = await import('./pages/mypage.js')
-      if (!isCurrentRoute()) return
-      await renderMyPage(app)
-    } else if (path === '/admin') {
-      const { renderAdminPage } = await import('./pages/admin.js')
-      if (!isCurrentRoute()) return
-      await renderAdminPage(app)
-    } else if (path === '/review') {
-      const { renderReviewPage } = await import('./pages/review.js')
-      if (!isCurrentRoute()) return
-      await renderReviewPage(app)
     } else {
-      // 기본 메인 랜딩 페이지
-      initLandingPage()
-      showPendingLoginMessage()
+      if (sessionStorage.getItem('project2.isLoggedIn') === 'true' && getAccessToken()) {
+        if (path !== '/personality/survey') {
+          const isCompleted = await checkPersonalityProfileCompleted()
+          if (!isCompleted) {
+            alert('식사성향설정을 먼저 작성해주세요')
+            navigateTo('/personality/survey')
+            return
+          }
+        }
+      }
+
+      if (path === '/map' || path === '/matching/request') {
+        await regionsPromise // 지도/매칭 관련 페이지 진입 시에만 데이터를 기다림
+        if (!isCurrentRoute()) return
+        if (path === '/map') {
+          if (params.get('mode') === 'preferred') {
+            await renderPreferredRegionPage(app, isCurrentRoute)
+          } else {
+            await renderMatchMapPage(app, isCurrentRoute)
+          }
+        } else {
+          await renderMatchingRequestPage(app)
+        }
+      } else if (path === '/personality/survey') {
+        renderPersonalitySurvey(app)
+      } else if (path === '/chat') {
+        renderChatPage(app)
+      } else if (path === '/mypage') {
+        const { renderMyPage } = await import('./pages/mypage.js')
+        if (!isCurrentRoute()) return
+        await renderMyPage(app)
+      } else if (path === '/admin') {
+        const { renderAdminPage } = await import('./pages/admin.js')
+        if (!isCurrentRoute()) return
+        await renderAdminPage(app)
+      } else if (path === '/review') {
+        const { renderReviewPage } = await import('./pages/review.js')
+        if (!isCurrentRoute()) return
+        await renderReviewPage(app)
+      } else {
+        // 기본 메인 랜딩 페이지
+        initLandingPage()
+        showPendingLoginMessage()
+      }
     }
     
     // 헤더 상태 동기화 (모든 SPA 페이지 공통 적용)
@@ -243,6 +279,16 @@ function initLandingPage() {
     }
   }
 
+  const resetPasswordToggles = () => {
+    document.querySelectorAll('.btn-toggle-password-visibility').forEach((btn) => {
+      const targetId = btn.getAttribute('data-target')
+      const input = document.getElementById(targetId)
+      const icon = btn.querySelector('.material-symbols-outlined')
+      if (input) input.type = 'password'
+      if (icon) icon.textContent = 'visibility_off'
+    })
+  }
+
   const closeAuthModal = () => {
     if (authModal) {
       authModal.classList.remove('is-open')
@@ -253,6 +299,7 @@ function initLandingPage() {
     }
     if (loginErrorMsg) loginErrorMsg.style.display = 'none'
     if (signupErrorMsg) signupErrorMsg.style.display = 'none'
+    resetPasswordToggles()
   }
 
   const showLoginForm = () => {
@@ -261,6 +308,7 @@ function initLandingPage() {
     if (modalTitle) modalTitle.textContent = '마주한끼 시작하기'
     if (modalDesc) modalDesc.textContent = '혼밥 말고 따뜻한 한 끼를 함께할 친구를 만나보세요.'
     if (loginErrorMsg) loginErrorMsg.style.display = 'none'
+    resetPasswordToggles()
   }
 
   const showSignupForm = () => {
@@ -269,6 +317,7 @@ function initLandingPage() {
     if (modalTitle) modalTitle.textContent = '이메일 회원가입'
     if (modalDesc) modalDesc.textContent = '간단한 가입으로 나만의 1:1 밥친구를 찾아보세요.'
     if (signupErrorMsg) signupErrorMsg.style.display = 'none'
+    resetPasswordToggles()
   }
 
   // 모달 닫기
@@ -282,6 +331,23 @@ function initLandingPage() {
   // 로그인 ↔ 회원가입 전환
   btnToggleSignup?.addEventListener('click', showSignupForm)
   btnToggleLogin?.addEventListener('click', showLoginForm)
+
+  // 비밀번호 숨기기/보이기 토글
+  document.querySelectorAll('.btn-toggle-password-visibility').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.getAttribute('data-target')
+      const input = document.getElementById(targetId)
+      const icon = btn.querySelector('.material-symbols-outlined')
+      if (!input) return
+      if (input.type === 'password') {
+        input.type = 'text'
+        if (icon) icon.textContent = 'visibility'
+      } else {
+        input.type = 'password'
+        if (icon) icon.textContent = 'visibility_off'
+      }
+    })
+  })
 
   // 소셜 로그인
   btnModalKakao?.addEventListener('click', startKakaoLogin)
@@ -359,9 +425,15 @@ function initLandingPage() {
   })
 
   // 히어로 매칭 시작 버튼
-  const handleMatchStart = () => {
+  const handleMatchStart = async () => {
     if (!token) {
       openAuthModal(false)
+      return
+    }
+    const isCompleted = await checkPersonalityProfileCompleted()
+    if (!isCompleted) {
+      alert('식사성향설정을 먼저 작성해주세요')
+      navigateTo('/personality/survey')
       return
     }
     navigateTo('/map')
@@ -376,13 +448,7 @@ function initLandingPage() {
     navigateTo('/map?mode=preferred')
   })
 
-  btnCtaStart?.addEventListener('click', () => {
-    if (!token) {
-      openAuthModal(false)
-    } else {
-      navigateTo('/map')
-    }
-  })
+  btnCtaStart?.addEventListener('click', handleMatchStart)
   btnPreviewJoin?.addEventListener('click', () => {
     if (!token) {
       openAuthModal(false)
