@@ -40,7 +40,7 @@ import java.util.UUID;
         "AND planning_style BETWEEN 0 AND 100 " +
         "AND novelty_preference BETWEEN 0 AND 100 " +
         "AND questionnaire_version = 'MEAL_PERSONALITY_V1' " +
-        "AND (self_description IS NULL OR char_length(self_description) <= 300) " +
+        "AND (self_description IS NULL OR char_length(self_description) <= 100) " +
         "AND (ai_analysis_consent OR self_description IS NULL)")
 @Getter
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
@@ -100,7 +100,7 @@ public class UserPersonalityProfile {
     @OnDelete(action = OnDeleteAction.CASCADE)
     private Set<String> aiKeywords = new HashSet<>();
 
-    @Column(name = "self_description", length = 300)
+    @Column(name = "self_description", length = 100)
     private String selfDescription;
 
     @Builder.Default

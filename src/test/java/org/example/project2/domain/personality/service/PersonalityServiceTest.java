@@ -163,7 +163,7 @@ class PersonalityServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
         PersonalityProfileUpsertRequest request = new PersonalityProfileUpsertRequest(
                 request().questionnaireVersion(), request().answers(), request().styleTags(),
-                "  조용한 식사를 좋아해요.  ", true
+                "  조용한 식사를 좋아해요.  ", true, List.of("한식", "대화")
         );
 
         PersonalityProfileResponse response = service.upsertProfile(user.getId(), request);
@@ -233,9 +233,10 @@ class PersonalityServiceTest {
                         new PersonalityAnswerRequest(PersonalityDimension.PLANNING_STYLE, PersonalityAnswerValue.HIGH),
                         new PersonalityAnswerRequest(PersonalityDimension.NOVELTY_PREFERENCE, PersonalityAnswerValue.HIGH)
                 ),
-                Set.of(PersonalityTag.FOOD_TALK),
+                Set.of(PersonalityTag.GOOD_LISTENER, PersonalityTag.FOOD_TALK, PersonalityTag.ENJOY_DESSERT),
                 null,
-                false
+                false,
+                List.of("한식", "대화")
         );
 
         PersonalityProfileResponse response = service.upsertProfile(user.getId(), replacement);
@@ -314,9 +315,10 @@ class PersonalityServiceTest {
                         new PersonalityAnswerRequest(PersonalityDimension.PLANNING_STYLE, PersonalityAnswerValue.HIGH),
                         new PersonalityAnswerRequest(PersonalityDimension.NOVELTY_PREFERENCE, PersonalityAnswerValue.MEDIUM)
                 ),
-                Set.of(PersonalityTag.GOOD_LISTENER),
+                Set.of(PersonalityTag.GOOD_LISTENER, PersonalityTag.FOOD_TALK, PersonalityTag.ENJOY_DESSERT),
                 null,
-                false
+                false,
+                List.of("한식", "대화")
         );
     }
 

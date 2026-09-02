@@ -13,7 +13,7 @@ public record PersonalityProfileResponse(
         @Schema(nullable = true, example = "MEAL_PERSONALITY_V1") PersonalityQuestionnaireVersion questionnaireVersion,
         @Schema(nullable = true) PersonalityScoresResponse scores,
         Set<PersonalityTag> styleTags,
-        @Schema(nullable = true, maxLength = 300) String selfDescription,
+        @Schema(nullable = true, maxLength = 100) String selfDescription,
         boolean aiAnalysisConsent,
         java.util.List<String> aiKeywords
 ) {

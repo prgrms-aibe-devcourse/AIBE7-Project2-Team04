@@ -65,9 +65,10 @@ class PersonalityProfileUpsertRequestTest {
                         answer(PersonalityDimension.PLANNING_STYLE, PersonalityAnswerValue.HIGH),
                         answer(PersonalityDimension.NOVELTY_PREFERENCE, PersonalityAnswerValue.MEDIUM)
                 ),
-                Set.of(),
+                Set.of(PersonalityTag.GOOD_LISTENER, PersonalityTag.FOOD_TALK, PersonalityTag.ENJOY_DESSERT),
                 null,
-                false
+                false,
+                List.of("한식", "대화")
         );
 
         assertThatThrownBy(request::validatedAnswers)
@@ -79,9 +80,10 @@ class PersonalityProfileUpsertRequestTest {
         return new PersonalityProfileUpsertRequest(
                 PersonalityQuestionnaireVersion.MEAL_PERSONALITY_V1,
                 answers,
-                Set.of(PersonalityTag.GOOD_LISTENER),
+                Set.of(PersonalityTag.GOOD_LISTENER, PersonalityTag.FOOD_TALK, PersonalityTag.ENJOY_DESSERT),
                 null,
-                false
+                false,
+                List.of("한식", "대화")
         );
     }
 

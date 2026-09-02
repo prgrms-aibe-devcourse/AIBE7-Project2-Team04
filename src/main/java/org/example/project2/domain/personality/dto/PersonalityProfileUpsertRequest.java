@@ -26,17 +26,19 @@ public record PersonalityProfileUpsertRequest(
         List<@Valid PersonalityAnswerRequest> answers,
 
         @NotNull(message = "성향 태그 목록은 필수입니다.")
-        @Size(max = 5, message = "성향 태그는 최대 5개까지 선택할 수 있습니다.")
-        @Schema(description = "세부 식사 스타일 태그, 최대 5개")
+        @Size(min = 3, max = 5, message = "성향 태그는 최소 3개 이상 5개 이하로 선택해야 합니다.")
+        @Schema(description = "세부 식사 스타일 태그, 3개 이상 5개 이하")
         Set<@NotNull(message = "성향 태그에는 null을 포함할 수 없습니다.") PersonalityTag> styleTags,
 
-        @Size(max = 300, message = "자기소개는 최대 300자까지 입력할 수 있습니다.")
-        @Schema(description = "AI 분석에 사용할 선택 입력. 동의하지 않으면 저장하지 않습니다.", maxLength = 300)
+        @Size(max = 100, message = "자기소개는 최대 100자까지 입력할 수 있습니다.")
+        @Schema(description = "AI 분석에 사용할 선택 입력. 동의하지 않으면 저장하지 않습니다.", maxLength = 100)
         String selfDescription,
 
         @Schema(description = "자기소개 AI 분석 동의 여부", example = "false")
         boolean aiAnalysisConsent,
-        @Size(max = 5, message = "AI 키워드는 최대 5개까지 저장할 수 있습니다.")
+
+        @NotNull(message = "AI 키워드 목록은 필수입니다.")
+        @Size(min = 1, max = 5, message = "AI 키워드 태그는 최소 1개 이상 5개 이하로 추출해야 합니다.")
         List<@NotNull(message = "AI 키워드에는 null을 포함할 수 없습니다.") String> aiKeywords
 ) {
     public PersonalityProfileUpsertRequest(
@@ -63,8 +65,11 @@ public record PersonalityProfileUpsertRequest(
         if (answers == null || answers.size() != PersonalityDimension.values().length) {
             throw new InvalidPersonalityInputException("네 가지 성향 차원에 모두 응답해야 합니다.");
         }
-        if (styleTags == null || styleTags.size() > 5) {
-            throw new InvalidPersonalityInputException("성향 태그는 최대 5개까지 선택할 수 있습니다.");
+        if (styleTags == null || styleTags.size() < 3 || styleTags.size() > 5) {
+            throw new InvalidPersonalityInputException("성향 태그는 최소 3개 이상 5개 이하로 선택해야 합니다.");
+        }
+        if (aiKeywords == null || aiKeywords.isEmpty() || aiKeywords.size() > 5) {
+            throw new InvalidPersonalityInputException("AI 키워드 태그를 최소 1개 이상 추출해야 합니다.");
         }
 
         Map<PersonalityDimension, PersonalityAnswerValue> answerMap = new EnumMap<>(PersonalityDimension.class);

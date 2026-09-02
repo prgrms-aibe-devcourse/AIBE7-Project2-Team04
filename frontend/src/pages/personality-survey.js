@@ -271,10 +271,6 @@ export async function renderPersonalitySurvey(container) {
               <h1 class="font-headline text-2xl font-extrabold tracking-tight text-brand-navy sm:text-3xl">나만의 식사 성향 설정</h1>
               <p class="mt-1.5 text-sm leading-relaxed text-secondary">약 1분이면 마주한끼에서 어울리는 밥친구를 찾는 데 필요한 식사 성향을 설정할 수 있어요.</p>
             </div>
-            <button id="btn-survey-skip" type="button" class="inline-flex items-center gap-1 self-start rounded-full border border-outline-variant/40 bg-white px-3.5 py-2 text-xs font-bold text-secondary transition hover:border-outline-variant hover:bg-brand-ivory hover:text-brand-navy sm:self-auto">
-              <span>다음에 하기</span>
-              <span class="material-symbols-outlined text-base" aria-hidden="true">arrow_forward</span>
-            </button>
           </header>
 
           <section class="personality-survey-card rounded-[28px] border border-outline-variant/30 bg-white p-5 shadow-floating sm:p-8">
@@ -345,7 +341,7 @@ export async function renderPersonalitySurvey(container) {
 
   function getStepDescription(step) {
     if (step === 1) return '대화, 식사 속도, 약속, 메뉴 탐색에 대한 나의 선호를 골라 주세요.'
-    if (step === 2) return '나의 식사 성향과 분위기를 가장 잘 표현하는 키워드를 최대 5개까지 골라 주세요.'
+    if (step === 2) return '나의 식사 성향과 분위기를 가장 잘 표현하는 키워드를 3개 이상 5개 이하로 골라 주세요.'
     return '자주 즐기거나 함께 먹고 싶은 음식 카테고리를 최대 5개까지 골라 주세요.'
   }
 
@@ -355,7 +351,7 @@ export async function renderPersonalitySurvey(container) {
 
   function getStepHint(step, answeredCount) {
     if (step === 1) return `${answeredCount}/4개 질문에 답했어요`
-    if (step === 2) return `${selectedTags.size}/5개 키워드를 선택했어요`
+    if (step === 2) return `${selectedTags.size}/5개 키워드를 선택했어요 (3~5개 필수)`
     return selectedFoods.size > 0 ? `${selectedFoods.size}/5개 음식을 선택했어요` : '좋아하는 음식은 선택 사항이에요'
   }
 
@@ -498,8 +494,8 @@ export async function renderPersonalitySurvey(container) {
                 <p class="mt-1 text-xs leading-relaxed text-secondary">취미, 대화 주제, 라이프스타일을 적어주시면 AI가 핵심 키워드 태그로 정제하여 매칭에 반영해요.</p>
               </div>
             </div>
-            <textarea id="personality-self-description" maxlength="300" rows="4" class="mt-4 w-full resize-y rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm leading-relaxed text-brand-navy outline-none transition focus:border-primary-container focus:ring-2 focus:ring-primary-container/20" placeholder="예: '백엔드 개발 취준생이라 IT 이야기 좋아해요', '평소 클라이밍이나 노포 맛집 탐방 좋아하시는 분' 등 자유롭게 적어주세요.">${escapeHtml(selfDescription)}</textarea>
-            <div class="mt-1.5 flex items-center justify-between text-xs text-slate-400"><span>최대 300자</span><span><span id="self-description-count">${selfDescription.length}</span> / 300</span></div>
+            <textarea id="personality-self-description" maxlength="100" rows="3" class="mt-4 w-full resize-y rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm leading-relaxed text-brand-navy outline-none transition focus:border-primary-container focus:ring-2 focus:ring-primary-container/20" placeholder="예: '백엔드 개발 취준생이라 IT 이야기 좋아해요', '평소 클라이밍이나 노포 맛집 탐방 좋아해요' 등 자유롭게 적어주세요.">${escapeHtml(selfDescription)}</textarea>
+            <div class="mt-1.5 flex items-center justify-between text-xs text-slate-400"><span>최대 100자</span><span><span id="self-description-count">${selfDescription.length}</span> / 100</span></div>
 
             <div class="mt-4 border-t border-slate-200/60 pt-3">
               <button id="btn-extract-keywords" type="button" ${isSuggesting ? 'disabled' : ''} class="inline-flex items-center gap-1.5 rounded-xl bg-primary-container px-4 py-2 text-xs font-extrabold text-white transition hover:bg-primary-container/90 shadow-sm disabled:cursor-not-allowed disabled:opacity-50">
@@ -713,17 +709,7 @@ export async function renderPersonalitySurvey(container) {
       })
     })
 
-    // 건너뛰기 버튼
-    container.querySelector('#btn-survey-skip')?.addEventListener('click', async () => {
-      if (confirm('온보딩을 건너뛰시겠습니까? 마이페이지에서 언제든 다시 설정할 수 있습니다.')) {
-        try {
-          await skipPersonalityProfile()
-          navigateTo('/mypage')
-        } catch (err) {
-          alert(err.message || '건너뛰기 요청에 실패했습니다.')
-        }
-      }
-    })
+
 
     // 이전 버튼
     container.querySelector('#btn-survey-prev')?.addEventListener('click', () => {
@@ -745,8 +731,13 @@ export async function renderPersonalitySurvey(container) {
           return
         }
       } else if (currentStep === 2) {
-        if (selectedTags.size > 5) {
-          errorMessage = '세부 스타일 태그는 최대 5개까지만 선택할 수 있습니다.'
+        if (selectedTags.size < 3 || selectedTags.size > 5) {
+          errorMessage = '식사성향 태그를 3개 이상 5개 이하로 선택해 주세요.'
+          updateView()
+          return
+        }
+        if (!extractedKeywords || extractedKeywords.length < 1) {
+          errorMessage = '자기소개를 입력하고 AI 키워드 태그를 추출해 주세요.'
           updateView()
           return
         }
@@ -758,6 +749,16 @@ export async function renderPersonalitySurvey(container) {
 
     // 제출 버튼 (Step 3)
     container.querySelector('#btn-survey-submit')?.addEventListener('click', async () => {
+      if (selectedTags.size < 3 || selectedTags.size > 5) {
+        errorMessage = '식사성향 태그를 3개 이상 5개 이하로 선택해 주세요.'
+        updateView()
+        return
+      }
+      if (!extractedKeywords || extractedKeywords.length < 1) {
+        errorMessage = '자기소개를 입력하고 AI 키워드 태그를 추출해 주세요.'
+        updateView()
+        return
+      }
       if (selectedFoods.size > 5) {
         errorMessage = '음식 카테고리는 최대 5개까지만 선택할 수 있습니다.'
         updateView()
