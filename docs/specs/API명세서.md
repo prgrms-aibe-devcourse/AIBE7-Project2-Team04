@@ -502,7 +502,7 @@ AI 모델 미설정·호출 실패·임베딩 불일치와 성향 미설정은 �
 
 양방향 후보 쌍은 `A → B`, `B → A` 점수 중 낮은 값을 최종 쌍 점수로 사용한다. 한 방향의 성향 정보를 계산할 수 없으면 해당 방향에는 기본 조건 점수 50점을 적용하며, 이 사유만으로 후보를 제외하지 않는다. 이 쌍 점수 정책은 `DESIRED_PERSONALITY_MATCH_V1_BIDIRECTIONAL_MIN_V1`로 `match_proposals.score_snapshot`에 보존한다.
 
-**GET /matches/realtime/proposals/current**는 본인의 `PENDING` 제안과 상대의 `nickname`, `profileImageUrl`, `User.description`, 공개 `styleTags`, 최종 호환 점수, 방향별 상위 `matchedTags`와 사용자용 사유를 반환한다. 성향 분석용 자기소개, 희망 상대 설명, 원본 설문 답변과 임베딩은 반환하지 않는다.
+**GET /matches/realtime/proposals/current**는 본인의 `PENDING` 제안과 상대의 `nickname`, `profileImageUrl`, `User.description`, 공개 `styleTags`, 최종 호환 점수, 방향별 상위 `matchedTags`와 사용자용 사유를 반환한다. `compatibilityReasons`는 점수·가중치·산식·AI 내부 용어를 포함하지 않는 문장형 설명을 최대 3개 제공하며, 일치한 성향과 식사 조건을 사용자가 이해하기 쉬운 표현으로 안내한다. 성향 분석용 자기소개, 희망 상대 설명, 원본 설문 답변과 임베딩은 반환하지 않는다.
 
 **POST /matches/realtime/proposals/{proposalId}/decision**는 제안 당사자만 `ACCEPT` 또는 `REJECT`를 결정할 수 있도록 하며, 동일 결정은 멱등 처리한다. 제안이 만료되었거나 종료된 뒤의 결정 변경은 `409 MATCHING_012`로 거절한다.
 

@@ -63,10 +63,6 @@ export function renderChatPage(container) {
           </button>
 
           <div class="chat-partner">
-            <div class="chat-partner-avatar" aria-hidden="true">
-              <span id="chat-partner-initial">상</span>
-              <img id="chat-partner-image" class="is-hidden" alt="" />
-            </div>
             <div class="chat-partner-copy">
               <h1 id="chat-partner-name">밥친구와의 대화</h1>
             </div>
@@ -96,8 +92,7 @@ export function renderChatPage(container) {
         <aside class="chat-map-panel" aria-labelledby="chat-map-title">
           <header class="chat-map-header">
             <div>
-              <p class="chat-map-eyebrow">약속 위치 맞추기</p>
-              <h2 id="chat-map-title">서로 선택한 위치</h2>
+              <h2 id="chat-map-title">우리 사이의 맛집 찾기</h2>
             </div>
             <span class="chat-map-header-icon material-symbols-outlined" aria-hidden="true">map</span>
           </header>
@@ -853,17 +848,26 @@ export function renderChatPage(container) {
   }
 
   function showPlaceOverlay(candidate, position) {
-    if (activePlaceOverlay) activePlaceOverlay.setMap(null)
+    closePlaceOverlay()
 
     const content = document.createElement('article')
     content.className = 'chat-place-popover'
+    const closeButton = document.createElement('button')
+    closeButton.type = 'button'
+    closeButton.className = 'chat-place-popover-close'
+    closeButton.setAttribute('aria-label', '식당 정보 닫기')
+    closeButton.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">close</span>'
+    closeButton.addEventListener('click', event => {
+      event.stopPropagation()
+      closePlaceOverlay()
+    })
     const name = document.createElement('strong')
     name.textContent = candidate.place.place_name
     const category = document.createElement('span')
     category.textContent = candidate.place.category_name || '음식점'
     const address = document.createElement('p')
     address.textContent = candidate.place.road_address_name || candidate.place.address_name || '주소 정보 없음'
-    content.append(name, category, address)
+    content.append(closeButton, name, category, address)
     const actions = document.createElement('div')
     actions.className = 'chat-place-popover-actions'
     const shareButton = document.createElement('button')
@@ -889,6 +893,12 @@ export function renderChatPage(container) {
       yAnchor: 1.25,
       zIndex: 10,
     })
+  }
+
+  function closePlaceOverlay() {
+    if (!activePlaceOverlay) return
+    activePlaceOverlay.setMap(null)
+    activePlaceOverlay = null
   }
 
   function focusSharedPlaceOnMap(place) {

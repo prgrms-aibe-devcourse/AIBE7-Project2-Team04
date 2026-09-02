@@ -210,13 +210,42 @@
 }
 
 .chat-place-popover {
+  position: relative;
   width: 210px;
-  padding: 0.75rem;
+  padding: 0.85rem 2.5rem 0.75rem 0.75rem;
   border: 1px solid rgba(30, 44, 74, 0.12);
   border-radius: 15px;
   background: #fff;
   color: #1e2c4a;
   box-shadow: 0 14px 34px rgba(30, 44, 74, 0.2);
+}
+
+.chat-place-popover-close {
+  position: absolute;
+  top: 0.42rem;
+  right: 0.42rem;
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #69758e;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.chat-place-popover-close:hover,
+.chat-place-popover-close:focus-visible {
+  outline: none;
+  background: #f2f4f7;
+  color: #1e2c4a;
+}
+
+.chat-place-popover-close .material-symbols-outlined {
+  font-size: 1.05rem;
 }
 
 .chat-place-popover strong,

@@ -1114,11 +1114,7 @@ export async function renderMatchingRequestPage(container) {
       <section class="matching-card rounded-[28px] bg-white p-5 sm:p-8" aria-live="polite">
         <div class="flex flex-col gap-3 border-b border-outline-variant/30 pb-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <span class="inline-flex items-center gap-1.5 rounded-full bg-success/15 px-3 py-1.5 text-xs font-extrabold text-brand-navy">
-              <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-success"></span>
-              프로필 확인
-            </span>
-            <h2 class="mt-3 font-headline text-2xl font-extrabold tracking-tight text-brand-navy">이런 밥친구를 찾았어요</h2>
+            <h2 class="mt-3 font-headline text-2xl font-extrabold tracking-tight text-brand-navy">밥친구를 찾았어요</h2>
             <p class="mt-1 text-sm text-secondary">응답 시간 안에 수락 또는 거절을 선택해 주세요.</p>
           </div>
           <div class="rounded-2xl bg-primary-container/10 px-4 py-3 text-left sm:text-right">
@@ -1134,7 +1130,6 @@ export async function renderMatchingRequestPage(container) {
               ${profileImageUrl ? `<img src="${escapeHtml(profileImageUrl)}" alt="${escapeHtml(partner.nickname || '밥친구')} 프로필 사진" class="absolute inset-0 h-full w-full object-cover" data-matching-avatar-image />` : ''}
             </div>
             <h3 class="mt-4 font-headline text-xl font-extrabold text-brand-navy">${escapeHtml(partner.nickname || '닉네임을 불러오는 중')}</h3>
-            <p class="mt-3 min-h-12 max-w-sm text-sm leading-6 text-secondary">${escapeHtml(partner.description || '아직 공개 자기소개를 작성하지 않았어요.')}</p>
             ${styleTags.length > 0 ? `
               <div class="mt-5 flex flex-wrap justify-center gap-2">
                 ${styleTags.map((tag) => `<span class="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-brand-navy shadow-sm">#${escapeHtml(tagLabel(tag))}</span>`).join('')}
@@ -1161,7 +1156,7 @@ export async function renderMatchingRequestPage(container) {
             ` : ''}
 
             <div class="mt-5 rounded-2xl bg-surface-container-low p-4">
-              <p class="text-xs font-extrabold tracking-wide text-secondary">호환 사유</p>
+              <p class="text-xs font-extrabold tracking-wide text-secondary">잘 맞는 이유</p>
               ${reasons.length > 0
                 ? `<ul class="mt-2 space-y-2 text-sm leading-5 text-brand-navy">${reasons.map((reason) => `<li class="flex items-start gap-2"><span class="material-symbols-outlined mt-0.5 text-base text-success">check_circle</span><span>${escapeHtml(reason)}</span></li>`).join('')}</ul>`
                 : '<p class="mt-2 text-sm leading-5 text-secondary">위치·시간 등 기본 조건을 바탕으로 제안된 후보예요.</p>'}

@@ -217,6 +217,15 @@ class MatchProposalSelectionServiceTest {
                 );
         assertThat(proposal.getScoreSnapshot().targetToSourceMatchedTags())
                 .containsExactly(PersonalityTag.GOOD_LISTENER);
+        assertThat(proposal.getScoreSnapshot().sourceToTargetReasons())
+                .contains(
+                        "생각과 취향을 깊게 나눌 수 있어요.",
+                        "식사 후 디저트까지 함께 즐길 수 있어요.",
+                        "두 분 모두 한식 메뉴를 선호해 메뉴를 고르기 편해요."
+                )
+                .noneMatch(reason -> reason.contains("AI")
+                        || reason.contains("산식")
+                        || reason.contains("비중"));
         verify(personalityProfileRepository, times(1)).findAllByUserIdIn(anyList());
 
         ArgumentCaptor<Object> eventCaptor = ArgumentCaptor.forClass(Object.class);

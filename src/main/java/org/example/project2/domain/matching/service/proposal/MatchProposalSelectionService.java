@@ -153,11 +153,13 @@ public class MatchProposalSelectionService {
 
         DirectionScore sourceToTarget = calculateDirection(
                 source,
+                target,
                 input.targetProfile(),
                 input.targetSelfDescriptionEmbeddings()
         );
         DirectionScore targetToSource = calculateDirection(
                 target,
+                source,
                 input.sourceProfile(),
                 input.sourceSelfDescriptionEmbeddings()
         );
@@ -182,6 +184,7 @@ public class MatchProposalSelectionService {
 
     private DirectionScore calculateDirection(
             MatchRequest requester,
+            MatchRequest candidateRequest,
             UserPersonalityProfile candidateProfile,
             List<UserPersonalityEmbedding> candidateEmbeddings
     ) {
@@ -193,32 +196,103 @@ public class MatchProposalSelectionService {
                 candidateVectors
         );
         if (!compatibility.available()) {
-            return new DirectionScore(BASE_CONDITION_SCORE, List.of(), List.of(FALLBACK_REASON), false);
+            return new DirectionScore(
+                    BASE_CONDITION_SCORE,
+                    List.of(),
+                    buildBasicConditionReasons(requester, candidateRequest),
+                    false
+            );
         }
 
         List<PersonalityTag> matchedTags = topMatchedTags(compatibility.matchedTags());
-        List<String> reasons = new java.util.ArrayList<>();
-
-        if (compatibility.tagScore() != null) {
-            reasons.add("태그 호환도: " + compatibility.tagScore() + "점 (80% 비중)");
-        }
-        if (compatibility.embeddingScore() != null) {
-            reasons.add("AI 취향 유사도: " + compatibility.embeddingScore() + "점 (20% 비중)");
-        }
-
-        if (compatibility.tagScore() != null && compatibility.embeddingScore() != null) {
-            reasons.add("산식 계산: (" + compatibility.tagScore() + "점 × 0.8) + (" + compatibility.embeddingScore() + "점 × 0.2) = " + compatibility.score() + "점");
-        } else if (compatibility.tagScore() != null) {
-            reasons.add("산식 계산: 텍스트 미작성으로 태그 점수 100% 반영 = " + compatibility.score() + "점");
-        } else if (compatibility.embeddingScore() != null) {
-            reasons.add("산식 계산: 태그 미선택으로 AI 취향 유사도 100% 반영 = " + compatibility.score() + "점");
-        }
-
-        if (reasons.isEmpty()) {
-            reasons.add("위치, 식사 시간 등 기본 조건이 서로 잘 맞아요.");
-        }
+        List<String> reasons = buildUserFacingReasons(requester, candidateRequest, matchedTags);
 
         return new DirectionScore(compatibility.score(), matchedTags, List.copyOf(reasons), true);
+    }
+
+    private List<String> buildUserFacingReasons(
+            MatchRequest requester,
+            MatchRequest candidateRequest,
+            List<PersonalityTag> matchedTags
+    ) {
+        LinkedHashSet<String> reasons = new LinkedHashSet<>();
+        matchedTags.stream()
+                .filter(Objects::nonNull)
+                .limit(2)
+                .map(this::personalityReason)
+                .forEach(reasons::add);
+        addConditionReasons(reasons, requester, candidateRequest);
+        if (reasons.isEmpty()) {
+            reasons.add(FALLBACK_REASON);
+        }
+        return reasons.stream().limit(3).toList();
+    }
+
+    private List<String> buildBasicConditionReasons(
+            MatchRequest requester,
+            MatchRequest candidateRequest
+    ) {
+        LinkedHashSet<String> reasons = new LinkedHashSet<>();
+        addConditionReasons(reasons, requester, candidateRequest);
+        if (reasons.isEmpty()) {
+            reasons.add(FALLBACK_REASON);
+        }
+        return reasons.stream().limit(3).toList();
+    }
+
+    private void addConditionReasons(
+            LinkedHashSet<String> reasons,
+            MatchRequest requester,
+            MatchRequest candidateRequest
+    ) {
+        if (requester == null || candidateRequest == null) {
+            return;
+        }
+        if (Objects.equals(requester.getFoodCategory(), candidateRequest.getFoodCategory())
+                && requester.getFoodCategory() != null) {
+            reasons.add("두 분 모두 " + foodCategoryLabel(requester.getFoodCategory())
+                    + " 메뉴를 선호해 메뉴를 고르기 편해요.");
+        }
+        if (requester.getMealAt() != null && candidateRequest.getMealAt() != null
+                && Duration.between(requester.getMealAt(), candidateRequest.getMealAt()).abs()
+                .compareTo(Duration.ofMinutes(30)) <= 0) {
+            reasons.add("원하는 식사 시간이 비슷해 약속을 잡기 편해요.");
+        }
+        if (Objects.equals(requester.getRegionCode(), candidateRequest.getRegionCode())) {
+            reasons.add("선택한 만남 지역이 같아 이동하기 편해요.");
+        }
+    }
+
+    private String personalityReason(PersonalityTag tag) {
+        return switch (tag) {
+            case INITIATES_CONVERSATION -> "상대방이 먼저 대화를 시작하는 편이라 어색함을 덜 수 있어요.";
+            case GOOD_LISTENER -> "상대방이 이야기를 잘 들어줘 편안하게 대화할 수 있어요.";
+            case FOOD_TALK -> "음식 이야기를 좋아하는 점이 잘 맞아요.";
+            case LIGHT_CHAT -> "가볍고 편안한 대화를 함께 즐길 수 있어요.";
+            case DEEP_TALK -> "생각과 취향을 깊게 나눌 수 있어요.";
+            case COMFORTABLE_SILENCE -> "말없이 식사하는 시간도 편안하게 보낼 수 있어요.";
+            case CALM_ATMOSPHERE -> "차분하고 여유로운 분위기를 함께 즐길 수 있어요.";
+            case CHEERFUL_ATMOSPHERE -> "밝고 유쾌한 분위기를 함께 만들 수 있어요.";
+            case ACTIVE_ATMOSPHERE -> "활기찬 분위기에서 즐겁게 식사할 수 있어요.";
+            case SHARE_DISHES -> "여러 메뉴를 함께 나눠 먹는 즐거움이 잘 맞아요.";
+            case TAKE_FOOD_PHOTOS -> "맛있는 순간을 사진으로 남기는 취향이 잘 맞아요.";
+            case ENJOY_DESSERT -> "식사 후 디저트까지 함께 즐길 수 있어요.";
+            case FOCUS_ON_MEAL -> "식사에 집중하며 여유롭게 시간을 보낼 수 있어요.";
+        };
+    }
+
+    private String foodCategoryLabel(String foodCategory) {
+        return switch (foodCategory) {
+            case "KOREAN" -> "한식";
+            case "JAPANESE" -> "일식";
+            case "CHINESE" -> "중식";
+            case "WESTERN" -> "양식";
+            case "SOUTHEAST_ASIAN" -> "동남아 음식";
+            case "SNACK" -> "분식";
+            case "FAST_FOOD" -> "패스트푸드";
+            case "CAFE_DESSERT" -> "카페·디저트";
+            default -> "같은 음식";
+        };
     }
 
     private Optional<MatchProposal> reserveAndCreate(
