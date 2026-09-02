@@ -1,6 +1,8 @@
 package org.example.project2.domain.matching.service.proposal;
 
 import org.example.project2.domain.matching.dto.proposal.MatchProposalPartnerProfileResponse;
+import org.example.project2.domain.matching.dto.result.MatchResultDesiredLocationsResponse;
+import org.example.project2.domain.matching.dto.result.MatchResultLocationResponse;
 import org.example.project2.domain.matching.dto.result.MatchResultResponse;
 import org.example.project2.domain.matching.entity.MatchStatus;
 import org.junit.jupiter.api.Test;
@@ -78,7 +80,15 @@ class MatchResultWebSocketPublisherTest {
                 null,
                 new MatchProposalPartnerProfileResponse(
                         partnerId, nickname, null, null, java.util.Set.of()
-                )
+                ),
+                desiredLocations()
+        );
+    }
+
+    private MatchResultDesiredLocationsResponse desiredLocations() {
+        return new MatchResultDesiredLocationsResponse(
+                new MatchResultLocationResponse("내 희망 장소", "서울특별시 강남구", 37.501, 127.039),
+                new MatchResultLocationResponse("상대 희망 장소", "서울특별시 강남구", 37.505, 127.045)
         );
     }
 }

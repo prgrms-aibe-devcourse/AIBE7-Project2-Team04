@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import org.example.project2.domain.chat.entity.ChatRoom;
 import org.example.project2.domain.matching.dto.proposal.MatchProposalPartnerProfileResponse;
 import org.example.project2.domain.matching.dto.result.MatchResultCompatibilityResponse;
+import org.example.project2.domain.matching.dto.result.MatchResultDesiredLocationsResponse;
+import org.example.project2.domain.matching.dto.result.MatchResultLocationResponse;
 import org.example.project2.domain.matching.dto.result.MatchResultResponse;
 import org.example.project2.domain.matching.entity.Match;
 import org.example.project2.domain.matching.entity.MatchProposal;
@@ -61,7 +63,23 @@ public class MatchResultResponseAssembler {
                         partner.getProfileImageUrl(),
                         partner.getDescription(),
                         styleTags
+                ),
+                new MatchResultDesiredLocationsResponse(
+                        toLocation(viewerRequest),
+                        toLocation(partnerRequest)
                 )
+        );
+    }
+
+    private MatchResultLocationResponse toLocation(MatchRequest request) {
+        if (request == null || request.getLocation() == null) {
+            throw new IllegalStateException("매칭 결과의 희망 장소를 확인할 수 없습니다.");
+        }
+        return new MatchResultLocationResponse(
+                request.getLocationName(),
+                request.getRegionName(),
+                request.getLocation().getY(),
+                request.getLocation().getX()
         );
     }
 
