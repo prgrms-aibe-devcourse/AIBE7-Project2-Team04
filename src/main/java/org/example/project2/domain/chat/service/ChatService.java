@@ -2,7 +2,9 @@ package org.example.project2.domain.chat.service;
 
 import lombok.RequiredArgsConstructor;
 import org.example.project2.domain.chat.dto.ChatMessageDTO;
+import org.example.project2.domain.chat.dto.ChatPlaceDTO;
 import org.example.project2.domain.chat.entity.ChatMessage;
+import org.example.project2.domain.chat.entity.ChatMessageType;
 import org.example.project2.domain.chat.entity.ChatRoom;
 import org.example.project2.domain.chat.entity.ChatRoomStatus;
 import org.example.project2.domain.chat.repository.ChatMessageRepository;
@@ -19,11 +21,19 @@ import java.util.List;
 import java.util.ArrayList;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.access.AccessDeniedException;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.PrecisionModel;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ChatService {
+
+    private static final GeometryFactory GEOMETRY_FACTORY =
+            new GeometryFactory(new PrecisionModel(), 4326);
+    private static final String KAKAO_PLACE_URL_PREFIX = "https://place.map.kakao.com/";
 
     private final ChatMessageRepository chatMessageRepository;
     private final ChatRoomRepository chatRoomRepository;
@@ -52,7 +62,9 @@ public class ChatService {
             items.add(new ChatMessageListResponse.MessageItem(
                     msg.getId(),
                     msg.getSender().getId(),
+                    msg.getMessageType(),
                     msg.getContent(),
+                    toPlaceDto(msg),
                     msg.getCreatedAt()
             ));
         }
@@ -78,13 +90,70 @@ public class ChatService {
         User sender = userRepository.findById(senderId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다. ID: " + senderId));
 
-        // 3. 메시지 엔티티 빌드 및 저장
-        ChatMessage chatMessage = ChatMessage.builder()
+        // 3. 메시지 유형별 저장값을 서버에서 정규화
+        ChatMessageType messageType = messageDto.messageType();
+        ChatPlaceDTO place = messageDto.place();
+        if (messageType == ChatMessageType.TEXT
+                && (messageDto.message() == null || messageDto.message().isBlank())) {
+            throw new IllegalArgumentException("메시지는 공백일 수 없습니다.");
+        }
+        if (messageType == ChatMessageType.PLACE && place == null) {
+            throw new IllegalArgumentException("공유할 식당 정보는 필수입니다.");
+        }
+        String content = messageType == ChatMessageType.PLACE ? place.name().trim() : messageDto.message().trim();
+
+        ChatMessage.ChatMessageBuilder builder = ChatMessage.builder()
                 .chatRoom(chatRoom)
                 .sender(sender)
-                .content(messageDto.message())
-                .build();
+                .messageType(messageType)
+                .content(content);
 
-        return chatMessageRepository.save(chatMessage);
+        if (messageType == ChatMessageType.PLACE) {
+            if (!Double.isFinite(place.latitude()) || !Double.isFinite(place.longitude())) {
+                throw new IllegalArgumentException("식당 좌표가 올바르지 않습니다.");
+            }
+            String providerPlaceId = place.providerPlaceId().trim();
+            builder.providerPlaceId(providerPlaceId)
+                    .placeName(place.name().trim())
+                    .placeCategory(place.category().trim())
+                    .placeAddress(place.address().trim())
+                    .placeLocation(createPoint(place.longitude(), place.latitude()))
+                    .placeUrl(KAKAO_PLACE_URL_PREFIX + providerPlaceId);
+        }
+
+        // 4. 메시지 엔티티 저장
+        return chatMessageRepository.save(builder.build());
+    }
+
+    public ChatMessageDTO toMessageDto(ChatMessage message) {
+        return new ChatMessageDTO(
+                message.getChatRoom().getId(),
+                message.getSender().getId(),
+                message.getMessageType(),
+                message.getContent(),
+                toPlaceDto(message)
+        );
+    }
+
+    private ChatPlaceDTO toPlaceDto(ChatMessage message) {
+        Point location = message.getPlaceLocation();
+        if (message.getMessageType() != ChatMessageType.PLACE || location == null) {
+            return null;
+        }
+        return new ChatPlaceDTO(
+                message.getProviderPlaceId(),
+                message.getPlaceName(),
+                message.getPlaceCategory(),
+                message.getPlaceAddress(),
+                location.getY(),
+                location.getX(),
+                message.getPlaceUrl()
+        );
+    }
+
+    private Point createPoint(double longitude, double latitude) {
+        Point point = GEOMETRY_FACTORY.createPoint(new Coordinate(longitude, latitude));
+        point.setSRID(4326);
+        return point;
     }
 }

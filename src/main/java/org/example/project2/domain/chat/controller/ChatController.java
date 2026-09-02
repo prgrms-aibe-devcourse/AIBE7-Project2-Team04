@@ -2,6 +2,7 @@ package org.example.project2.domain.chat.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.example.project2.domain.chat.dto.ChatMessageDTO;
+import org.example.project2.domain.chat.entity.ChatMessage;
 import org.example.project2.domain.chat.service.ChatService;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -39,13 +40,19 @@ public class ChatController {
         UUID senderId = UUID.fromString(principal.getName());
         chatMessageRateLimiter.check(senderId);
 
-        ChatMessageDTO message = new ChatMessageDTO(roomId, senderId, payload.message());
+        ChatMessageDTO message = new ChatMessageDTO(
+                roomId,
+                senderId,
+                payload.messageType(),
+                payload.message(),
+                payload.place()
+        );
 
         // DB 저장
-        chatService.saveMessage(message);
+        ChatMessage savedMessage = chatService.saveMessage(message);
 
         // /topic/chat/{roomId} 구독자 전체에게 브로드캐스트
-        messagingTemplate.convertAndSend("/topic/chat/" + roomId, message);
+        messagingTemplate.convertAndSend("/topic/chat/" + roomId, chatService.toMessageDto(savedMessage));
     }
 }
 
