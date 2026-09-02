@@ -3,9 +3,10 @@ import { getCsrfToken } from '../auth/csrf.js'
 import { navigateTo } from '../main.js'
 import { getLatestMatchResult } from '../matching/matching-api.js'
 import { API_BASE_URL } from '../config/api.js'
+import './chat.css'
 
 /**
- * 채팅 페이지 (카카오톡 스타일 UI)
+ * 마주한끼 테마의 1:1 채팅 페이지
  * - project2.isLoggedIn 이 true 인 경우에만 접근 가능
  * - STOMP CONNECT 헤더에 JWT 쿠키를 포함 (HttpOnly 쿠키는 브라우저가 자동 전송)
  * - /app/chat/{roomId}/send 로 전송, /topic/chat/{roomId} 구독
@@ -18,37 +19,43 @@ export function renderChatPage(container) {
   }
 
   container.innerHTML = `
-    <main class="w-full max-w-6xl mx-auto my-6 px-4 flex flex-col min-h-[600px]">
-      <!-- Header -->
-      <div class="flex items-center justify-between border-b border-slate-200 pb-4 mb-4">
-        <div>
-          <h2 class="text-2xl font-extrabold text-brand-navy">1:1 실시간 채팅</h2>
-          <p class="text-xs text-secondary mt-1">상태: <span id="disp-status" class="font-bold text-slate-500">미연결</span></p>
-        </div>
-        <div class="flex items-center gap-2">
-          <button id="btn-end-match" class="px-4 py-2 rounded-full text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100">매칭 종료</button>
-          <button id="btn-back" class="btn-secondary px-4 py-2 rounded-full text-xs font-bold flex items-center gap-1">
-            <span class="material-symbols-outlined text-sm">arrow_back</span>
-            뒤로가기
+    <main class="chat-page">
+      <section class="chat-shell" aria-labelledby="chat-partner-name">
+        <header class="chat-header">
+          <button id="btn-back" class="chat-icon-button" type="button" aria-label="채팅방 나가기">
+            <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
           </button>
-        </div>
-      </div>
 
-      <!-- KakaoTalk Style Chat Window -->
-      <div class="w-full flex flex-col h-[550px] border border-outline-variant/30 rounded-card overflow-hidden shadow-floating bg-[#BACEE0]">
-        <!-- Messages Area -->
-        <div id="chat-box" class="flex-grow overflow-y-auto p-4 space-y-4">
-          <div class="text-center my-2 text-xs text-slate-600 bg-white/40 rounded-full px-4 py-1 w-fit mx-auto shadow-sm">
-             채팅방에 입장해 주세요.
+          <div class="chat-partner">
+            <div class="chat-partner-avatar" aria-hidden="true">
+              <span id="chat-partner-initial">상</span>
+              <img id="chat-partner-image" class="is-hidden" alt="" />
+            </div>
+            <div class="chat-partner-copy">
+              <h1 id="chat-partner-name">밥친구와의 대화</h1>
+            </div>
+          </div>
+
+          <button id="btn-end-match" class="chat-end-button" type="button">
+            <span class="material-symbols-outlined" aria-hidden="true">logout</span>
+            <span>매칭 종료</span>
+          </button>
+        </header>
+
+        <div id="chat-box" class="chat-messages" role="log" aria-live="polite" aria-label="채팅 메시지">
+          <div class="chat-system-message">
+            <span class="material-symbols-outlined" aria-hidden="true">waving_hand</span>
+            <span>따뜻한 인사로 대화를 시작해 보세요.</span>
           </div>
         </div>
 
-        <!-- Input Area -->
-        <div class="bg-white border-t border-slate-200 p-3 flex gap-2">
-          <input type="text" id="msg-input" placeholder="메시지를 입력하세요..." disabled class="flex-grow bg-slate-100 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-container outline-none" />
-          <button id="btn-send" disabled class="btn-primary px-5 py-2 rounded-xl text-sm font-bold shadow-md disabled:opacity-50 disabled:cursor-not-allowed">전송</button>
+        <div class="chat-composer">
+          <input type="text" id="msg-input" placeholder="메시지를 입력하세요" disabled aria-label="메시지 입력" />
+          <button id="btn-send" type="button" disabled aria-label="메시지 전송">
+            <span class="material-symbols-outlined" aria-hidden="true">send</span>
+          </button>
         </div>
-      </div>
+      </section>
     </main>
   `
 
@@ -63,7 +70,7 @@ export function renderChatPage(container) {
   let partnerProfileImg = null
   let matchId      = null
 
-  // ── 카카오톡 스타일 말풍선 렌더링 ──────────────────────────────────────────────
+  // ── 메시지 말풍선 렌더링 ───────────────────────────────────────────────────
   function appendChatMessage(senderId, nickname, message, isMine, customTime = null) {
     const box = document.getElementById('chat-box')
     if (!box) return
@@ -72,30 +79,33 @@ export function renderChatPage(container) {
     const timeVal = customTime ? new Date(customTime) : new Date()
     const timeStr = timeVal.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     
+    row.className = `chat-message-row ${isMine ? 'is-mine' : 'is-partner'}`
+
     if (isMine) {
-      row.className = 'flex justify-end items-end gap-1.5 mb-1.5 w-full'
       row.innerHTML = `
-        <span class="text-[9px] text-slate-600/80 mb-0.5 select-none">${timeStr}</span>
-        <div class="bg-[#FEE500] text-black text-sm p-2.5 rounded-l-2xl rounded-br-2xl max-w-[85%] shadow-sm whitespace-pre-wrap break-words border border-[#E4CE00]/30">${escapeHtml(message)}</div>
+        <time class="chat-message-time">${timeStr}</time>
+        <div class="chat-message-bubble">${escapeHtml(message)}</div>
       `
     } else {
-      row.className = 'flex items-start gap-2.5 mb-1.5 w-full'
       const initial = escapeHtml(nickname ? nickname.trim().charAt(0) : '상')
-      
-      const avatarHtml = partnerProfileImg
-        ? `<img src="${escapeHtml(partnerProfileImg)}" class="w-10 h-10 rounded-full object-cover shrink-0 shadow-sm border border-slate-200" alt="avatar" />`
-        : `<div class="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-brand-navy font-bold shrink-0 text-sm shadow-sm select-none">${initial}</div>`
 
       row.innerHTML = `
-        ${avatarHtml}
-        <div class="flex flex-col">
-          <span class="text-[11px] text-slate-700 mb-0.5 font-semibold select-none">${escapeHtml(nickname || '상대방')}</span>
-          <div class="flex items-end gap-1.5">
-            <div class="bg-white text-black text-sm p-2.5 rounded-r-2xl rounded-bl-2xl max-w-[85%] shadow-sm whitespace-pre-wrap break-words border border-slate-200">${escapeHtml(message)}</div>
-            <span class="text-[9px] text-slate-600/80 mb-0.5 select-none">${timeStr}</span>
+        <div class="chat-message-avatar" aria-hidden="true">
+          <span>${initial}</span>
+          ${partnerProfileImg ? `<img data-chat-avatar-image src="${escapeHtml(partnerProfileImg)}" alt="" />` : ''}
+        </div>
+        <div class="chat-message-content">
+          <span class="chat-message-name">${escapeHtml(nickname || '상대방')}</span>
+          <div class="chat-message-line">
+            <div class="chat-message-bubble">${escapeHtml(message)}</div>
+            <time class="chat-message-time">${timeStr}</time>
           </div>
         </div>
       `
+
+      row.querySelector('[data-chat-avatar-image]')?.addEventListener('error', (event) => {
+        event.currentTarget.remove()
+      }, { once: true })
     }
 
     box.appendChild(row)
@@ -107,7 +117,8 @@ export function renderChatPage(container) {
     if (!box) return
 
     const line = document.createElement('div')
-    line.className = `text-center my-2 text-xs text-${color} bg-white/40 rounded-full px-4 py-1.5 w-fit mx-auto shadow-sm select-none`
+    const tone = color.startsWith('red') ? 'is-error' : color.startsWith('green') ? 'is-success' : ''
+    line.className = `chat-system-message ${tone}`.trim()
     line.textContent = text
     box.appendChild(line)
     box.scrollTop = box.scrollHeight
@@ -127,7 +138,7 @@ export function renderChatPage(container) {
     const roomId = roomIdFromQuery
     if (!/^\d+$/.test(roomId || '')) return
     connectedRoomId = roomId
-    document.getElementById('disp-status').textContent  = '연결 중...'
+    setConnectionStatus('연결 중…', 'connecting')
 
     const SockJS = window.SockJS
     const Stomp  = window.Stomp
@@ -143,7 +154,7 @@ export function renderChatPage(container) {
 
     stompClient.connect({}, function () {
       appendSystemMessage('채팅방 연결 성공!', 'green-700')
-      document.getElementById('disp-status').textContent = '연결됨'
+      setConnectionStatus('대화할 수 있어요', 'connected')
 
       const btnEndMatch = document.getElementById('btn-end-match')
       if (btnEndMatch) btnEndMatch.disabled = false
@@ -200,7 +211,7 @@ export function renderChatPage(container) {
       document.getElementById('btn-send').disabled  = false
     }, function (err) {
       appendSystemMessage('연결 실패: ' + err, 'red-700')
-      document.getElementById('disp-status').textContent = '연결 실패'
+      setConnectionStatus('연결 실패', 'error')
     })
   }
 
@@ -231,13 +242,33 @@ export function renderChatPage(container) {
 
   // ── UI 초기화 ──────────────────────────────────────────────────────────────
   function resetUI() {
-    document.getElementById('disp-status').textContent  = '미연결'
+    setConnectionStatus('미연결')
     const btnEndMatch = document.getElementById('btn-end-match')
     if (btnEndMatch) btnEndMatch.disabled = false
     document.getElementById('msg-input').disabled       = true
     document.getElementById('btn-send').disabled        = true
     stompClient  = null
     subscription = null
+  }
+
+  function setConnectionStatus(text, state = '') {
+    const status = document.getElementById('disp-status')
+    const indicator = document.getElementById('connection-indicator')
+    if (status) status.textContent = text
+    if (indicator) indicator.className = `chat-connection-dot ${state ? `is-${state}` : ''}`.trim()
+  }
+
+  function updatePartnerHeader() {
+    const name = document.getElementById('chat-partner-name')
+    const initial = document.getElementById('chat-partner-initial')
+    const image = document.getElementById('chat-partner-image')
+    if (name) name.textContent = `${partnerNickname}님과의 대화`
+    if (initial) initial.textContent = partnerNickname.trim().charAt(0) || '상'
+    if (!image || !partnerProfileImg) return
+
+    image.src = partnerProfileImg
+    image.classList.remove('is-hidden')
+    image.addEventListener('error', () => image.classList.add('is-hidden'), { once: true })
   }
 
   // ── 이벤트 바인딩 ──────────────────────────────────────────────────────────
@@ -302,6 +333,7 @@ export function renderChatPage(container) {
       partnerNickname = matchResult.partner.nickname || '상대방'
       partnerUserId = matchResult.partner.userId
       partnerProfileImg = matchResult.partner.profileImageUrl
+      updatePartnerHeader()
     }
 
     // 정보를 다 확보한 상태에서 자동으로 입장 처리 진행
