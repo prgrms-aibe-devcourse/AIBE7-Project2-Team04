@@ -957,14 +957,20 @@ export function renderChatPage(container) {
       myUserId = userBody.data.userId
     }
 
-    if (matchResult && matchResult.partner) {
-      matchId = matchResult.matchId
-      partnerNickname = matchResult.partner.nickname || '상대방'
-      partnerUserId = matchResult.partner.userId
-      partnerProfileImg = matchResult.partner.profileImageUrl
-      updatePartnerHeader()
-      renderDesiredLocations(matchResult.desiredLocations)
+    if (!matchResult || matchResult.status !== 'MATCHED' || !matchResult.chatRoomId || String(matchResult.chatRoomId) !== String(roomIdFromQuery)) {
+      alert('이미 종료되거나 권한이 없는 매칭 채팅방입니다.')
+      sessionStorage.removeItem('project2.latestMatchResult')
+      document.documentElement.classList.remove('has-cached-chat')
+      navigateTo('/')
+      return
     }
+
+    matchId = matchResult.matchId
+    partnerNickname = matchResult.partner?.nickname || '상대방'
+    partnerUserId = matchResult.partner?.userId
+    partnerProfileImg = matchResult.partner?.profileImageUrl
+    updatePartnerHeader()
+    renderDesiredLocations(matchResult.desiredLocations)
 
     // 정보를 다 확보한 상태에서 자동으로 입장 처리 진행
     if (/^\d+$/.test(roomIdFromQuery || '')) {
