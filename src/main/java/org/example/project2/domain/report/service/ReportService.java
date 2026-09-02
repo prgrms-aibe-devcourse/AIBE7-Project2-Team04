@@ -2,6 +2,9 @@ package org.example.project2.domain.report.service;
 
 import lombok.RequiredArgsConstructor;
 import org.example.project2.domain.chat.dto.ChatMessageDTO;
+import org.example.project2.domain.chat.dto.ChatPlaceDTO;
+import org.example.project2.domain.chat.entity.ChatMessage;
+import org.example.project2.domain.chat.entity.ChatMessageType;
 import org.example.project2.domain.chat.entity.ChatRoom;
 import org.example.project2.domain.chat.repository.ChatMessageRepository;
 import org.example.project2.domain.chat.repository.ChatRoomRepository;
@@ -88,12 +91,30 @@ public class ReportService {
                 .orElseThrow(() -> new IllegalArgumentException("연결된 채팅방이 존재하지 않습니다."));
 
         return chatMessageRepository.findByChatRoom_IdOrderByIdAsc(chatRoom.getId()).stream()
-                .map(cm -> new ChatMessageDTO(
-                        chatRoom.getId(),
-                        cm.getSender().getId(),
-                        cm.getContent()
-                ))
+                .map(this::toChatMessageDto)
                 .toList();
+    }
+
+    private ChatMessageDTO toChatMessageDto(ChatMessage message) {
+        ChatPlaceDTO place = null;
+        if (message.getMessageType() == ChatMessageType.PLACE && message.getPlaceLocation() != null) {
+            place = new ChatPlaceDTO(
+                    message.getProviderPlaceId(),
+                    message.getPlaceName(),
+                    message.getPlaceCategory(),
+                    message.getPlaceAddress(),
+                    message.getPlaceLocation().getY(),
+                    message.getPlaceLocation().getX(),
+                    message.getPlaceUrl()
+            );
+        }
+        return new ChatMessageDTO(
+                message.getChatRoom().getId(),
+                message.getSender().getId(),
+                message.getMessageType(),
+                message.getContent(),
+                place
+        );
     }
 
     @Transactional
