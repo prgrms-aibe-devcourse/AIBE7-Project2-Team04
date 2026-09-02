@@ -430,6 +430,12 @@ export async function renderMatchingRequestPage(container) {
     state.radiusExpansionOffer = false
     state.mode = 'matched'
     state.noticeMessage = ''
+
+    if (payload?.status === 'MATCHED' && payload.chatRoomId) {
+      navigateTo(`/chat?roomId=${encodeURIComponent(payload.chatRoomId)}`, { replace: true })
+      return
+    }
+
     render()
   }
 

@@ -490,7 +490,7 @@ AI 모델 미설정·호출 실패·임베딩 불일치와 성향 미설정은 �
 
 **POST /matches/realtime/proposals/{proposalId}/decision**는 제안 당사자만 `ACCEPT` 또는 `REJECT`를 결정할 수 있도록 하며, 동일 결정은 멱등 처리한다. 제안이 만료되었거나 종료된 뒤의 결정 변경은 `409 MATCHING_012`로 거절한다.
 
-**GET /matches/realtime/results/latest**는 인증 사용자가 참여한 가장 최근 매칭의 `matchId`, `status`, `chatRoomId`, 호환도와 상대방 공개 프로필을 반환한다. WebSocket 결과 이벤트를 수신하지 못했거나 연결이 끊긴 경우 복구 조회에 사용한다. 참여한 매칭이 없거나 결과 구성에 필요한 확정 제안·채팅방이 없으면 `404 MATCHING_013`을 반환한다.
+**GET /matches/realtime/results/latest**는 인증 사용자가 참여한 가장 최근 매칭의 `matchId`, `status`, `chatRoomId`, 호환도와 상대방 공개 프로필을 반환한다. WebSocket 결과 이벤트를 수신하지 못했거나 연결이 끊긴 경우 복구 조회에 사용한다. 프런트엔드는 WebSocket 이벤트 또는 이 복구 응답에서 `status=MATCHED`와 `chatRoomId`를 확인하면 해당 채팅방으로 즉시 자동 이동한다. 참여한 매칭이 없거나 결과 구성에 필요한 확정 제안·채팅방이 없으면 `404 MATCHING_013`을 반환한다.
 
 WebSocket `/ws-chat` 핸드셰이크는 HttpOnly `accessToken` 쿠키의 서명·발급자·대상·만료를 검증한다. 허용 Origin은 `FRONTEND_ORIGIN`과 동일하게 제한하고 미설정 환경은 동일 출처만 허용한다. 인증된 세션은 `/user/queue/match-proposal`, `/user/queue/match-result` 및 참여 중인 `/topic/chat/{roomId}`만 구독할 수 있으며, 지원하지 않는 구독·전송 경로는 거절한다.
 
