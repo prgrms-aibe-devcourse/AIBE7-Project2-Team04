@@ -41,21 +41,21 @@ export async function renderReviewPage(container) {
           <div class="grid grid-cols-1 gap-2.5">
             <button type="button" data-revisit="DEFINITELY_AGAIN" class="revisit-card w-full text-left p-4 border border-slate-200 rounded-xl hover:border-primary-container hover:bg-slate-50/50 transition-all flex items-center justify-between select-none">
               <div>
-                <span class="text-sm font-bold text-brand-navy block">😍 꼭 다시 만나고 싶어요</span>
+                <span class="text-sm font-bold text-brand-navy block">꼭 다시 만나고 싶어요</span>
                 <span class="text-[11px] text-slate-500 mt-0.5">매우 즐겁고 유쾌한 식사였습니다.</span>
               </div>
               <span class="check-icon material-symbols-outlined text-primary text-xl hidden">check_circle</span>
             </button>
             <button type="button" data-revisit="MAYBE_AGAIN" class="revisit-card w-full text-left p-4 border border-slate-200 rounded-xl hover:border-primary-container hover:bg-slate-50/50 transition-all flex items-center justify-between select-none">
               <div>
-                <span class="text-sm font-bold text-brand-navy block">🙂 기회가 된다면 만나요</span>
+                <span class="text-sm font-bold text-brand-navy block">기회가 된다면 만나요</span>
                 <span class="text-[11px] text-slate-500 mt-0.5">무난하고 편안하게 식사했습니다.</span>
               </div>
               <span class="check-icon material-symbols-outlined text-primary text-xl hidden">check_circle</span>
             </button>
             <button type="button" data-revisit="ENOUGH_FOR_NOW" class="revisit-card w-full text-left p-4 border border-slate-200 rounded-xl hover:border-primary-container hover:bg-slate-50/50 transition-all flex items-center justify-between select-none">
               <div>
-                <span class="text-sm font-bold text-brand-navy block">🤐 이번으로 충분해요</span>
+                <span class="text-sm font-bold text-brand-navy block">이번으로 충분해요</span>
                 <span class="text-[11px] text-slate-500 mt-0.5">서로의 스타일이 다소 맞지 않았습니다.</span>
               </div>
               <span class="check-icon material-symbols-outlined text-primary text-xl hidden">check_circle</span>
@@ -74,19 +74,19 @@ export async function renderReviewPage(container) {
           <div class="grid grid-cols-2 gap-2.5">
             <button type="button" data-tag="PUNCTUAL" class="tag-card p-3 border border-slate-200 rounded-xl hover:border-primary-container hover:bg-slate-50/50 transition-all text-center flex flex-col items-center gap-1.5 select-none">
               <span class="material-symbols-outlined text-slate-500 text-lg">schedule</span>
-              <span class="text-xs font-bold text-brand-navy">⏰ 시간 약속을 잘 지켜요</span>
+              <span class="text-xs font-bold text-brand-navy">시간 약속을 잘 지켜요</span>
             </button>
             <button type="button" data-tag="COMFORTABLE_CONVERSATION" class="tag-card p-3 border border-slate-200 rounded-xl hover:border-primary-container hover:bg-slate-50/50 transition-all text-center flex flex-col items-center gap-1.5 select-none">
               <span class="material-symbols-outlined text-slate-500 text-lg">chat_bubble</span>
-              <span class="text-xs font-bold text-brand-navy">💬 편안하게 대화해줘요</span>
+              <span class="text-xs font-bold text-brand-navy">편안하게 대화해줘요</span>
             </button>
             <button type="button" data-tag="CONSIDERATE" class="tag-card p-3 border border-slate-200 rounded-xl hover:border-primary-container hover:bg-slate-50/50 transition-all text-center flex flex-col items-center gap-1.5 select-none">
               <span class="material-symbols-outlined text-slate-500 text-lg">thumb_up</span>
-              <span class="text-xs font-bold text-brand-navy">🤝 사려 깊고 매너있어요</span>
+              <span class="text-xs font-bold text-brand-navy">사려 깊고 매너있어요</span>
             </button>
             <button type="button" data-tag="ACTIVE_PARTICIPATION" class="tag-card p-3 border border-slate-200 rounded-xl hover:border-primary-container hover:bg-slate-50/50 transition-all text-center flex flex-col items-center gap-1.5 select-none">
               <span class="material-symbols-outlined text-slate-500 text-lg">campaign</span>
-              <span class="text-xs font-bold text-brand-navy">🔥 대화에 잘 참여해요</span>
+              <span class="text-xs font-bold text-brand-navy">대화에 잘 참여해요</span>
             </button>
           </div>
         </div>
