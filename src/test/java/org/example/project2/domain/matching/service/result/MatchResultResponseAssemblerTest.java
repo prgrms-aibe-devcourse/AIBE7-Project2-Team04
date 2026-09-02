@@ -48,6 +48,7 @@ class MatchResultResponseAssemblerTest {
         assertThat(user1Locations.mine().locationName()).isEqualTo("강남역");
         assertThat(user1Locations.mine().latitude()).isEqualTo(37.4979);
         assertThat(user1Locations.mine().longitude()).isEqualTo(127.0276);
+        assertThat(user1Locations.mine().foodCategory()).isEqualTo("KOREAN");
         assertThat(user1Locations.partner().locationName()).isEqualTo("역삼역");
 
         var user2Locations = views.responseFor(user2.getId()).desiredLocations();

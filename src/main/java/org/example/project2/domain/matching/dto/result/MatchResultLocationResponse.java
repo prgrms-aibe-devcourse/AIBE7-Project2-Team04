@@ -7,14 +7,19 @@ package org.example.project2.domain.matching.dto.result;
 public record MatchResultLocationResponse(
         String locationName,
         String regionName,
+        String foodCategory,
         double latitude,
         double longitude
 ) {
     public MatchResultLocationResponse {
         locationName = normalize(locationName);
         regionName = normalize(regionName);
+        foodCategory = normalize(foodCategory);
         if (regionName == null) {
             throw new IllegalArgumentException("희망 장소의 행정구역 표시명은 필수입니다.");
+        }
+        if (foodCategory == null) {
+            throw new IllegalArgumentException("희망 장소의 음식 카테고리는 필수입니다.");
         }
         if (!Double.isFinite(latitude) || latitude < -90 || latitude > 90) {
             throw new IllegalArgumentException("희망 장소의 위도가 올바르지 않습니다.");

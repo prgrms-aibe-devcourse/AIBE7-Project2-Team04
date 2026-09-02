@@ -78,6 +78,7 @@ public class MatchResultResponseAssembler {
         return new MatchResultLocationResponse(
                 request.getLocationName(),
                 request.getRegionName(),
+                request.getFoodCategory(),
                 request.getLocation().getY(),
                 request.getLocation().getX()
         );

@@ -164,8 +164,8 @@ class MatchProposalLifecycleServiceRedisTest {
 
     private MatchResultDesiredLocationsResponse desiredLocations() {
         return new MatchResultDesiredLocationsResponse(
-                new MatchResultLocationResponse("내 희망 장소", "서울특별시 강남구", 37.501, 127.039),
-                new MatchResultLocationResponse("상대 희망 장소", "서울특별시 강남구", 37.505, 127.045)
+                new MatchResultLocationResponse("내 희망 장소", "서울특별시 강남구", "KOREAN", 37.501, 127.039),
+                new MatchResultLocationResponse("상대 희망 장소", "서울특별시 강남구", "JAPANESE", 37.505, 127.045)
         );
     }
 
