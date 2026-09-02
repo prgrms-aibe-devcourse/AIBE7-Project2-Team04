@@ -338,6 +338,15 @@ body.matching-time-modal-open {
   font-size: 1.25rem;
 }
 
+/* 전역 Material Symbols 크기 제한보다 매칭 음식 아이콘 타일의 원래 크기를 우선 적용 */
+.matching-page .matching-food-option-icon.material-symbols-outlined {
+  display: inline-grid !important;
+  width: 2.25rem !important;
+  height: 2.25rem !important;
+  max-width: 2.25rem !important;
+  max-height: 2.25rem !important;
+}
+
 .matching-page .matching-food-option.is-selected .matching-food-option-icon {
   background: rgba(255, 107, 74, 0.18);
   color: #ae3115;
@@ -403,6 +412,15 @@ body.matching-time-modal-open {
   background: #fff1ed;
   color: #ae3115;
   font-size: 1.45rem;
+}
+
+/* 전역 Material Symbols 크기 제한보다 성향 선택 영역의 아이콘 타일 원래 크기를 우선 적용 */
+.matching-page .matching-personality-heading-icon.material-symbols-outlined {
+  display: inline-grid !important;
+  width: 2.75rem !important;
+  height: 2.75rem !important;
+  max-width: 2.75rem !important;
+  max-height: 2.75rem !important;
 }
 
 .matching-page .matching-personality-total {
@@ -540,6 +558,14 @@ body.matching-time-modal-open {
   background: #ffe9e3;
   color: #ae3115;
   font-size: 1.25rem;
+}
+
+.matching-page .matching-personality-option-icon.material-symbols-outlined {
+  display: inline-grid !important;
+  width: 2.35rem !important;
+  height: 2.35rem !important;
+  max-width: 2.35rem !important;
+  max-height: 2.35rem !important;
 }
 
 .matching-page .matching-personality-option.is-selected .matching-personality-option-icon {

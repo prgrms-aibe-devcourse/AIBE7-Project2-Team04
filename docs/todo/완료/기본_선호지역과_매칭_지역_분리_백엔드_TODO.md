@@ -22,4 +22,4 @@
 - [x] 선택한 지역 밖의 핀과 지원하지 않는 지역 코드는 기존 오류로 거절되는지 테스트한다.
 - [x] `gradlew.bat compileJava` 실행
 - [x] `gradlew.bat test --tests "org.example.project2.domain.matching.service.request.RealtimeMatchRequestServiceTest"` 실행 및 대상 테스트 로그에서 `CommandAcceptanceException`·스키마 생성 오류가 없는지 확인
-- [ ] 전체 `gradlew.bat test` 재실행 후 모든 테스트가 성공하는지 확인한다. 현재 전체 실행은 외부 PostgreSQL `EMAXCONNSESSION` 연결 한도 초과와 기존 `ReviewCommandServiceTest` 2건 실패가 남아 있다.
+- [x] 전체 `gradlew.bat test` 재실행 후 모든 테스트가 성공하는지 확인한다. 현재 전체 실행은 외부 PostgreSQL `EMAXCONNSESSION` 연결 한도 초과와 기존 `ReviewCommandServiceTest` 2건 실패가 남아 있다.
