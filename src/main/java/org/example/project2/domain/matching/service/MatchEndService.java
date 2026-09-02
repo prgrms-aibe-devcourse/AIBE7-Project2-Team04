@@ -13,6 +13,9 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import org.example.project2.domain.user.entity.User;
+
 @Service
 @RequiredArgsConstructor
 public class MatchEndService {
@@ -30,9 +33,19 @@ public class MatchEndService {
                 .orElseThrow(() -> new IllegalArgumentException("매칭 채팅방을 찾을 수 없습니다."));
         chatRoom.close(Instant.now());
 
-        // 상대방에게 웹소켓으로 매칭 종료 브로드캐스트 (요청한 유저 ID를 sender로 전달)
-        messagingTemplate.convertAndSend("/topic/chat/" + chatRoom.getId(),
-                new ChatMessageDTO(chatRoom.getId(), userId, "[SYSTEM] MATCH_CLOSED"));
+        ChatMessageDTO closedMsg = new ChatMessageDTO(chatRoom.getId(), userId, "[SYSTEM] MATCH_CLOSED");
+
+        // 1. 채팅방 토픽 구독자에게 전달
+        messagingTemplate.convertAndSend("/topic/chat/" + chatRoom.getId(), closedMsg);
+
+        // 2. 두 참가자의 개인 큐(/user/queue/match-result)에도 매칭 종료 전달
+        for (User participant : List.of(match.getRequest1().getUser(), match.getRequest2().getUser())) {
+            messagingTemplate.convertAndSendToUser(
+                    participant.getId().toString(),
+                    "/queue/match-result",
+                    closedMsg
+            );
+        }
     }
 
     @Transactional
@@ -51,8 +64,18 @@ public class MatchEndService {
         validMatch.complete(Instant.now());
         chatRoom.close(Instant.now());
 
-        // 상대방에게 웹소켓으로 매칭 종료 브로드캐스트 (요청한 유저 ID를 sender로 전달)
-        messagingTemplate.convertAndSend("/topic/chat/" + chatRoom.getId(),
-                new ChatMessageDTO(chatRoom.getId(), userId, "[SYSTEM] MATCH_CLOSED"));
+        ChatMessageDTO closedMsg = new ChatMessageDTO(chatRoom.getId(), userId, "[SYSTEM] MATCH_CLOSED");
+
+        // 1. 채팅방 토픽 구독자에게 전달
+        messagingTemplate.convertAndSend("/topic/chat/" + chatRoom.getId(), closedMsg);
+
+        // 2. 두 참가자의 개인 큐(/user/queue/match-result)에도 매칭 종료 전달
+        for (User participant : List.of(validMatch.getRequest1().getUser(), validMatch.getRequest2().getUser())) {
+            messagingTemplate.convertAndSendToUser(
+                    participant.getId().toString(),
+                    "/queue/match-result",
+                    closedMsg
+            );
+        }
     }
 }

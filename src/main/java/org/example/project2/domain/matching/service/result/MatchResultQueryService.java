@@ -17,6 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
+import org.example.project2.domain.matching.entity.MatchStatus;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -34,13 +36,24 @@ public class MatchResultQueryService {
                 .stream()
                 .findFirst()
                 .orElseThrow(this::notFound);
+
+        if (match.getStatus() != MatchStatus.MATCHED) {
+            throw notFound();
+        }
+
+        ChatRoom chatRoom = chatRoomRepository.findByMatchId(match.getId())
+                .orElseThrow(this::notFound);
+
+        if (!chatRoom.isActive()) {
+            throw notFound();
+        }
+
         MatchProposal proposal = matchProposalRepository.findMatchedByRequestPair(
                         match.getRequest1().getId(),
                         match.getRequest2().getId()
                 )
                 .orElseThrow(this::notFound);
-        ChatRoom chatRoom = chatRoomRepository.findByMatchId(match.getId())
-                .orElseThrow(this::notFound);
+
         return responseAssembler.assemble(proposal, match, chatRoom).responseFor(userId);
     }
 
