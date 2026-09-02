@@ -20,7 +20,8 @@ export function renderChatPage(container) {
 
   container.innerHTML = `
     <main class="chat-page">
-      <section class="chat-shell" aria-labelledby="chat-partner-name">
+      <div class="chat-layout">
+        <section class="chat-shell" aria-labelledby="chat-partner-name">
         <header class="chat-header">
           <button id="btn-back" class="chat-icon-button" type="button" aria-label="채팅방 나가기">
             <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
@@ -55,7 +56,48 @@ export function renderChatPage(container) {
             <span class="material-symbols-outlined" aria-hidden="true">send</span>
           </button>
         </div>
-      </section>
+        </section>
+
+        <aside class="chat-map-panel" aria-labelledby="chat-map-title">
+          <header class="chat-map-header">
+            <div>
+              <p class="chat-map-eyebrow">약속 위치 맞추기</p>
+              <h2 id="chat-map-title">서로 선택한 위치</h2>
+            </div>
+            <span class="chat-map-header-icon material-symbols-outlined" aria-hidden="true">map</span>
+          </header>
+
+          <div class="chat-map-canvas-wrap">
+            <div id="chat-location-map" class="chat-map-canvas" aria-label="양쪽 사용자의 희망 매칭 위치 지도"></div>
+            <div id="chat-map-status" class="chat-map-status">
+              <span class="material-symbols-outlined" aria-hidden="true">progress_activity</span>
+              <span>희망 위치를 불러오고 있어요.</span>
+            </div>
+          </div>
+
+          <div class="chat-location-list">
+            <article class="chat-location-card is-mine">
+              <div>
+                <p>내가 선택한 위치</p>
+                <strong id="chat-my-location-name">확인 중</strong>
+                <span id="chat-my-region-name"></span>
+              </div>
+            </article>
+            <article class="chat-location-card is-partner">
+              <div>
+                <p><span id="chat-location-partner-name">상대방</span>님이 선택한 위치</p>
+                <strong id="chat-partner-location-name">확인 중</strong>
+                <span id="chat-partner-region-name"></span>
+              </div>
+            </article>
+          </div>
+
+          <p class="chat-map-notice">
+            <span class="material-symbols-outlined" aria-hidden="true">info</span>
+            실시간 위치가 아니라 매칭 요청 시 각자 선택한 희망 장소예요.
+          </p>
+        </aside>
+      </div>
     </main>
   `
 
@@ -69,6 +111,8 @@ export function renderChatPage(container) {
   let partnerUserId = null
   let partnerProfileImg = null
   let matchId      = null
+  let desiredLocations = null
+  let locationMap = null
 
   // ── 메시지 말풍선 렌더링 ───────────────────────────────────────────────────
   function appendChatMessage(senderId, nickname, message, isMine, customTime = null) {
@@ -271,6 +315,129 @@ export function renderChatPage(container) {
     image.addEventListener('error', () => image.classList.add('is-hidden'), { once: true })
   }
 
+  function renderDesiredLocations(locations) {
+    desiredLocations = locations
+    const mine = locations?.mine
+    const partner = locations?.partner
+    const partnerLabel = document.getElementById('chat-location-partner-name')
+    if (partnerLabel) partnerLabel.textContent = partnerNickname
+
+    if (!isValidLocation(mine) || !isValidLocation(partner)) {
+      showMapStatus('희망 위치 정보를 확인할 수 없어요.', 'location_off')
+      return
+    }
+
+    setText('chat-my-location-name', mine.locationName || mine.regionName)
+    setText('chat-my-region-name', mine.locationName ? mine.regionName : '')
+    setText('chat-partner-location-name', partner.locationName || partner.regionName)
+    setText('chat-partner-region-name', partner.locationName ? partner.regionName : '')
+    initializeLocationMap(mine, partner)
+  }
+
+  function initializeLocationMap(mine, partner) {
+    let attempts = 0
+    const waitForKakao = setInterval(() => {
+      attempts += 1
+      if (window.kakao?.maps) {
+        clearInterval(waitForKakao)
+        window.kakao.maps.load(() => createLocationMap(mine, partner))
+        return
+      }
+      if (attempts >= 50) {
+        clearInterval(waitForKakao)
+        showMapStatus('지도를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.', 'map_off')
+      }
+    }, 100)
+  }
+
+  function createLocationMap(mine, partner) {
+    const mapContainer = document.getElementById('chat-location-map')
+    if (!mapContainer || !desiredLocations) return
+
+    const kakaoMaps = window.kakao.maps
+    const myPosition = new kakaoMaps.LatLng(mine.latitude, mine.longitude)
+    const partnerPosition = new kakaoMaps.LatLng(partner.latitude, partner.longitude)
+    locationMap = new kakaoMaps.Map(mapContainer, {
+      center: myPosition,
+      level: 5,
+    })
+
+    const positionsOverlap = Math.abs(mine.latitude - partner.latitude) < 0.000001
+      && Math.abs(mine.longitude - partner.longitude) < 0.000001
+    addLocationMarker(
+      locationMap,
+      myPosition,
+      '나',
+      `is-mine ${positionsOverlap ? 'is-overlap-left' : ''}`.trim(),
+    )
+    addLocationMarker(
+      locationMap,
+      partnerPosition,
+      partnerNickname,
+      `is-partner ${positionsOverlap ? 'is-overlap-right' : ''}`.trim(),
+    )
+
+    if (positionsOverlap) {
+      locationMap.setCenter(myPosition)
+      locationMap.setLevel(4)
+    } else {
+      const bounds = new kakaoMaps.LatLngBounds()
+      bounds.extend(myPosition)
+      bounds.extend(partnerPosition)
+      locationMap.setBounds(bounds, 70, 70, 70, 70)
+    }
+    locationMap.relayout()
+    hideMapStatus()
+  }
+
+  function addLocationMarker(map, position, label, modifier) {
+    const marker = document.createElement('div')
+    marker.className = `chat-map-marker ${modifier}`
+    const pin = document.createElement('span')
+    pin.className = 'chat-map-marker-pin'
+    pin.setAttribute('aria-hidden', 'true')
+    const copy = document.createElement('span')
+    copy.className = 'chat-map-marker-label'
+    copy.textContent = label
+    marker.append(pin, copy)
+
+    new window.kakao.maps.CustomOverlay({
+      map,
+      position,
+      content: marker,
+      xAnchor: 0.5,
+      yAnchor: 1,
+      zIndex: modifier === 'is-mine' ? 3 : 2,
+    })
+  }
+
+  function isValidLocation(location) {
+    return location
+      && Number.isFinite(Number(location.latitude))
+      && Number.isFinite(Number(location.longitude))
+      && Math.abs(Number(location.latitude)) <= 90
+      && Math.abs(Number(location.longitude)) <= 180
+  }
+
+  function setText(id, text) {
+    const element = document.getElementById(id)
+    if (element) element.textContent = text || ''
+  }
+
+  function showMapStatus(message, icon) {
+    const status = document.getElementById('chat-map-status')
+    if (!status) return
+    status.classList.remove('is-hidden')
+    const iconElement = status.querySelector('.material-symbols-outlined')
+    const messageElement = status.querySelector('span:last-child')
+    if (iconElement) iconElement.textContent = icon
+    if (messageElement) messageElement.textContent = message
+  }
+
+  function hideMapStatus() {
+    document.getElementById('chat-map-status')?.classList.add('is-hidden')
+  }
+
   // ── 이벤트 바인딩 ──────────────────────────────────────────────────────────
   document.getElementById('btn-back').addEventListener('click', () => navigateTo('/'))
   document.getElementById('btn-send').addEventListener('click', sendMessage)
@@ -334,6 +501,7 @@ export function renderChatPage(container) {
       partnerUserId = matchResult.partner.userId
       partnerProfileImg = matchResult.partner.profileImageUrl
       updatePartnerHeader()
+      renderDesiredLocations(matchResult.desiredLocations)
     }
 
     // 정보를 다 확보한 상태에서 자동으로 입장 처리 진행
