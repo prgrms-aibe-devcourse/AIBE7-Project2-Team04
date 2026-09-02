@@ -156,6 +156,7 @@ CREATE TABLE IF NOT EXISTS public.reports (
     match_id BIGINT NOT NULL,
     category VARCHAR(50) NOT NULL,
     reason TEXT NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT fk_reports_reporter
         FOREIGN KEY (reporter_id) REFERENCES public.users(id) ON DELETE CASCADE,
@@ -164,6 +165,72 @@ CREATE TABLE IF NOT EXISTS public.reports (
     CONSTRAINT fk_reports_match
         FOREIGN KEY (match_id) REFERENCES public.matches(id) ON DELETE CASCADE
 );
+
+ALTER TABLE public.reports
+    ADD COLUMN IF NOT EXISTS status VARCHAR(20);
+
+UPDATE public.reports
+SET status = 'PENDING'
+WHERE status IS NULL;
+
+ALTER TABLE public.reports
+    ALTER COLUMN status SET DEFAULT 'PENDING',
+    ALTER COLUMN status SET NOT NULL;
+
+ALTER TABLE public.reports
+    DROP CONSTRAINT IF EXISTS chk_reports_status_values;
+
+ALTER TABLE public.reports
+    ADD CONSTRAINT chk_reports_status_values
+    CHECK (status IN ('PENDING', 'DISMISSED', 'ACTIONED'))
+    NOT VALID;
+
+ALTER TABLE public.reports
+    VALIDATE CONSTRAINT chk_reports_status_values;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_reports_reporter_target_match
+    ON public.reports (reporter_id, reported_user_id, match_id);
+
+-- ddl-auto가 임의 이름과 기본 삭제 정책으로 만든 FK도 문서의 CASCADE 계약으로 교체합니다.
+DO $$
+DECLARE
+    constraint_record RECORD;
+BEGIN
+    FOR constraint_record IN
+        SELECT DISTINCT constraint_info.conname
+        FROM pg_constraint constraint_info
+        JOIN pg_attribute column_info
+          ON column_info.attrelid = constraint_info.conrelid
+         AND column_info.attnum = ANY (constraint_info.conkey)
+        WHERE constraint_info.conrelid = 'public.reports'::regclass
+          AND constraint_info.contype = 'f'
+          AND column_info.attname IN ('reporter_id', 'reported_user_id', 'match_id')
+    LOOP
+        EXECUTE format(
+            'ALTER TABLE public.reports DROP CONSTRAINT %I',
+            constraint_record.conname
+        );
+    END LOOP;
+END
+$$;
+
+ALTER TABLE public.reports
+    ADD CONSTRAINT fk_reports_reporter
+        FOREIGN KEY (reporter_id) REFERENCES public.users(id) ON DELETE CASCADE,
+    ADD CONSTRAINT fk_reports_reported
+        FOREIGN KEY (reported_user_id) REFERENCES public.users(id) ON DELETE CASCADE,
+    ADD CONSTRAINT fk_reports_match
+        FOREIGN KEY (match_id) REFERENCES public.matches(id) ON DELETE CASCADE;
+
+ALTER TABLE public.reports
+    DROP CONSTRAINT IF EXISTS chk_reports_category_values;
+
+ALTER TABLE public.reports
+    ADD CONSTRAINT chk_reports_category_values
+    CHECK (category IN ('NO_SHOW', 'ABUSE', 'SPAM', 'MISINFORMATION'))
+    NOT VALID;
+
+ALTER TABLE public.reports
 
 -- ddl-auto가 임의 이름과 기본 삭제 정책으로 만든 FK도 문서의 CASCADE 계약으로 교체합니다.
 DO $$
@@ -212,5 +279,9 @@ CREATE INDEX IF NOT EXISTS idx_reports_reported
 
 CREATE INDEX IF NOT EXISTS idx_reports_match
     ON public.reports (match_id);
+
+-- PostGIS 공간 거리 검색 (ST_DWithin) 고속화를 위한 GiST 인덱스
+CREATE INDEX IF NOT EXISTS idx_match_requests_location_gist
+    ON public.match_requests USING GIST (location);
 
 COMMIT;

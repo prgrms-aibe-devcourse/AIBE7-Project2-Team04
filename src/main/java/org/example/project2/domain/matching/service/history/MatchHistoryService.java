@@ -1,5 +1,8 @@
 package org.example.project2.domain.matching.service.history;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import lombok.RequiredArgsConstructor;
@@ -9,6 +12,7 @@ import org.example.project2.domain.matching.entity.Match;
 import org.example.project2.domain.matching.entity.MatchRequest;
 import org.example.project2.domain.matching.repository.MatchRepository;
 import org.example.project2.domain.review.repository.UserReviewRepository;
+import org.example.project2.domain.report.repository.ReportRepository;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -22,6 +26,7 @@ public class MatchHistoryService {
 
     private final MatchRepository matchRepository;
     private final UserReviewRepository userReviewRepository;
+    private final ReportRepository reportRepository;
 
     public MatchHistoryPageResponse findMyHistory(UUID userId, int page, int size) {
         if (userId == null) {
@@ -29,15 +34,27 @@ public class MatchHistoryService {
         }
 
         if (page < 0 || size != HISTORY_PAGE_SIZE) {
-            throw new IllegalArgumentException("留ㅼ묶 ?대젰??10嫄?湲곗?濡쒖쫰?섏빞 ?⑸땲??");
+            throw new IllegalArgumentException("매칭 이력은 10건 기준으로 조회해야 합니다.");
         }
 
         Pageable pageable = PageRequest.of(page, size);
         var historyPage = matchRepository.findHistoryByParticipantUserId(userId, pageable);
-        var content = historyPage
+        List<Match> matches = historyPage.getContent();
+        List<Long> matchIds = matches.stream().map(Match::getId).toList();
+
+        Set<Long> reviewedMatchIds = matchIds.isEmpty()
+                ? Collections.emptySet()
+                : userReviewRepository.findReviewedMatchIdsByMatchIdInAndReviewerId(matchIds, userId);
+
+        Set<Long> reportedMatchIds = matchIds.isEmpty()
+                ? Collections.emptySet()
+                : reportRepository.findReportedMatchIdsByMatchIdInAndReporterId(matchIds, userId);
+
+        var content = matches
                 .stream()
-                .map(match -> toResponse(match, userId))
+                .map(match -> toResponse(match, userId, reviewedMatchIds, reportedMatchIds))
                 .toList();
+
         return new MatchHistoryPageResponse(
                 content,
                 historyPage.getNumber(),
@@ -49,7 +66,12 @@ public class MatchHistoryService {
         );
     }
 
-    private MatchHistoryResponse toResponse(Match match, UUID userId) {
+    private MatchHistoryResponse toResponse(
+            Match match,
+            UUID userId,
+            Set<Long> reviewedMatchIds,
+            Set<Long> reportedMatchIds
+    ) {
         MatchRequest myRequest = match.getRequest1().getUser().getId().equals(userId)
                 ? match.getRequest1()
                 : match.getRequest2();
@@ -57,11 +79,8 @@ public class MatchHistoryService {
                 ? match.getRequest2()
                 : match.getRequest1();
 
-        boolean reviewed = userReviewRepository.existsByMatch_IdAndReviewer_IdAndReviewee_Id(
-                match.getId(),
-                userId,
-                partnerRequest.getUser().getId()
-        );
+        boolean reviewed = reviewedMatchIds.contains(match.getId());
+        boolean reported = reportedMatchIds.contains(match.getId());
 
         return new MatchHistoryResponse(
                 match.getId(),
@@ -72,7 +91,8 @@ public class MatchHistoryService {
                 myRequest.getRegionName(),
                 myRequest.getFoodCategory(),
                 myRequest.getMealAt(),
-                reviewed
+                reviewed,
+                reported
         );
     }
 }

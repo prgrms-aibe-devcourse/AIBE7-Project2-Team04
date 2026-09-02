@@ -3,6 +3,8 @@ const LOGGED_IN_FLAG = 'project2.isLoggedIn'
 export function saveAccessToken(accessToken) {
   // 토큰을 저장하는 대신 로그인 성공 플래그를 세션스토리지에 저장합니다.
   sessionStorage.setItem(LOGGED_IN_FLAG, 'true')
+  document.documentElement.classList.add('logged-in')
+  document.documentElement.classList.remove('logged-out')
 }
 
 export function getAccessToken() {
@@ -14,4 +16,6 @@ export function clearAccessToken() {
   // 세션스토리지를 비워 로그아웃 상태로 전환합니다.
   sessionStorage.removeItem(LOGGED_IN_FLAG)
   sessionStorage.removeItem('project2.latestMatchResult')
+  document.documentElement.classList.remove('logged-in')
+  document.documentElement.classList.add('logged-out')
 }

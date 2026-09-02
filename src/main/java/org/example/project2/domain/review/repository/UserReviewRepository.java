@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Repository
@@ -16,6 +18,12 @@ public interface UserReviewRepository extends JpaRepository<UserReview, Long> {
             Long matchId,
             UUID reviewerId,
             UUID revieweeId
+    );
+
+    @Query("SELECT r.match.id FROM UserReview r WHERE r.match.id IN :matchIds AND r.reviewer.id = :reviewerId")
+    Set<Long> findReviewedMatchIdsByMatchIdInAndReviewerId(
+            @Param("matchIds") List<Long> matchIds,
+            @Param("reviewerId") UUID reviewerId
     );
 
     @Query("""

@@ -13,6 +13,7 @@ public record MatchHistoryResponse(
         String regionName,
         String foodCategory,
         Instant mealAt,
-        boolean reviewed
+        boolean reviewed,
+        boolean reported
 ) {
 }
