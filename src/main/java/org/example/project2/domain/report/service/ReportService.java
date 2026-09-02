@@ -10,6 +10,7 @@ import org.example.project2.domain.matching.repository.MatchRepository;
 import org.example.project2.domain.report.dto.CreateReportRequest;
 import org.example.project2.domain.report.dto.ReportResponse;
 import org.example.project2.domain.report.entity.Report;
+import org.example.project2.domain.report.entity.ReportStatus;
 import org.example.project2.domain.report.repository.ReportRepository;
 import org.example.project2.domain.user.entity.User;
 import org.example.project2.domain.user.repository.UserRepository;
@@ -64,7 +65,7 @@ public class ReportService {
     }
 
     public List<ReportResponse> getAllReports() {
-        return reportRepository.findAllWithFetchedUsers().stream()
+        return reportRepository.findAllWithFetchedUsersByStatus(ReportStatus.PENDING).stream()
                 .map(report -> new ReportResponse(
                         report.getId(),
                         report.getReporter().getId(),
@@ -114,10 +115,9 @@ public class ReportService {
 
     @Transactional
     public void dismissReport(Long reportId) {
-        if (!reportRepository.existsById(reportId)) {
-            throw new IllegalArgumentException("신고 내역을 찾을 수 없습니다.");
-        }
-        reportRepository.deleteById(reportId);
+        Report report = reportRepository.findById(reportId)
+                .orElseThrow(() -> new IllegalArgumentException("신고 내역을 찾을 수 없습니다."));
+        report.dismiss();
     }
 
     @Transactional
@@ -134,6 +134,6 @@ public class ReportService {
             throw new IllegalArgumentException("신고 처리 유형은 warn 또는 ban만 사용할 수 있습니다.");
         }
 
-        reportRepository.delete(report);
+        report.markActioned();
     }
 }

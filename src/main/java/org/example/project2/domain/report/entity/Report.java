@@ -40,4 +40,17 @@ public class Report extends CreatedEntity {
 
     @Column(nullable = false, columnDefinition = "text")
     private String reason;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20, columnDefinition = "varchar(20) default 'PENDING'")
+    @Builder.Default
+    private ReportStatus status = ReportStatus.PENDING;
+
+    public void dismiss() {
+        status = ReportStatus.DISMISSED;
+    }
+
+    public void markActioned() {
+        status = ReportStatus.ACTIONED;
+    }
 }
