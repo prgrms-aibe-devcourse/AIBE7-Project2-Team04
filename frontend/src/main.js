@@ -15,6 +15,8 @@ const initialLandingPageHtml = app?.innerHTML ?? ''
 
 export { API_BASE_URL, openAuthModal }
 
+const SIGNUP_PASSWORD_PATTERN = /^(?=.*[A-Za-z])(?=.*[0-9])(?=.*[^A-Za-z0-9\s])\S+$/
+
 // 행정구역 트리 (pages/ 모듈과 공유)
 export let regionTree = {}
 
@@ -323,7 +325,24 @@ function initLandingPage() {
     const email = document.querySelector('#signup-email')?.value.trim()
     const nickname = document.querySelector('#signup-nickname')?.value.trim()
     const password = document.querySelector('#signup-password')?.value
+    const passwordConfirmation = document.querySelector('#signup-password-confirm')?.value
     if (signupErrorMsg) signupErrorMsg.style.display = 'none'
+
+    if (!SIGNUP_PASSWORD_PATTERN.test(password || '')) {
+      if (signupErrorMsg) {
+        signupErrorMsg.textContent = '비밀번호는 영문, 숫자, 특수기호를 각각 1자 이상 포함하고 공백을 사용할 수 없습니다.'
+        signupErrorMsg.style.display = 'block'
+      }
+      return
+    }
+
+    if (password !== passwordConfirmation) {
+      if (signupErrorMsg) {
+        signupErrorMsg.textContent = '비밀번호와 비밀번호 확인이 일치하지 않습니다.'
+        signupErrorMsg.style.display = 'block'
+      }
+      return
+    }
 
     try {
       await signUp(email, password, nickname)

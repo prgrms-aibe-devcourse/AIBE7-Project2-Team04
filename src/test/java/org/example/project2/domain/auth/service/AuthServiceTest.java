@@ -50,7 +50,7 @@ class AuthServiceTest {
     @Test
     void signUpSuccess() {
         // given
-        SignUpRequest request = new SignUpRequest("test@example.com", "password123", "nickname");
+        SignUpRequest request = new SignUpRequest("test@example.com", "Password123!", "nickname");
         String encodedPassword = "encodedPassword";
         UUID userId = UUID.randomUUID();
 
@@ -83,7 +83,7 @@ class AuthServiceTest {
     @Test
     void signUpThrowsEmailAlreadyExistsException() {
         // given
-        SignUpRequest request = new SignUpRequest("test@example.com", "password123", "nickname");
+        SignUpRequest request = new SignUpRequest("test@example.com", "Password123!", "nickname");
         when(userRepository.existsByEmailIgnoreCase(request.email())).thenReturn(true);
 
         // when & then
@@ -94,7 +94,7 @@ class AuthServiceTest {
     @Test
     void signUpThrowsNicknameAlreadyExistsException() {
         // given
-        SignUpRequest request = new SignUpRequest("test@example.com", "password123", "nickname");
+        SignUpRequest request = new SignUpRequest("test@example.com", "Password123!", "nickname");
         when(userRepository.existsByEmailIgnoreCase(request.email())).thenReturn(false);
         when(userRepository.existsByNickname(request.nickname())).thenReturn(true);
 

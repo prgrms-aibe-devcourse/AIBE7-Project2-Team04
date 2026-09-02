@@ -169,7 +169,11 @@
             <img src="/assets/branding/app-icon-kakao-ivory-128.png" alt="마주한끼 로고" class="w-full h-full object-cover" />
           </div>
           <div class="flex flex-col">
-            <span class="font-headline text-xl md:text-2xl font-bold tracking-tight text-brand-navy">마주한끼</span>
+            <img
+              src="/assets/maju-hankki-wordmark.png"
+              alt="마주한끼"
+              class="w-28 md:w-36 h-auto"
+            />
           </div>
         </a>
 
@@ -530,7 +534,28 @@
                 type="password"
                 id="signup-password"
                 required
-                placeholder="비밀번호 (8자 이상)"
+                minlength="8"
+                maxlength="100"
+                autocomplete="new-password"
+                placeholder="영문, 숫자, 특수기호 포함 8자 이상"
+                class="w-full bg-surface border border-outline-variant/40 rounded-xl py-2.5 pl-9 pr-3 text-sm focus:ring-2 focus:ring-primary-container focus:border-primary-container outline-none"
+              />
+            </div>
+            <p class="mt-1 text-[11px] text-slate-400">영문, 숫자, 특수기호를 각각 1자 이상 포함해 주세요.</p>
+          </div>
+
+          <div class="text-left">
+            <label for="signup-password-confirm" class="block text-xs font-bold text-secondary mb-1">비밀번호 확인</label>
+            <div class="relative">
+              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-lg">lock_reset</span>
+              <input
+                type="password"
+                id="signup-password-confirm"
+                required
+                minlength="8"
+                maxlength="100"
+                autocomplete="new-password"
+                placeholder="비밀번호를 다시 입력하세요"
                 class="w-full bg-surface border border-outline-variant/40 rounded-xl py-2.5 pl-9 pr-3 text-sm focus:ring-2 focus:ring-primary-container focus:border-primary-container outline-none"
               />
             </div>

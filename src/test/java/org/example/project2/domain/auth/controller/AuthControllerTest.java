@@ -108,7 +108,7 @@ class AuthControllerTest {
     @Test
     void signUpSuccess() throws Exception {
         // given
-        SignUpRequest request = new SignUpRequest("user@test.com", "password123", "혼밥탈출");
+        SignUpRequest request = new SignUpRequest("user@test.com", "Password123!", "혼밥탈출");
         SignUpResponse response = new SignUpResponse(UUID.randomUUID(), "user@test.com", "혼밥탈출");
         when(authService.signUp(any(SignUpRequest.class))).thenReturn(response);
 
@@ -137,6 +137,21 @@ class AuthControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.error.code").value("COMMON_002"));
+    }
+
+    @Test
+    void signUpRejectsPasswordWithoutRequiredCharacterTypes() throws Exception {
+        SignUpRequest request = new SignUpRequest("user@test.com", "12345678", "혼밥탈출");
+
+        mockMvc.perform(post("/auth/signup")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("COMMON_002"))
+                .andExpect(jsonPath("$.error.message")
+                        .value("비밀번호는 영문, 숫자, 특수기호를 각각 1자 이상 포함하고 공백을 사용할 수 없습니다."));
     }
 
     @Test
