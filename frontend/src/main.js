@@ -438,8 +438,9 @@ function updateHeaderMatchStatusBadge(result) {
   if (result && result.chatRoomId && result.status === 'MATCHED') {
     badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer bg-emerald-50 text-emerald-800 border border-emerald-200/80 hover:bg-emerald-100'
     badge.innerHTML = `
-      <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-      <span>매칭 중</span>
+      <span class="material-symbols-outlined text-base" aria-hidden="true">check_circle</span>
+      <span>매칭 완료</span>
+      <span class="material-symbols-outlined text-sm" aria-hidden="true">arrow_forward</span>
     `
     badge.title = '클릭하면 채팅방으로 이동합니다'
     badge.onclick = (e) => {
@@ -449,7 +450,7 @@ function updateHeaderMatchStatusBadge(result) {
   } else {
     badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all cursor-default bg-slate-100 text-slate-500 border border-slate-200/80'
     badge.innerHTML = `
-      <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+      <span class="material-symbols-outlined text-base" aria-hidden="true">person_search</span>
       <span>매칭 없음</span>
     `
     badge.title = '진행 중인 매칭이 없습니다'
