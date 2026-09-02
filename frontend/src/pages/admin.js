@@ -8,7 +8,7 @@ export async function renderAdminPage(container) {
       <!-- Title -->
       <div class="flex items-center justify-between border-b border-slate-200 pb-4">
         <div>
-          <h2 class="text-2xl font-extrabold text-brand-navy">🛠️ 관리자 신고 센터</h2>
+          <h2 class="text-2xl font-extrabold text-brand-navy">관리자 신고 센터</h2>
           <p class="text-xs text-secondary mt-1">접수된 이용자 신고 건들을 모니터링하고 부적절한 회원을 즉각 제재합니다.</p>
         </div>
       </div>
