@@ -106,42 +106,7 @@ flowchart LR
 
 ## 시스템 아키텍처
 
-```mermaid
-flowchart TB
-    User[사용자 브라우저]
-
-    subgraph Frontend[Frontend]
-        CF[Cloudflare Pages\nVite + Vanilla JavaScript]
-    end
-
-    subgraph Backend[Backend]
-        Render[Render\nJava 17 + Spring Boot]
-        WS[WebSocket + STOMP]
-    end
-
-    subgraph Data[Data & State]
-        DB[(Supabase PostgreSQL\nPostGIS + pgvector)]
-        Storage[(Supabase Storage)]
-        Valkey[(Aiven for Valkey)]
-    end
-
-    subgraph External[External APIs]
-        Kakao[Kakao OAuth / Kakao Maps]
-        GoogleOAuth[Google OAuth]
-        Gemini[Google GenAI]
-    end
-
-    User --> CF
-    CF -->|REST / OAuth| Render
-    CF <-->|SockJS / STOMP| WS
-    WS --- Render
-    Render --> DB
-    Render --> Storage
-    Render --> Valkey
-    Render --> Kakao
-    Render --> GoogleOAuth
-    Render -. 선택 기능 .-> Gemini
-```
+<img src="docs/assets/image/시스템아키텍쳐.jpg" alt="시스템 아키텍처" width="900">
 
 ## 기술 스택
 
