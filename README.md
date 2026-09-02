@@ -18,6 +18,7 @@
 - [핵심 기능](#핵심-기능)
 - [서비스 이용 흐름](#서비스-이용-흐름)
 - [시스템 아키텍처](#시스템-아키텍처)
+- [ERD](#erd)
 - [기술 스택](#기술-스택)
 - [핵심 설계와 문제 해결](#핵심-설계와-문제-해결)
 - [프로젝트 구조](#프로젝트-구조)
@@ -106,7 +107,11 @@ flowchart LR
 
 ## 시스템 아키텍처
 
-<img src="docs/assets/image/시스템아키텍쳐.jpg" alt="시스템 아키텍처" width="900">
+<img src="docs/assets/image/시스템아키텍쳐.jpg" alt="시스템 아키텍처" width="600">
+
+## ERD
+
+<img src="docs/assets/image/erd.png" alt="ERD" width="600">
 
 ## 기술 스택
 
