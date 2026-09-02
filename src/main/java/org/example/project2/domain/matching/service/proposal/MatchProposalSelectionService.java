@@ -36,6 +36,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MatchProposalSelectionService {
@@ -74,6 +77,14 @@ public class MatchProposalSelectionService {
 
         List<ScoredCandidate> rankedCandidates = hardFilteredCandidates
                 .stream()
+                .filter(candidate -> {
+                    MatchRequest req = requestsById.get(candidate.requestId());
+                    if (req == null) return false;
+                    UserPersonalityProfile prof = profilesByUserId.get(req.getUser().getId());
+                    return prof != null
+                            && prof.getStyleTags() != null && !prof.getStyleTags().isEmpty()
+                            && prof.getAiKeywords() != null && !prof.getAiKeywords().isEmpty();
+                })
                 .map(candidate -> assembleRankingInput(
                         source,
                         candidate,
@@ -164,6 +175,11 @@ public class MatchProposalSelectionService {
                 input.sourceSelfDescriptionEmbeddings()
         );
         short pairScore = (short) Math.min(sourceToTarget.score(), targetToSource.score());
+
+        log.info("[매칭 쌍 최종 점수 계산 로그] 요청자({}) -> 후보자({}) 점수: {}점 | 후보자({}) -> 요청자({}) 점수: {}점 => 최종 쌍 매칭점수(최솟값 적용): {}점",
+                source.getUser().getId(), target.getUser().getId(), sourceToTarget.score(),
+                target.getUser().getId(), source.getUser().getId(), targetToSource.score(),
+                pairScore);
 
         return new ScoredCandidate(
                 input.hardFilteredCandidate(),

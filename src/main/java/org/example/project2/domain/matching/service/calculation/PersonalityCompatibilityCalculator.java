@@ -4,11 +4,13 @@ import org.example.project2.domain.matching.dto.scoring.DesiredPersonalityTagMat
 import org.example.project2.domain.matching.dto.scoring.PersonalityCompatibilityScore;
 import org.example.project2.domain.matching.dto.scoring.PersonalityEmbeddingVector;
 import org.example.project2.domain.personality.entity.PersonalityTag;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.OptionalInt;
 import java.util.Set;
 
+@Slf4j
 @Component
 public class PersonalityCompatibilityCalculator {
     public static final String FORMULA_VERSION = "DESIRED_PERSONALITY_MATCH_V1";
@@ -47,10 +49,14 @@ public class PersonalityCompatibilityCalculator {
                     tagScore.score(), TAG_WEIGHT_IN_FINAL_SCORE,
                     embeddingScore.getAsInt(), EMBEDDING_WEIGHT_IN_FINAL_SCORE
             );
+            log.info("[매칭 점수 산식 로그] 고정태그 점수={} (비중 80%), 임베딩 점수={} (비중 20%) => 최종 산출점수={}",
+                    tagScore.score(), embeddingScore.getAsInt(), finalScore);
         } else if (tagScore.available()) {
             finalScore = tagScore.score();
+            log.info("[매칭 점수 산식 로그] 고정태그 점수만 반영 (임베딩 없음) => 최종 산출점수={}", finalScore);
         } else {
             finalScore = (short) embeddingScore.getAsInt();
+            log.info("[매칭 점수 산식 로그] 임베딩 점수만 반영 (태그 없음) => 최종 산출점수={}", finalScore);
         }
 
         return new PersonalityCompatibilityScore(
@@ -84,10 +90,14 @@ public class PersonalityCompatibilityCalculator {
                     tagScore.score(), TAG_WEIGHT_IN_FINAL_SCORE,
                     embeddingScore.getAsInt(), EMBEDDING_WEIGHT_IN_FINAL_SCORE
             );
+            log.info("[매칭 점수 산식 로그] (상대 희망태그 vs 후보태그={}) 고정태그점수={} (80%), (임베딩 유사도) 임베딩점수={} (20%) => 최종 산출점수={}",
+                    tagScore.matchedTags(), tagScore.score(), embeddingScore.getAsInt(), finalScore);
         } else if (tagScore.available()) {
             finalScore = tagScore.score();
+            log.info("[매칭 점수 산식 로그] (상대 희망태그 vs 후보태그={}) 고정태그점수만 반영={}", tagScore.matchedTags(), finalScore);
         } else {
             finalScore = (short) embeddingScore.getAsInt();
+            log.info("[매칭 점수 산식 로그] 임베딩 유사도 점수만 반영={}", finalScore);
         }
 
         return new PersonalityCompatibilityScore(
