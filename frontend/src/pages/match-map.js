@@ -1,4 +1,4 @@
-import { API_BASE_URL, regionTree, showToast } from '../main.js'
+import { API_BASE_URL, regionTree, showToast, checkPersonalityProfileCompleted, navigateTo } from '../main.js'
 import { getAccessToken } from '../auth/token-storage.js'
 import { getCsrfToken } from '../auth/csrf.js'
 
@@ -672,9 +672,16 @@ function initKakaoMap(lat, lng, name, sido, sigungu, detail) {
         })
 
         // Confirm button event
-        document.querySelector('#btn-confirm-location')?.addEventListener('click', () => {
+        document.querySelector('#btn-confirm-location')?.addEventListener('click', async () => {
           if (!lastValidRegionCode || !lastValidPosition) {
             alert('유효한 지역과 핀 위치를 지정해 주세요.')
+            return
+          }
+
+          const isCompleted = await checkPersonalityProfileCompleted()
+          if (!isCompleted) {
+            alert('식사성향설정을 먼저 작성해주세요')
+            navigateTo('/personality/survey')
             return
           }
 

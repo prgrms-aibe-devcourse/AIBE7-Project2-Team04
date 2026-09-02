@@ -74,11 +74,11 @@ class RealtimeMatchRequestCreateRequestTest {
 
         assertThat(normalized.desiredPersonalityText()).isEqualTo("대화를 편하게 이어가는 분");
         assertThat(validator.validate(overLimit)).extracting(violation -> violation.getMessage())
-                .containsExactly("원하는 상대 성향 설명은 최대 300자까지 입력할 수 있습니다.");
+                .containsExactly("원하는 상대 성향 설명은 1자 이상 300자 이하로 입력할 수 있습니다.");
     }
 
     @Test
-    void normalizesBlankDesiredPersonalityTextToNull() {
+    void rejectsBlankDesiredPersonalityText() {
         RealtimeMatchRequestCreateRequest request = requestWithText(
                 Set.of(
                         PersonalityTag.GOOD_LISTENER,
@@ -88,7 +88,8 @@ class RealtimeMatchRequestCreateRequestTest {
                 "   "
         );
 
-        assertThat(request.desiredPersonalityText()).isNull();
+        assertThat(validator.validate(request)).extracting(violation -> violation.getMessage())
+                .containsExactly("원하는 상대 성향 설명(임베딩 텍스트)은 필수입니다.");
     }
 
     @Test

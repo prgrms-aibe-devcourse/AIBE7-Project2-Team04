@@ -56,6 +56,7 @@ public class RealtimeMatchRequestService {
     private static final int EMBEDDING_DIMENSIONS = 1536;
 
     private final UserRepository userRepository;
+    private final org.example.project2.domain.personality.repository.UserPersonalityProfileRepository profileRepository;
     private final UserLocationPreferenceRepository locationPreferenceRepository;
     private final RegionRepository regionRepository;
     private final RegionPinValidator regionPinValidator;
@@ -76,6 +77,18 @@ public class RealtimeMatchRequestService {
     ) {
         User user = findUser(userId);
         requireLocationConsent(userId);
+
+        org.example.project2.domain.personality.entity.UserPersonalityProfile profile =
+                profileRepository.findByUserId(userId).orElse(null);
+        if (profile == null
+                || user.getPersonalityOnboardingStatus() != org.example.project2.domain.user.entity.PersonalityOnboardingStatus.COMPLETED
+                || profile.getStyleTags() == null || profile.getStyleTags().isEmpty()
+                || profile.getAiKeywords() == null || profile.getAiKeywords().isEmpty()) {
+            throw new RealtimeMatchRequestException(
+                    RealtimeMatchRequestErrorCode.PERSONALITY_PROFILE_REQUIRED
+            );
+        }
+
         Region region = normalizeRegion(request.regionCode());
         validatePin(region.getRegionCode(), request.longitude(), request.latitude());
 

@@ -58,6 +58,7 @@ class RealtimeMatchRequestServiceTest {
 
     @Autowired RealtimeMatchRequestService service;
     @Autowired UserRepository userRepository;
+    @Autowired org.example.project2.domain.personality.repository.UserPersonalityProfileRepository personalityProfileRepository;
     @Autowired UserLocationPreferenceRepository locationPreferenceRepository;
     @Autowired RegionRepository regionRepository;
     @Autowired MatchRequestRepository matchRequestRepository;
@@ -79,6 +80,21 @@ class RealtimeMatchRequestServiceTest {
                 .email("realtime-request-" + suffix + "@test.com")
                 .passwordHash("hashed")
                 .nickname("realtime-request-" + suffix)
+                .build());
+        user.completePersonalityOnboarding();
+        userRepository.save(user);
+        personalityProfileRepository.save(org.example.project2.domain.personality.entity.UserPersonalityProfile.builder()
+                .user(user)
+                .questionnaireVersion(org.example.project2.domain.personality.entity.PersonalityQuestionnaireVersion.MEAL_PERSONALITY_V1)
+                .conversationLevel((short) 50)
+                .mealPace((short) 50)
+                .planningStyle((short) 50)
+                .noveltyPreference((short) 50)
+                .styleTags(Set.of(PersonalityTag.GOOD_LISTENER, PersonalityTag.FOOD_TALK, PersonalityTag.ENJOY_DESSERT))
+                .aiKeywords(Set.of("한식", "대화"))
+                .selfDescription("테스트 자기소개")
+                .aiAnalysisConsent(true)
+                .completedAt(Instant.now())
                 .build());
         var center = GEOMETRY_FACTORY.createPoint(new Coordinate(127.047, 37.517));
         center.setSRID(4326);
@@ -338,7 +354,7 @@ class RealtimeMatchRequestServiceTest {
     }
 
     private RealtimeMatchRequestCreateRequest validRequest(String desiredText) {
-        return validRequest(REGION_CODE, 37.501, 127.039, desiredText);
+        return validRequest(REGION_CODE, 37.501, 127.039, desiredText == null ? "테스트 원하는 상대 성향" : desiredText);
     }
 
     private RealtimeMatchRequestCreateRequest validRequest(

@@ -737,8 +737,11 @@ export async function renderMatchingRequestPage(container) {
     if (Array.from(state.selectedTags).some((tag) => !TAG_LABELS.has(tag))) {
       return '지원하지 않는 성향 태그가 포함되어 있습니다. 다시 선택해 주세요.'
     }
-    if (state.desiredPersonalityText.length > 300) {
-      return '희망 상대 설명은 300자 이하로 입력해 주세요.'
+    if (!state.desiredPersonalityText || !state.desiredPersonalityText.trim()) {
+      return '원하는 상대 성향 설명(임베딩 텍스트)을 입력해 주세요.'
+    }
+    if (state.desiredPersonalityText.length > 100) {
+      return '희망 상대 설명은 100자 이하로 입력해 주세요.'
     }
     return ''
   }
@@ -1006,10 +1009,10 @@ export async function renderMatchingRequestPage(container) {
 
           <label class="block">
             <div class="flex items-end justify-between gap-3">
-              <span class="text-sm font-bold text-brand-navy">희망 상대에게 바라는 점 <span class="font-normal text-slate-400">(선택)</span></span>
-              <span id="desired-personality-count" class="text-xs font-semibold text-secondary">${state.desiredPersonalityText.length} / 300</span>
+              <span class="text-sm font-bold text-brand-navy">희망 상대에게 바라는 점 <span class="font-normal text-slate-400">(필수)</span></span>
+              <span id="desired-personality-count" class="text-xs font-semibold text-secondary">${state.desiredPersonalityText.length} / 100</span>
             </div>
-            <textarea class="matching-control mt-2 min-h-32 w-full resize-y rounded-xl px-3.5 py-3 text-sm leading-6" name="desiredPersonalityText" maxlength="300" aria-describedby="matching-personality-help" placeholder="예: 주말에 풋살이나 축구하는 걸 좋아하고, 인스타그램 맛집 탐방이나 사진 촬영을 즐기는 분이면 좋겠어요.">${escapeHtml(state.desiredPersonalityText)}</textarea>
+            <textarea class="matching-control mt-2 min-h-24 w-full resize-y rounded-xl px-3.5 py-3 text-sm leading-6" name="desiredPersonalityText" maxlength="100" aria-describedby="matching-personality-help" placeholder="예: 주말에 풋살이나 축구하는 걸 좋아하고, 맛집 탐방이나 사진 촬영을 즐기는 분이면 좋겠어요.">${escapeHtml(state.desiredPersonalityText)}</textarea>
 
             ${state.desiredExtractedKeywords.length > 0 ? `
               <div class="mt-3 rounded-2xl bg-primary-container/10 p-3.5 border border-primary-container/20 space-y-2">
@@ -1376,9 +1379,9 @@ export async function renderMatchingRequestPage(container) {
       state.locationName = event.target.value
     })
     container.querySelector('[name="desiredPersonalityText"]')?.addEventListener('input', (event) => {
-      state.desiredPersonalityText = event.target.value.slice(0, 300)
+      state.desiredPersonalityText = event.target.value.slice(0, 100)
       const count = container.querySelector('#desired-personality-count')
-      if (count) count.textContent = `${state.desiredPersonalityText.length} / 300`
+      if (count) count.textContent = `${state.desiredPersonalityText.length} / 100`
     })
 
     container.querySelectorAll('[data-personality-group]').forEach((button) => {

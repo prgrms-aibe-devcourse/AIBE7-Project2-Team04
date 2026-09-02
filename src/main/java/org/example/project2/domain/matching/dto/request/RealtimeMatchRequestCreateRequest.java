@@ -59,10 +59,11 @@ public record RealtimeMatchRequestCreateRequest(
         )
         Set<@NotNull(message = "원하는 상대 성향 태그에는 null을 포함할 수 없습니다.") PersonalityTag> desiredPersonalityTags,
 
-        @Size(max = 300, message = "원하는 상대 성향 설명은 최대 300자까지 입력할 수 있습니다.")
+        @jakarta.validation.constraints.NotBlank(message = "원하는 상대 성향 설명(임베딩 텍스트)은 필수입니다.")
+        @Size(min = 1, max = 100, message = "원하는 상대 성향 설명은 1자 이상 100자 이하로 입력할 수 있습니다.")
         @Schema(
-                description = "이번 매칭 요청에서 원하는 상대 성향에 대한 선택형 자유 서술",
-                maxLength = 300,
+                description = "이번 매칭 요청에서 원하는 상대 성향에 대한 필수 자유 서술",
+                maxLength = 100,
                 example = "대화를 편하게 이어가되 식사 속도가 비슷한 분"
         )
         String desiredPersonalityText
