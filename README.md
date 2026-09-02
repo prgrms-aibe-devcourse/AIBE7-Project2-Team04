@@ -107,11 +107,15 @@ flowchart LR
 
 ## 시스템 아키텍처
 
-<img src="docs/assets/image/시스템아키텍쳐.jpg" alt="시스템 아키텍처" width="600">
+<p align="center">
+  <img src="docs/assets/image/시스템아키텍쳐.jpg" alt="시스템 아키텍처" width="600">
+</p>
 
 ## ERD
 
-<img src="docs/assets/image/erd.png" alt="ERD" width="600">
+<p align="center">
+  <img src="docs/assets/image/erd.png" alt="ERD" width="600">
+</p>
 
 ## 기술 스택
 
