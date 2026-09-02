@@ -17,7 +17,7 @@ export async function renderMyPage(container) {
           <!-- 프로필 이미지 컨테이너 (카메라 아이콘 탑재) -->
           <div class="relative group">
             <div class="w-24 h-24 rounded-full overflow-hidden border-4 border-white shadow-md bg-slate-100 flex items-center justify-center flex-shrink-0">
-              <img id="mypage-user-profile-img" src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png" alt="프로필 이미지" class="w-full h-full object-cover" />
+              <img id="mypage-user-profile-img" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2394a3b8'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 4c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm0 14c-2.03 0-3.8-1.04-4.84-2.61.03-.99 2.91-1.53 4.84-1.53s4.81.54 4.84 1.53C15.8 18.96 14.03 20 12 20z'/></svg>" alt="프로필 이미지" class="w-full h-full object-cover" onerror="this.onerror=null;this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'%2394a3b8\'><path d=\'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 4c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm0 14c-2.03 0-3.8-1.04-4.84-2.61.03-.99 2.91-1.53 4.84-1.53s4.81.54 4.84 1.53C15.8 18.96 14.03 20 12 20z\'/></svg>'" />
             </div>
             <!-- 카메라 수정 버튼 -->
             <button id="btn-edit-profile-img" class="absolute -bottom-1 -right-1 bg-[#ae3115] text-white p-2 rounded-full shadow-md hover:scale-105 transition-transform flex items-center justify-center border border-white" aria-label="프로필 사진 수정" title="프로필 사진 수정">
@@ -265,6 +265,16 @@ export async function renderMyPage(container) {
         document.querySelector('#btn-history-next')?.addEventListener('click', () => loadMatchHistory(currentHistoryPage + 1))
       }
 
+      historyContainer.querySelectorAll('.btn-report-user').forEach(btn => {
+        const item = history.find(historyItem => String(historyItem.matchId) === btn.getAttribute('data-match-id'))
+        if (item?.reported) {
+          btn.disabled = true
+          btn.classList.remove('btn-report-user', 'bg-red-50', 'text-red-600', 'border-red-100', 'hover:bg-red-100')
+          btn.classList.add('bg-slate-100', 'text-slate-400', 'cursor-not-allowed')
+          btn.textContent = '신고 접수 완료'
+        }
+      })
+
       historyContainer.querySelectorAll('.btn-review-write').forEach(btn => {
         btn.addEventListener('click', (e) => {
           const matchId = e.currentTarget.getAttribute('data-match-id')
@@ -356,6 +366,7 @@ export async function renderMyPage(container) {
         if (resp.ok) {
           alert('신고가 성공적으로 접수되었습니다. 소중한 의견 감사합니다.')
           modal.remove()
+          await loadMatchHistory(currentHistoryPage)
         } else {
           const body = await resp.json()
           alert(body?.error?.message || '신고 접수에 실패했습니다.')

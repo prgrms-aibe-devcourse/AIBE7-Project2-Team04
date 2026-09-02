@@ -33,14 +33,15 @@ export async function renderOAuthCallback(container) {
     if (result.profileSetupRequired) {
       nextPath = '/profile/setup'
     } else {
-      try {
-        const personality = await getPersonalityProfile()
-        if (personality?.onboardingStatus === 'NOT_STARTED') {
-          nextPath = '/personality/survey'
-        }
-      } catch (profileError) {
-        console.warn('온보딩 상태 확인 중 오류:', profileError)
+    try {
+      const personality = await getPersonalityProfile()
+      if (personality?.onboardingStatus === 'NOT_STARTED') {
+        alert('🎉 환영합니다!\n나와 잘 맞는 밥친구를 찾기 위해 먼저 식사 성향을 설정해 주세요.')
+        nextPath = '/personality/survey'
       }
+    } catch (profileError) {
+      console.warn('온보딩 상태 확인 중 오류:', profileError)
+    }
     }
 
     // 로그인 완료 창을 거치지 않고 바로 메인 페이지 또는 성향 설정 화면으로 즉시 이동

@@ -293,6 +293,19 @@ function initLandingPage() {
     try {
       await login(email, password)
       closeAuthModal()
+
+      try {
+        const { getPersonalityProfile } = await import('./personality/personality-api.js')
+        const profile = await getPersonalityProfile()
+        if (profile?.onboardingStatus === 'NOT_STARTED') {
+          alert('🎉 환영합니다!\n나와 잘 맞는 밥친구를 찾기 위해 먼저 식사 성향을 설정해 주세요.')
+          navigateTo('/personality/survey')
+          return
+        }
+      } catch {
+        // 성향 확인 중 실패 시 기본 진행
+      }
+
       window.location.reload()
     } catch (err) {
       if (loginErrorMsg) {
@@ -314,7 +327,8 @@ function initLandingPage() {
       await signUp(email, password, nickname)
       await login(email, password)
       closeAuthModal()
-      window.location.reload()
+      alert('🎉 회원가입을 축하합니다!\n나와 잘 맞는 밥친구를 찾기 위해 먼저 식사 성향을 설정해 주세요.')
+      navigateTo('/personality/survey')
     } catch (err) {
       if (signupErrorMsg) {
         signupErrorMsg.textContent = err.message || '회원가입에 실패했습니다.'
@@ -459,6 +473,8 @@ function initCommonHeader() {
   }
 
   const isLoggedIn = sessionStorage.getItem('project2.isLoggedIn') === 'true'
+  document.documentElement.classList.toggle('logged-in', isLoggedIn)
+  document.documentElement.classList.toggle('logged-out', !isLoggedIn)
 
   if (isLoggedIn) {
     // 사용자 정보 호출
@@ -474,6 +490,9 @@ function initCommonHeader() {
             nicknameEl.textContent = body.data.nickname
             if (body.data.profileImageUrl) {
               profileImgEl.src = body.data.profileImageUrl
+            }
+            profileImgEl.onerror = () => {
+              profileImgEl.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2394a3b8'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 4c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm0 14c-2.03 0-3.8-1.04-4.84-2.61.03-.99 2.91-1.53 4.84-1.53s4.81.54 4.84 1.53C15.8 18.96 14.03 20 12 20z'/></svg>"
             }
 
             const btnGoMypage = document.querySelector('#btn-go-mypage')
