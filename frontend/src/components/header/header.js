@@ -133,6 +133,7 @@ export function updateHeaderStatus() {
   const btnGoMypage = document.querySelector('#btn-go-mypage')
 
   if (!isLoggedIn) {
+    sessionStorage.removeItem('project2.userRole')
     updateHeaderMatchStatusBadge(null)
     return
   }
@@ -149,6 +150,13 @@ export function updateHeaderStatus() {
           }
           profileImgEl.onerror = () => {
             profileImgEl.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2394a3b8'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 4c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm0 14c-2.03 0-3.8-1.04-4.84-2.61.03-.99 2.91-1.53 4.84-1.53s4.81.54 4.84 1.53C15.8 18.96 14.03 20 12 20z'/></svg>"
+          }
+
+          if (body.data.role === 'ADMIN') {
+            sessionStorage.setItem('project2.userRole', 'ADMIN')
+            updateHeaderMatchStatusBadge(null)
+          } else {
+            sessionStorage.removeItem('project2.userRole')
           }
 
           if (btnGoMypage) {
@@ -198,11 +206,23 @@ export function updateHeaderStatus() {
 }
 
 /**
- * 매칭중 / 매칭없음 헤더 뱃지 UI 렌더링
+ * 매칭중 / 매칭없음 / 관리자 헤더 뱃지 UI 렌더링
  */
 function updateHeaderMatchStatusBadge(result) {
   const badge = document.querySelector('#header-match-status-badge')
   if (!badge) return
+
+  const isAdmin = sessionStorage.getItem('project2.userRole') === 'ADMIN'
+  if (isAdmin) {
+    badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all cursor-default bg-rose-50 text-rose-700 border border-rose-200/80'
+    badge.innerHTML = `
+      <span class="material-symbols-outlined text-base" aria-hidden="true">admin_panel_settings</span>
+      <span>관리자</span>
+    `
+    badge.title = '관리자 계정'
+    badge.onclick = null
+    return
+  }
 
   if (result && result.chatRoomId && result.status === 'MATCHED') {
     badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer bg-emerald-50 text-emerald-800 border border-emerald-200/80 hover:bg-emerald-100'

@@ -61,6 +61,13 @@ export async function checkPersonalityProfileCompleted() {
   const token = getAccessToken()
   if (!token) return true
   try {
+    const userRes = await fetch(`${API_BASE_URL}/users/me`, { credentials: 'include' })
+    if (userRes.ok) {
+      const userBody = await userRes.json()
+      if (userBody.success && userBody.data && userBody.data.role === 'ADMIN') {
+        return true
+      }
+    }
     const { getPersonalityProfile } = await import('./personality/personality-api.js')
     const profile = await getPersonalityProfile()
     if (
@@ -387,6 +394,14 @@ function initLandingPage() {
       closeAuthModal()
 
       try {
+        const userRes = await fetch(`${API_BASE_URL}/users/me`, { credentials: 'include' })
+        if (userRes.ok) {
+          const userBody = await userRes.json()
+          if (userBody.success && userBody.data && userBody.data.role === 'ADMIN') {
+            window.location.reload()
+            return
+          }
+        }
         const { getPersonalityProfile } = await import('./personality/personality-api.js')
         const profile = await getPersonalityProfile()
         if (profile?.onboardingStatus === 'NOT_STARTED') {
@@ -540,6 +555,18 @@ function initLandingPage() {
 function updateHeaderMatchStatusBadge(result) {
   const badge = document.querySelector('#header-match-status-badge')
   if (!badge) return
+
+  const isAdmin = sessionStorage.getItem('project2.userRole') === 'ADMIN'
+  if (isAdmin) {
+    badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all cursor-default bg-rose-50 text-rose-700 border border-rose-200/80'
+    badge.innerHTML = `
+      <span class="material-symbols-outlined text-base" aria-hidden="true">admin_panel_settings</span>
+      <span>관리자</span>
+    `
+    badge.title = '관리자 계정'
+    badge.onclick = null
+    return
+  }
 
   if (result && result.chatRoomId && result.status === 'MATCHED') {
     badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer bg-emerald-50 text-emerald-800 border border-emerald-200/80 hover:bg-emerald-100'

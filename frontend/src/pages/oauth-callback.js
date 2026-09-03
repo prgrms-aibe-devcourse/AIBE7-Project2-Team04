@@ -34,10 +34,20 @@ export async function renderOAuthCallback(container) {
       nextPath = '/profile/setup'
     } else {
     try {
-      const personality = await getPersonalityProfile()
-      if (personality?.onboardingStatus === 'NOT_STARTED') {
-        alert('🎉 환영합니다!\n나와 잘 맞는 밥친구를 찾기 위해 먼저 식사 성향을 설정해 주세요.')
-        nextPath = '/personality/survey'
+      const userRes = await fetch(`${API_BASE_URL}/users/me`, { credentials: 'include' })
+      let isAdmin = false
+      if (userRes.ok) {
+        const userBody = await userRes.json()
+        if (userBody.success && userBody.data && userBody.data.role === 'ADMIN') {
+          isAdmin = true
+        }
+      }
+      if (!isAdmin) {
+        const personality = await getPersonalityProfile()
+        if (personality?.onboardingStatus === 'NOT_STARTED') {
+          alert('🎉 환영합니다!\n나와 잘 맞는 밥친구를 찾기 위해 먼저 식사 성향을 설정해 주세요.')
+          nextPath = '/personality/survey'
+        }
       }
     } catch (profileError) {
       console.warn('온보딩 상태 확인 중 오류:', profileError)
