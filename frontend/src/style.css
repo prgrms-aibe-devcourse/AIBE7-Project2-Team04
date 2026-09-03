@@ -606,6 +606,12 @@ select {
   transform: translateY(0) scale(1);
 }
 
+.signup-success-card {
+  width: min(100%, 400px);
+  padding: 40px 32px 32px;
+  overflow: hidden;
+}
+
 /* Personality survey experience */
 .personality-survey-page {
   background:

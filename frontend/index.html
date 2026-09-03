@@ -602,6 +602,30 @@
       </div>
     </div>
 
+    <!-- Sign-up Success Modal -->
+    <div
+      id="signup-success-modal"
+      class="modal-backdrop hidden"
+      aria-hidden="true"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="signup-success-title"
+      aria-describedby="signup-success-description"
+    >
+      <div class="modal-card signup-success-card text-center" onclick="event.stopPropagation()">
+        <div class="mx-auto mb-5 grid h-16 w-16 place-items-center rounded-full bg-primary-container/10 text-primary-container" aria-hidden="true">
+          <span class="material-symbols-outlined text-4xl">celebration</span>
+        </div>
+        <h2 id="signup-success-title" class="font-headline text-2xl font-extrabold text-brand-navy">회원가입을 축하합니다!</h2>
+        <p id="signup-success-description" class="mt-3 text-sm leading-relaxed text-secondary">
+          나와 잘 맞는 밥친구를 찾기 위해<br />먼저 식사 성향을 설정해 주세요.
+        </p>
+        <button id="btn-signup-success-continue" type="button" class="btn-primary mt-7 w-full rounded-full px-5 py-3 text-sm font-bold shadow-md">
+          식사 성향 설정하기
+        </button>
+      </div>
+    </div>
+
     <!-- Footer -->
     <footer class="w-full bg-surface-container-low border-t border-outline-variant/20 py-8 px-margin-mobile md:px-margin-desktop mt-auto">
       <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-secondary">

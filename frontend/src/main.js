@@ -264,6 +264,8 @@ function initLandingPage() {
   const modalDesc = document.querySelector('#modal-desc')
   const loginErrorMsg = document.querySelector('#login-error-msg')
   const signupErrorMsg = document.querySelector('#signup-error-msg')
+  const signupSuccessModal = document.querySelector('#signup-success-modal')
+  const btnSignupSuccessContinue = document.querySelector('#btn-signup-success-continue')
 
   const openAuthModal = (isSignup = false) => {
     if (isSignup) {
@@ -302,6 +304,25 @@ function initLandingPage() {
     resetPasswordToggles()
   }
 
+  const openSignupSuccessModal = () => {
+    if (!signupSuccessModal) {
+      navigateTo('/personality/survey')
+      return
+    }
+
+    signupSuccessModal.style.display = 'grid'
+    signupSuccessModal.offsetHeight
+    signupSuccessModal.classList.add('is-open')
+    signupSuccessModal.setAttribute('aria-hidden', 'false')
+    window.setTimeout(() => btnSignupSuccessContinue?.focus(), 100)
+  }
+
+  const continueSignupOnboarding = () => {
+    signupSuccessModal?.classList.remove('is-open')
+    signupSuccessModal?.setAttribute('aria-hidden', 'true')
+    navigateTo('/personality/survey')
+  }
+
   const showLoginForm = () => {
     formLogin?.classList.remove('hidden')
     formSignup?.classList.add('hidden')
@@ -327,6 +348,7 @@ function initLandingPage() {
       closeAuthModal()
     }
   })
+  btnSignupSuccessContinue?.addEventListener('click', continueSignupOnboarding)
 
   // 로그인 ↔ 회원가입 전환
   btnToggleSignup?.addEventListener('click', showSignupForm)
@@ -414,8 +436,7 @@ function initLandingPage() {
       await signUp(email, password, nickname)
       await login(email, password)
       closeAuthModal()
-      alert('🎉 회원가입을 축하합니다!\n나와 잘 맞는 밥친구를 찾기 위해 먼저 식사 성향을 설정해 주세요.')
-      navigateTo('/personality/survey')
+      openSignupSuccessModal()
     } catch (err) {
       if (signupErrorMsg) {
         signupErrorMsg.textContent = err.message || '회원가입에 실패했습니다.'
