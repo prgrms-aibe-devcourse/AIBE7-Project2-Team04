@@ -61,6 +61,13 @@ export async function checkPersonalityProfileCompleted() {
   const token = getAccessToken()
   if (!token) return true
   try {
+    const userRes = await fetch(`${API_BASE_URL}/users/me`, { credentials: 'include' })
+    if (userRes.ok) {
+      const userBody = await userRes.json()
+      if (userBody.success && userBody.data && userBody.data.role === 'ADMIN') {
+        return true
+      }
+    }
     const { getPersonalityProfile } = await import('./personality/personality-api.js')
     const profile = await getPersonalityProfile()
     if (
@@ -365,6 +372,14 @@ function initLandingPage() {
       closeAuthModal()
 
       try {
+        const userRes = await fetch(`${API_BASE_URL}/users/me`, { credentials: 'include' })
+        if (userRes.ok) {
+          const userBody = await userRes.json()
+          if (userBody.success && userBody.data && userBody.data.role === 'ADMIN') {
+            window.location.reload()
+            return
+          }
+        }
         const { getPersonalityProfile } = await import('./personality/personality-api.js')
         const profile = await getPersonalityProfile()
         if (profile?.onboardingStatus === 'NOT_STARTED') {
